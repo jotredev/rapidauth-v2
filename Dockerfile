@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-alpine AS dependencies
+FROM node:25-alpine AS dependencies
 COPY --from=oven/bun:1.4.2-alpine /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -s /usr/local/bin/bun /usr/local/bin/bunx
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN --mount=type=secret,id=turnstile_secret_key,env=TURNSTILE_SECRET_KEY \
     BETTER_AUTH_SECRET="0000000000000000000000000000000000000000000000000000000000000000" \
     NODE_ENV="production" bun run build
 
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV="production" \
     NEXT_TELEMETRY_DISABLED="1" \
