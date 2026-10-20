@@ -9,9 +9,12 @@ import { checkRateLimit, getClientIp, hashKey } from '@/lib/rate-limit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { TERMS_ACCEPTANCE_HEADER } from '@/lib/terms-acceptance';
 import { reportError } from '@/lib/report-error';
+import { prisma } from '@/lib/prisma';
+import { EmailDeliveryError } from '@/lib/email';
 
 type SignUpData = {
   email: string;
+  emailSent: boolean;
 };
 
 export const signUpAction = async (
@@ -73,15 +76,37 @@ export const signUpAction = async (
     const requestHeaders = new Headers(await headers());
     requestHeaders.set(TERMS_ACCEPTANCE_HEADER, String(acceptTerms));
 
-    await auth.api.signUpEmail({
+    const result = await auth.api.signUpEmail({
       body: { name, email, password },
       headers: requestHeaders,
     });
 
+    const createdUser = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      select: { id: true },
+    });
+
+    let emailSent = true;
+
+    if (createdUser && createdUser.id === result.user.id) {
+      try {
+        await auth.api.sendVerificationEmail({
+          body: { email },
+          headers: requestHeaders,
+        });
+      } catch (error) {
+        if (error instanceof EmailDeliveryError) {
+          emailSent = false;
+        } else {
+          throw error;
+        }
+      }
+    }
+
     return {
       response: 'success',
       message: 'Account created successfully. Please check your email to verify your account.',
-      data: { email },
+      data: { email, emailSent },
     };
   } catch (error) {
     if (error instanceof APIError) {

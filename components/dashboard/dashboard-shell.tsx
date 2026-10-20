@@ -9,6 +9,7 @@ import {
   Users,
   UserCircle,
   Activity,
+  ScrollText,
 } from "lucide-react";
 
 function getNavigation(isAdmin: boolean): NavSection[] {
@@ -20,6 +21,7 @@ function getNavigation(isAdmin: boolean): NavSection[] {
   if (isAdmin) {
     menuItems.push({ title: "Users", href: "/dashboard/users", icon: Users });
     menuItems.push({ title: "Activity", href: "/dashboard/activity", icon: Activity });
+    menuItems.push({ title: "System logs", href: "/dashboard/logs", icon: ScrollText });
   }
 
 

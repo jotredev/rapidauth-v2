@@ -266,6 +266,7 @@ export const verify2FASetupAction = async (
           userName: session.user.name,
           event: 'two-factor-enabled',
           occurredAt: new Date(),
+          userId: session.user.id,
         });
       } catch (error) {
         reportError(error, { area: 'auth.two-factor-enabled-notice' });
@@ -333,6 +334,7 @@ export const disable2FAAction = async (
           userName: session.user.name,
           event: 'two-factor-disabled',
           occurredAt: new Date(),
+          userId: session.user.id,
         });
       } catch (error) {
         reportError(error, { area: 'auth.two-factor-disabled-notice' });

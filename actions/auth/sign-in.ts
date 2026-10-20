@@ -8,6 +8,7 @@ import { loginSchema } from '@/validations/auth';
 import { checkRateLimit, getClientIp, hashKey } from '@/lib/rate-limit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { reportError } from '@/lib/report-error';
+import { EmailDeliveryError } from '@/lib/email';
 
 type SignInData = {
   twoFactorRequired?: boolean;
@@ -158,10 +159,19 @@ export const resendVerificationEmailAction = async (
 
     return {
       response: 'success',
-      message: 'Verification email sent',
+      message:
+        "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.",
       data: null,
     };
   } catch (error) {
+    if (error instanceof EmailDeliveryError) {
+      return {
+        response: 'success',
+        message:
+          "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.",
+        data: null,
+      };
+    }
     if (error instanceof APIError) {
       return {
         response: 'error',

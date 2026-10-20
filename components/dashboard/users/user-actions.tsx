@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
   UserCheck,
   KeyRound,
   MailPlus,
+  Mail,
 } from 'lucide-react';
 import type { User } from '@/actions/users';
 
@@ -108,6 +110,15 @@ export function UserActions({
           >
             <KeyRound className='mr-2 h-4 w-4' />
             Reset Password
+          </DropdownMenuItem>
+        )}
+
+        {isAdmin && (
+          <DropdownMenuItem asChild className='cursor-pointer'>
+            <Link href={`/dashboard/logs?userId=${user.id}&source=emails`}>
+              <Mail className='mr-2 h-4 w-4' />
+              Email logs
+            </Link>
           </DropdownMenuItem>
         )}
 

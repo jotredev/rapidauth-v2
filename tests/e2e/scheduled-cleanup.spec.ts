@@ -63,6 +63,22 @@ test('protected cleanup deletes only expired eligible rows and is idempotent', a
       lastRequest: BigInt(Date.now()),
     },
   });
+  const oldOperationalLog = await prisma.operationalLog.create({
+    data: {
+      level: 'info',
+      source: 'emails',
+      code: 'email.delivery.sent',
+      createdAt: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000),
+    },
+  });
+  const recentOperationalLog = await prisma.operationalLog.create({
+    data: {
+      level: 'info',
+      source: 'emails',
+      code: 'email.delivery.sent',
+      createdAt: new Date(Date.now() - 89 * 24 * 60 * 60 * 1000),
+    },
+  });
 
   expect((await request.get('/api/cron/cleanup')).status()).toBe(401);
   expect(
@@ -89,10 +105,12 @@ test('protected cleanup deletes only expired eligible rows and is idempotent', a
     rateLimits: number;
     verifications: number;
     unverifiedUsers: number;
+    operationalLogs: number;
   };
   expect(counts.rateLimits).toBeGreaterThanOrEqual(1);
   expect(counts.verifications).toBeGreaterThanOrEqual(1);
   expect(counts.unverifiedUsers).toBe(1);
+  expect(counts.operationalLogs).toBeGreaterThanOrEqual(1);
 
   expect(await prisma.user.findUnique({ where: { id: staleUser.user.id } })).toBeNull();
   expect(await prisma.session.findUnique({ where: { id: staleSession.id } })).toBeNull();
@@ -110,6 +128,12 @@ test('protected cleanup deletes only expired eligible rows and is idempotent', a
   expect(
     await prisma.rateLimit.findUnique({ where: { id: recentRateLimit.id } }),
   ).not.toBeNull();
+  expect(
+    await prisma.operationalLog.findUnique({ where: { id: oldOperationalLog.id } }),
+  ).toBeNull();
+  expect(
+    await prisma.operationalLog.findUnique({ where: { id: recentOperationalLog.id } }),
+  ).not.toBeNull();
 
   const secondResponse = await request.get('/api/cron/cleanup', {
     headers: { authorization: `Bearer ${E2E_CRON_SECRET}` },
@@ -119,5 +143,6 @@ test('protected cleanup deletes only expired eligible rows and is idempotent', a
     rateLimits: 0,
     verifications: 0,
     unverifiedUsers: 0,
+    operationalLogs: 0,
   });
 });

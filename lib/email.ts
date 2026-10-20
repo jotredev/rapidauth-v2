@@ -13,6 +13,20 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { reportError } from '@/lib/report-error';
+import {
+  recordOperationalLog,
+  type EmailTemplate,
+} from '@/lib/operational-log';
+
+export class EmailDeliveryError extends Error {
+  readonly errorCode: string;
+
+  constructor(message: string, errorCode: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'EmailDeliveryError';
+    this.errorCode = errorCode;
+  }
+}
 
 const emailDelivery = process.env.EMAIL_DELIVERY ?? 'resend';
 if (emailDelivery === 'outbox' && process.env.NODE_ENV === 'production') {
@@ -39,34 +53,95 @@ async function deliverEmail({
   subject,
   html,
   url,
+  template,
+  userId,
 }: {
   to: string;
   subject: string;
   html: string;
   url: string;
+  template: EmailTemplate;
+  userId?: string;
 }) {
-  if (emailDelivery === 'outbox') {
-    const directory = process.env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox';
-    await mkdir(directory, { recursive: true });
-    const filename = `${Date.now()}-${randomUUID()}.json`;
-    await writeFile(
-      join(directory, filename),
-      JSON.stringify({ to, subject, html, url, sentAt: new Date().toISOString() }, null, 2),
-      { encoding: 'utf8', mode: 0o600 },
-    );
-    return;
-  }
+  const startTime = performance.now();
 
-  const { error } = await getResendClient().emails.send({
-    from: FROM_EMAIL,
-    to,
-    subject,
-    html,
-  });
+  try {
+    if (emailDelivery === 'outbox') {
+      const localPart = to.split('@')[0] ?? '';
+      if (localPart.endsWith('+delivery-fail')) {
+        throw new EmailDeliveryError(
+          'Outbox delivery forced failure for testing',
+          'outbox_forced_failure',
+        );
+      }
 
-  if (error) {
-    const deliveryError = new Error('Failed to send email', { cause: error });
+      const directory = process.env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox';
+      await mkdir(directory, { recursive: true });
+      const filename = `${Date.now()}-${randomUUID()}.json`;
+      await writeFile(
+        join(directory, filename),
+        JSON.stringify({ to, subject, html, url, sentAt: new Date().toISOString() }, null, 2),
+        { encoding: 'utf8', mode: 0o600 },
+      );
+    } else {
+      let sendResult;
+      try {
+        sendResult = await getResendClient().emails.send({
+          from: FROM_EMAIL,
+          to,
+          subject,
+          html,
+        });
+      } catch (error) {
+        throw new EmailDeliveryError(
+          'Failed to send email',
+          'exception',
+          { cause: error },
+        );
+      }
+
+      if (sendResult.error) {
+        const errorCode =
+          typeof sendResult.error.name === 'string' && sendResult.error.name.trim()
+            ? sendResult.error.name.toLowerCase()
+            : 'unknown';
+        throw new EmailDeliveryError(
+          'Failed to send email',
+          errorCode,
+          { cause: sendResult.error },
+        );
+      }
+    }
+
+    const durationMs = Math.max(0, Math.round(performance.now() - startTime));
+    await recordOperationalLog({
+      level: 'info',
+      source: 'emails',
+      code: 'email.delivery.sent',
+      userId,
+      metadata: { template, durationMs },
+    });
+  } catch (error) {
+    const durationMs = Math.max(0, Math.round(performance.now() - startTime));
+    const deliveryError =
+      error instanceof EmailDeliveryError
+        ? error
+        : new EmailDeliveryError('Failed to send email', 'exception', { cause: error });
+
     reportError(deliveryError, { area: 'email.delivery' });
+
+    await recordOperationalLog({
+      level: 'error',
+      source: 'emails',
+      code: 'email.delivery.failed',
+      userId,
+      metadata: {
+        template,
+        durationMs,
+        errorCode: deliveryError.errorCode,
+      },
+    });
+
     throw deliveryError;
   }
 }
@@ -75,10 +150,12 @@ export async function sendVerificationEmail({
   email,
   name,
   url,
+  userId,
 }: {
   email: string;
   name: string;
   url: string;
+  userId?: string;
 }) {
   const html = await render(
     VerificationEmail({
@@ -92,6 +169,8 @@ export async function sendVerificationEmail({
     subject: 'Verify your email address',
     html,
     url,
+    template: 'verification',
+    userId,
   });
 }
 
@@ -99,10 +178,12 @@ export async function sendResetPasswordEmail({
   email,
   name,
   url,
+  userId,
 }: {
   email: string;
   name: string;
   url: string;
+  userId?: string;
 }) {
   const html = await render(
     ResetPasswordEmail({
@@ -116,6 +197,8 @@ export async function sendResetPasswordEmail({
     subject: 'Reset your password',
     html,
     url,
+    template: 'password-reset',
+    userId,
   });
 }
 
@@ -124,11 +207,13 @@ export async function sendInvitationEmail({
   name,
   invitedByName,
   url,
+  userId,
 }: {
   email: string;
   name: string;
   invitedByName: string;
   url: string;
+  userId?: string;
 }) {
   const html = await render(
     InvitationEmail({
@@ -144,6 +229,8 @@ export async function sendInvitationEmail({
     subject: `You're invited to ${siteConfig.appName}`,
     html,
     url,
+    template: 'invitation',
+    userId,
   });
 }
 
@@ -165,6 +252,7 @@ export async function sendAccountDeletedEmail({ email, name, deletedAt }: {
     subject: 'Your account has been deleted',
     html,
     url: '',
+    template: 'account-deleted',
   });
 }
 
@@ -206,11 +294,13 @@ export async function sendSecurityNoticeEmail({
   userName,
   event,
   occurredAt,
+  userId,
 }: {
   to: string;
   userName: string;
   event: SecurityNoticeEvent;
   occurredAt: Date;
+  userId?: string;
 }) {
   const notice = securityNotices[event];
   const occurredAtUtc = `${occurredAt.toLocaleString('en-US', {
@@ -234,5 +324,7 @@ export async function sendSecurityNoticeEmail({
     subject: notice.subject,
     html,
     url: '',
+    template: 'security-notice',
+    userId,
   });
 }

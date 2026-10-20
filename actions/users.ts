@@ -136,6 +136,7 @@ export const addUserAction = async (
         name: newUser.name,
         invitedByName: session.user.name,
         url: getInvitationUrl(token),
+        userId: newUser.id,
       });
     } catch (error) {
       invitationSent = false;
@@ -239,6 +240,7 @@ export const resendUserInvitationAction = async (
       name: user.name,
       invitedByName: session.user.name,
       url: getInvitationUrl(token),
+      userId: user.id,
     });
 
     try {
@@ -1219,6 +1221,7 @@ export const resetPasswordAction = async (
         userName: user.name,
         event: 'temporary-password-created',
         occurredAt: new Date(),
+        userId: user.id,
       });
     } catch (error) {
       reportError(error, { area: 'users.temporary-password-notice' });

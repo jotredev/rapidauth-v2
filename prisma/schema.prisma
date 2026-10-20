@@ -22,10 +22,11 @@ model User {
   mustChangePassword         Boolean   @default(false)
   temporaryPasswordExpiresAt DateTime?
 
-  sessions     Session[]
-  accounts     Account[]
-  twoFactors   TwoFactor[]
-  activityLogs ActivityLog[]
+  sessions        Session[]
+  accounts        Account[]
+  twoFactors      TwoFactor[]
+  activityLogs    ActivityLog[]
+  operationalLogs OperationalLog[]
 
   @@map("user")
 }
@@ -113,4 +114,21 @@ model ActivityLog {
   @@index([userId])
   @@index([createdAt])
   @@map("activity_log")
+}
+
+model OperationalLog {
+  id        String   @id @default(cuid())
+  level     String // info | warn | error | critical
+  source    String // low-cardinality origin, e.g. "emails"
+  code      String // stable identifier, e.g. "email.delivery.sent"
+  userId    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([level, createdAt])
+  @@map("operational_log")
 }

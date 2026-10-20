@@ -5,11 +5,13 @@ import { deleteUserRecord } from "@/lib/user-deletion";
 export const CLEANUP_BATCH_SIZE = 500;
 export const RATE_LIMIT_RETENTION_MS = 24 * 60 * 60 * 1000;
 export const UNVERIFIED_ACCOUNT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+export const OPERATIONAL_LOG_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type CleanupCounts = {
   rateLimits: number;
   verifications: number;
   unverifiedUsers: number;
+  operationalLogs: number;
 };
 
 export async function runScheduledCleanup(now = new Date()): Promise<CleanupCounts> {
@@ -18,6 +20,9 @@ export async function runScheduledCleanup(now = new Date()): Promise<CleanupCoun
     const verificationCutoff = now;
     const accountCutoff = new Date(
       now.getTime() - UNVERIFIED_ACCOUNT_RETENTION_MS,
+    );
+    const operationalLogCutoff = new Date(
+      now.getTime() - OPERATIONAL_LOG_RETENTION_MS,
     );
 
     const oldRateLimits = await prisma.rateLimit.findMany({
@@ -79,10 +84,26 @@ export async function runScheduledCleanup(now = new Date()): Promise<CleanupCoun
       }
     }
 
+    const oldOperationalLogs = await prisma.operationalLog.findMany({
+      where: { createdAt: { lt: operationalLogCutoff } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+      take: CLEANUP_BATCH_SIZE,
+    });
+    const operationalLogResult = oldOperationalLogs.length
+      ? await prisma.operationalLog.deleteMany({
+          where: {
+            id: { in: oldOperationalLogs.map(({ id }) => id) },
+            createdAt: { lt: operationalLogCutoff },
+          },
+        })
+      : { count: 0 };
+
     return {
       rateLimits: rateLimitResult.count,
       verifications: verificationResult.count,
       unverifiedUsers: unverifiedUsersDeleted,
+      operationalLogs: operationalLogResult.count,
     };
   } catch (error) {
     reportError(error, { area: "scheduled-cleanup.run" });

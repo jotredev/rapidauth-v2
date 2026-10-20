@@ -55,7 +55,6 @@ export function ForgotPasswordForm() {
       }
 
       setSentEmail(result.data?.email ?? values.email);
-      toast.success(result.message);
     });
   };
 
@@ -69,7 +68,6 @@ export function ForgotPasswordForm() {
     return (
       <AuthCard
         title="Check your email"
-        description="We've sent a password reset link to your email"
         footer={
           <div className="space-y-2">
             <div>
@@ -98,9 +96,9 @@ export function ForgotPasswordForm() {
           </div>
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              We sent a password reset link to
+              If an account exists for this email, we sent you an email. If it doesn&apos;t arrive in a few minutes,{' '}
+              <AuthLink href="/support">contact support</AuthLink>.
             </p>
-            <p className="font-medium">{sentEmail}</p>
           </div>
           <Button
             type="button"

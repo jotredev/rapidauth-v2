@@ -245,6 +245,7 @@ export const auth = betterAuth({
         email: user.email,
         name: user.name,
         url: resetUrl.toString(),
+        userId: user.id,
       });
     },
     onPasswordReset: async ({ user }) => {
@@ -276,6 +277,7 @@ export const auth = betterAuth({
           userName: user.name,
           event: 'password-reset',
           occurredAt: new Date(),
+          userId: user.id,
         });
       } catch (error) {
         reportError(error, { area: 'auth.password-reset-notice' });
@@ -283,7 +285,7 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    sendOnSignUp: false,
     autoSignInAfterVerification: true,
     afterEmailVerification: async (user) => {
       try {
@@ -310,6 +312,7 @@ export const auth = betterAuth({
         email: user.email,
         name: user.name,
         url: verifiedUrl,
+        userId: user.id,
       });
     },
   },

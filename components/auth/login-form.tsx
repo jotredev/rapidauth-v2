@@ -51,6 +51,7 @@ export function LoginForm({
   const [showPassword, setShowPassword] = React.useState(false);
   const [showResendVerification, setShowResendVerification] =
     React.useState(false);
+  const [resendNotice, setResendNotice] = React.useState<string | null>(null);
   const [isResending, setIsResending] = React.useState(false);
   const [isSocialPending, setIsSocialPending] = React.useState(false);
   const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
@@ -106,7 +107,7 @@ export function LoginForm({
     if (result.response === 'error') {
       toast.error(result.message);
     } else {
-      toast.success(result.message);
+      setResendNotice(result.message);
       setShowResendVerification(false);
     }
 
@@ -144,6 +145,14 @@ export function LoginForm({
       {notice && (
         <Alert className="mb-4">
           <AlertDescription>{notice}</AlertDescription>
+        </Alert>
+      )}
+      {resendNotice && (
+        <Alert className="mb-4">
+          <AlertDescription>
+            If an account exists for this email, we sent you an email. If it doesn&apos;t arrive in a few minutes,{' '}
+            <AuthLink href="/support">contact support</AuthLink>.
+          </AlertDescription>
         </Alert>
       )}
       {oauthSignupDisabledProvider && (

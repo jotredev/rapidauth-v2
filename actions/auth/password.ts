@@ -90,7 +90,8 @@ export const forgotPasswordAction = async (
 
     return {
       response: 'success',
-      message: 'Password reset link sent to your email',
+      message:
+        "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.",
       data: { email },
     };
   } catch (error) {
@@ -245,6 +246,7 @@ export const changePasswordAction = async (
         userName: session.user.name,
         event: 'password-changed',
         occurredAt: new Date(),
+        userId: session.user.id,
       });
     } catch (error) {
       reportError(error, { area: 'auth.password-change-notice' });

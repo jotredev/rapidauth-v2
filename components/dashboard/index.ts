@@ -32,6 +32,7 @@ export { TwoFactorStatus } from "./two-factor-setup";
 export { ActivityLog, type ActivityLogEntry } from "./activity-log";
 export { ActiveSessions, type SessionData } from "./active-sessions";
 export { ActivityLogsContent } from "./activity-logs-content";
+export { SystemLogsContent } from "./system-logs-content";
 
 // User Management (from users folder)
 export {

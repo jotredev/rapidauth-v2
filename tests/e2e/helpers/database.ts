@@ -227,6 +227,7 @@ export async function cleanE2EData() {
     where: { email: { startsWith: 'e2e-' } },
   });
   await prisma.rateLimit.deleteMany();
+  await prisma.operationalLog.deleteMany();
 }
 
 export { prisma };
