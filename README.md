@@ -102,7 +102,7 @@ Themes can change authentication pages, the landing page, shared UI, layout, and
 
 When you change the template's auth, landing, layout, style, or shared UI files, update Classic with `bun run theme:sync-classic`. Run `bun run theme:sync-classic --check` to see whether Classic is in sync; CI runs this check too.
 
-The local pre-commit hook sets `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` only for its compile check. This bypass is never for production, CI production builds, or hosting builds; those builds must validate real Turnstile keys. The pre-push hook runs `bun run test:e2e` before each push, requires Docker to be running and a clean working tree, and takes about 3 minutes.
+The local pre-commit hook sets `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` only for its compile check. This bypass is never for production, CI production builds, or hosting builds; those builds must validate real Turnstile keys.
 
 ### CI
 

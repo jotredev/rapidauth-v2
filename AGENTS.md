@@ -147,6 +147,14 @@ bunx prisma generate           # Generate Prisma client
 bunx prisma db push            # Push schema to database
 ```
 
+## Git Workflow
+
+- `main` is protected on GitHub: never commit or push to `main` directly.
+- Work on a branch named `<type>/<short-topic>` (for example `feat/system-logs`, `fix/login-redirect`, `chore/ci-cache`). The types match the commit prefixes used in this repo.
+- Open a pull request to `main`. CI runs on every push to the branch. Merging requires all six CI jobs to pass and the branch to be up to date with `main`.
+- Pull requests are merged with squash. The pull request title becomes the commit message on `main`, so write it like a commit message.
+- Never bypass hooks with `--no-verify`. The pre-commit hook checks dependency versions, lint, types, and the build.
+
 ## Remember
 
 1. **Load skills** - Detect context, load the matching skill automatically
@@ -162,6 +170,7 @@ bunx prisma db push            # Push schema to database
 10. **Respect toolchain update limits** - Keep TypeScript below 6.1 because typescript-eslint 8.x does not support 6.1+, ESLint on 9.x because eslint-plugin-react (included by eslint-config-next) supports only ^9, and Node on the current LTS because upgrades must change both Dockerfiles and `@types/node` together.
 11. **Pin dependencies and update them deliberately** - Add dependencies with a complete exact version (`bun add <package>@<x.y.z>`) or omit the version (`bun add <package>`); incomplete versions such as `@7` create a range. `bunfig.toml` enforces exact versions, and `bun run deps:check` verifies them. Upgrade dependencies in tested stages following `docs/en/04-dependency-updates.md`.
 12. **Keep auth E2E coverage current** - Every change to authentication, email delivery, or forms must add or update an independent test in `tests/e2e/`.
+13. **Branches and pull requests** - Never push to main; open a PR and merge it with squash after CI passes
 
 <!-- BEGIN:nextjs-agent-rules -->
 

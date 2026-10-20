@@ -108,7 +108,7 @@ Los temas nunca incluyen ni reemplazan el dashboard. Un `theme.json` v2 debe dec
 
 Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` después de cambiar auth, landing, layout, estilos o UI compartida. Usa `bun run theme:sync-classic --check` para ver diferencias sin escribir; CI también lo comprueba.
 
-El hook local de pre-commit usa `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` solo para comprobar que compila. Este bypass nunca se usa en producción ni en builds del hosting; esos builds deben validar claves reales de Turnstile. El hook de pre-push corre `bun run test:e2e` antes de cada push, necesita Docker en marcha y el árbol limpio, y tarda unos 3 minutos.
+El hook local de pre-commit usa `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` solo para comprobar que compila. Este bypass nunca se usa en producción ni en builds del hosting; esos builds deben validar claves reales de Turnstile.
 
 ## Cambiar de base de datos (Neon ↔ Docker)
 
