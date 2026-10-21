@@ -5,6 +5,7 @@ const LOGIN_NOTICES = {
   "invitation-accepted":
     "Invitation accepted. You can now sign in with your password.",
   "temporary-password-expired": TEMPORARY_PASSWORD_EXPIRED_MESSAGE,
+  "password-reset": "Password reset. Sign in with your new password.",
 } as const;
 
 export function getLoginNotice(

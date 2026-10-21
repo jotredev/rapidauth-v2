@@ -70,13 +70,15 @@ test('email reset clears temporary-password state and a manual password must be 
   await page.getByRole('button', { name: 'Send Email' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   const emailReset = await getOutboxMessage(emailResetUser.email);
-  expect(emailReset.subject).toBe('Reset your password');
+  expect(emailReset.subject).toBe('Your password reset code');
+  expect(emailReset.code).toMatch(/^\d{6}$/);
   const resetPage = await browser.newPage();
-  await resetPage.goto(emailReset.url);
+  await resetPage.goto(`/auth/reset-password?email=${encodeURIComponent(emailResetUser.email)}`);
+  await resetPage.locator('input[data-input-otp]').fill(emailReset.code!);
   await resetPage.getByPlaceholder('Enter new password').fill('Admin-Email-Reset-456!');
   await resetPage.getByPlaceholder('Confirm new password').fill('Admin-Email-Reset-456!');
   await resetPage.getByRole('button', { name: 'Reset password' }).click();
-  await expect(resetPage.getByRole('heading', { name: 'Password reset successful' })).toBeVisible();
+  await expect(resetPage).toHaveURL(/\/auth\/login\?notice=password-reset/);
   expect(await prisma.user.findUniqueOrThrow({
     where: { id: emailResetUser.user.id },
     select: { mustChangePassword: true, temporaryPasswordExpiresAt: true },
@@ -197,7 +199,7 @@ test('admin manual reset is hidden and the server rejects a forged request for a
   await page.getByRole('button', { name: 'Send Email' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   const resetEmails = (await getOutboxMessages(targetAdmin.email)).filter(
-    (message) => message.subject === 'Reset your password',
+    (message) => message.subject === 'Your password reset code',
   );
   expect(resetEmails).toHaveLength(1);
 });

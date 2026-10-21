@@ -6,7 +6,7 @@ import {
   getOAuthState,
 } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { twoFactor } from "better-auth/plugins";
+import { emailOTP, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { siteConfig } from "@/config/site";
 import { getBetterAuthIpAddressOptions } from "@/lib/client-ip";
@@ -14,10 +14,12 @@ import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/report-error";
 import {
   sendAccountDeletedEmail,
-  sendResetPasswordEmail,
+  sendPasswordResetCodeEmail,
   sendSecurityNoticeEmail,
-  sendVerificationEmail,
+  sendVerificationCodeEmail,
 } from "@/lib/email";
+import { USER_INVITATION_PREFIX } from "@/lib/user-invitation-token";
+import { VERIFICATION_CODE_POLICY } from "@/lib/verification-code-policy";
 import { deleteStoredAvatar } from "@/lib/storage/avatar";
 import { createSocialProviders } from "@/lib/social-providers";
 import {
@@ -236,19 +238,49 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
-    resetPasswordTokenExpiresIn: 60 * 60,
-    sendResetPassword: async ({ user, token }) => {
-      const resetUrl = new URL("/auth/reset-password", baseURL);
-      resetUrl.searchParams.set("token", token);
-
-      await sendResetPasswordEmail({
-        email: user.email,
-        name: user.name,
-        url: resetUrl.toString(),
-        userId: user.id,
-      });
-    },
     onPasswordReset: async ({ user }) => {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { status: true },
+      });
+
+      if (dbUser?.status === "pending") {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            status: "active",
+            emailVerified: true,
+          },
+        });
+
+        await prisma.verification.deleteMany({
+          where: {
+            value: user.id,
+            identifier: {
+              startsWith: USER_INVITATION_PREFIX,
+            },
+          },
+        });
+
+        try {
+          await prisma.activityLog.create({
+            data: {
+              userId: user.id,
+              action: "profile_update",
+              details: JSON.stringify({
+                action: "invitation_completed_by_password_reset",
+              }),
+              ipAddress: "unknown",
+              userAgent: "unknown",
+            },
+          });
+        } catch (error) {
+          reportError(error, {
+            area: "auth.invitation-completed-by-password-reset-activity",
+          });
+        }
+      }
+
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -286,7 +318,23 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: false,
+    sendOnSignIn: false,
     autoSignInAfterVerification: true,
+    beforeEmailVerification: async (user) => {
+      let status = (user as { status?: string }).status;
+      if (!status && user.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { status: true },
+        });
+        status = dbUser?.status;
+      }
+      if (status === 'pending') {
+        throw new APIError('FORBIDDEN', {
+          message: 'Accept your invitation from the email we sent you.',
+        });
+      }
+    },
     afterEmailVerification: async (user) => {
       try {
         await prisma.activityLog.create({
@@ -301,19 +349,6 @@ export const auth = betterAuth({
       } catch (error) {
         reportError(error, { area: "auth.email-verification-activity" });
       }
-    },
-    sendVerificationEmail: async ({ user, url }) => {
-      // Replace the callback URL to go to our custom verified page
-      const verifiedUrl = url.replace(
-        "/api/auth/verify-email",
-        "/auth/email-verified"
-      );
-      await sendVerificationEmail({
-        email: user.email,
-        name: user.name,
-        url: verifiedUrl,
-        userId: user.id,
-      });
     },
   },
   user: {
@@ -397,6 +432,48 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: "RapidAuth",
+    }),
+    emailOTP({
+      otpLength: VERIFICATION_CODE_POLICY.length,
+      expiresIn: VERIFICATION_CODE_POLICY.expiresInSeconds,
+      allowedAttempts: VERIFICATION_CODE_POLICY.maxAttempts,
+      storeOTP: 'hashed',
+      disableSignUp: true,
+      overrideDefaultEmailVerification: true,
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type === 'email-verification') {
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, name: true, status: true },
+          });
+          if (!user || user.status === 'pending') {
+            return;
+          }
+          await sendVerificationCodeEmail({
+            email,
+            name: user.name,
+            code: otp,
+            userId: user.id,
+          });
+          return;
+        }
+        if (type === 'forget-password') {
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, name: true },
+          });
+          if (!user) {
+            return;
+          }
+          await sendPasswordResetCodeEmail({
+            email,
+            name: user.name,
+            code: otp,
+            userId: user.id,
+          });
+          return;
+        }
+      },
     }),
     nextCookies(),
   ],

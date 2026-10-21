@@ -8,7 +8,7 @@ import { logActivity } from '@/lib/activity-log';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
-  resetPasswordSchema,
+  resetPasswordWithCodeSchema,
 } from '@/validations/auth';
 import { checkRateLimit, getClientIp, hashKey } from '@/lib/rate-limit';
 import { verifyTurnstile } from '@/lib/turnstile';
@@ -80,10 +80,9 @@ export const forgotPasswordAction = async (
       };
     }
 
-    await auth.api.requestPasswordReset({
+    await auth.api.requestPasswordResetEmailOTP({
       body: {
-        email,
-        redirectTo: '/auth/reset-password',
+        email: normalizedEmail,
       },
       headers: await headers(),
     });
@@ -91,51 +90,85 @@ export const forgotPasswordAction = async (
     return {
       response: 'success',
       message:
-        "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.",
+        "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.",
       data: { email },
     };
   } catch (error) {
-    if (error instanceof APIError) {
-      console.error('Forgot password error:', error.message);
-      return {
-        response: 'error',
-        message: error.message ?? 'Failed to send reset link',
-        data: null,
-      };
-    }
     reportError(error, { area: 'auth.forgot-password' });
     return {
-      response: 'error',
-      message: 'An unexpected error occurred',
-      data: null,
+      response: 'success',
+      message:
+        "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.",
+      data: { email: values.email },
     };
   }
 };
 
-export const resetPasswordAction = async (
-  values: z.infer<typeof resetPasswordSchema> & { token: string }
+export const resetPasswordWithCodeAction = async (
+  values: z.infer<typeof resetPasswordWithCodeSchema>
 ): Promise<{
   response: 'success' | 'error';
   message: string;
   data: null;
 }> => {
   try {
-    const { success, data } = resetPasswordSchema.safeParse(values);
+    const { success, data, error } =
+      resetPasswordWithCodeSchema.safeParse(values);
 
     if (!success) {
       return {
         response: 'error',
-        message: 'Invalid fields',
+        message: error.issues[0]?.message ?? 'Invalid fields',
         data: null,
       };
     }
 
-    const { password } = data;
+    const { email, code, password } = data;
+    const clientIp = await getClientIp();
+    const normalizedEmail = email.trim().toLowerCase();
+    const rateLimit = await checkRateLimit([
+      ...(clientIp
+        ? [{ key: `reset-password-code:ip:${clientIp}`, window: 600, max: 10 }]
+        : []),
+      {
+        key: `reset-password-code:email:${hashKey(normalizedEmail)}`,
+        window: 600,
+        max: 10,
+      },
+    ]);
 
-    await auth.api.resetPassword({
+    if (rateLimit.limited) {
+      return {
+        response: 'error',
+        message: `Too many attempts. Try again in ${rateLimit.retryAfter} seconds.`,
+        data: null,
+      };
+    }
+
+    // Better Auth 1.7.10 deletes expired verification rows during matchesUsableStoredOTP,
+    // which makes atomicVerifyOTP throw INVALID_OTP instead of OTP_EXPIRED. Check expiration first.
+    const latestVerification = await prisma.verification.findFirst({
+      where: {
+        identifier: `forget-password-otp-${normalizedEmail}`,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (latestVerification && latestVerification.expiresAt < new Date()) {
+      return {
+        response: 'error',
+        message: 'This code has expired. Request a new one.',
+        data: null,
+      };
+    }
+
+    await auth.api.resetPasswordEmailOTP({
       body: {
-        token: values.token,
-        newPassword: password,
+        email: normalizedEmail,
+        otp: code,
+        password,
       },
       headers: await headers(),
     });
@@ -147,17 +180,34 @@ export const resetPasswordAction = async (
     };
   } catch (error) {
     if (error instanceof APIError) {
-      console.error('Reset password error:', error.message);
-      return {
-        response: 'error',
-        message: error.message ?? 'Failed to reset password',
-        data: null,
-      };
+      console.error('Reset password code error:', error.message, error.status);
+      const errorCode = (error.body as { code?: string } | undefined)?.code;
+      if (errorCode === 'INVALID_OTP') {
+        return {
+          response: 'error',
+          message: 'Invalid code.',
+          data: null,
+        };
+      }
+      if (errorCode === 'OTP_EXPIRED') {
+        return {
+          response: 'error',
+          message: 'This code has expired. Request a new one.',
+          data: null,
+        };
+      }
+      if (errorCode === 'TOO_MANY_ATTEMPTS') {
+        return {
+          response: 'error',
+          message: 'Too many attempts. Request a new code.',
+          data: null,
+        };
+      }
     }
-    reportError(error, { area: 'auth.reset-password' });
+    reportError(error, { area: 'auth.reset-password-with-code' });
     return {
       response: 'error',
-      message: 'An unexpected error occurred',
+      message: "We couldn't reset your password with this code.",
       data: null,
     };
   }

@@ -12,6 +12,7 @@ import { EmailDeliveryError } from '@/lib/email';
 
 type SignInData = {
   twoFactorRequired?: boolean;
+  emailNotVerified?: boolean;
 };
 
 const e2eErrorReportingEnabled =
@@ -79,6 +80,15 @@ export const signInAction = async (
   } catch (error) {
     if (error instanceof APIError) {
       console.error('Sign in error:', error.message, error.status);
+      const errorCode = (error.body as { code?: string } | undefined)?.code;
+      if (errorCode === 'EMAIL_NOT_VERIFIED') {
+        return {
+          response: 'error',
+          message:
+            'Your email is not verified yet. Enter the code we sent you or request a new one.',
+          data: { emailNotVerified: true },
+        };
+      }
       return {
         response: 'error',
         message: error.message ?? 'Invalid credentials',
@@ -94,7 +104,7 @@ export const signInAction = async (
   }
 };
 
-export const resendVerificationEmailAction = async (
+export const resendVerificationCodeAction = async (
   email: string,
   captchaToken?: string
 ): Promise<{
@@ -149,18 +159,17 @@ export const resendVerificationEmailAction = async (
       };
     }
 
-    await auth.api.sendVerificationEmail({
+    await auth.api.sendVerificationOTP({
       body: {
-        email,
-        callbackURL: '/auth/verify-email',
+        email: normalizedEmail,
+        type: 'email-verification',
       },
-      headers: await headers(),
     });
 
     return {
       response: 'success',
       message:
-        "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.",
+        "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.",
       data: null,
     };
   } catch (error) {
@@ -168,20 +177,15 @@ export const resendVerificationEmailAction = async (
       return {
         response: 'success',
         message:
-          "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.",
+          "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.",
         data: null,
       };
     }
-    if (error instanceof APIError) {
-      return {
-        response: 'error',
-        message: error.message ?? 'Failed to send verification email',
-        data: null,
-      };
-    }
+    reportError(error, { area: 'auth.resend-verification-code' });
     return {
-      response: 'error',
-      message: 'An unexpected error occurred',
+      response: 'success',
+      message:
+        "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.",
       data: null,
     };
   }

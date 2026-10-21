@@ -3,9 +3,9 @@ import { render } from 'react-email';
 import {
   AccountDeletedEmail,
   InvitationEmail,
-  ResetPasswordEmail,
+  PasswordResetCodeEmail,
   SecurityNoticeEmail,
-  VerificationEmail,
+  VerificationCodeEmail,
 } from '@/emails';
 import { siteConfig } from '@/config/site';
 import { getPublicSupportEmail, SUPPORT_EMAIL_NOT_CONFIGURED } from '@/lib/support-email';
@@ -53,13 +53,15 @@ async function deliverEmail({
   subject,
   html,
   url,
+  code,
   template,
   userId,
 }: {
   to: string;
   subject: string;
   html: string;
-  url: string;
+  url?: string;
+  code?: string;
   template: EmailTemplate;
   userId?: string;
 }) {
@@ -78,9 +80,17 @@ async function deliverEmail({
       const directory = process.env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox';
       await mkdir(directory, { recursive: true });
       const filename = `${Date.now()}-${randomUUID()}.json`;
+      const outboxPayload: Record<string, unknown> = {
+        to,
+        subject,
+        html,
+        ...(url !== undefined ? { url } : {}),
+        ...(code !== undefined ? { code } : {}),
+        sentAt: new Date().toISOString(),
+      };
       await writeFile(
         join(directory, filename),
-        JSON.stringify({ to, subject, html, url, sentAt: new Date().toISOString() }, null, 2),
+        JSON.stringify(outboxPayload, null, 2),
         { encoding: 'utf8', mode: 0o600 },
       );
     } else {
@@ -146,58 +156,58 @@ async function deliverEmail({
   }
 }
 
-export async function sendVerificationEmail({
+export async function sendVerificationCodeEmail({
   email,
   name,
-  url,
+  code,
   userId,
 }: {
   email: string;
   name: string;
-  url: string;
+  code: string;
   userId?: string;
 }) {
   const html = await render(
-    VerificationEmail({
+    VerificationCodeEmail({
       name,
-      verificationUrl: url,
+      code,
     }),
   );
 
   await deliverEmail({
     to: email,
-    subject: 'Verify your email address',
+    subject: 'Your verification code',
     html,
-    url,
-    template: 'verification',
+    code,
+    template: 'verification-code',
     userId,
   });
 }
 
-export async function sendResetPasswordEmail({
+export async function sendPasswordResetCodeEmail({
   email,
   name,
-  url,
+  code,
   userId,
 }: {
   email: string;
   name: string;
-  url: string;
+  code: string;
   userId?: string;
 }) {
   const html = await render(
-    ResetPasswordEmail({
+    PasswordResetCodeEmail({
       name,
-      resetUrl: url,
+      code,
     }),
   );
 
   await deliverEmail({
     to: email,
-    subject: 'Reset your password',
+    subject: 'Your password reset code',
     html,
-    url,
-    template: 'password-reset',
+    code,
+    template: 'password-reset-code',
     userId,
   });
 }

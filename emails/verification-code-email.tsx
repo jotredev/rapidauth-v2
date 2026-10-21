@@ -1,49 +1,44 @@
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
   Html,
-  Link,
   Preview,
   Section,
   Text,
 } from "react-email";
 
-interface ResetPasswordEmailProps {
+interface VerificationCodeEmailProps {
   name: string;
-  resetUrl: string;
+  code: string;
 }
 
-export function ResetPasswordEmail({ name, resetUrl }: ResetPasswordEmailProps) {
+export function VerificationCodeEmail({
+  name,
+  code,
+}: VerificationCodeEmailProps) {
   return (
     <Html>
       <Head />
-      <Preview>Reset your password</Preview>
+      <Preview>Your verification code</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={box}>
             <Heading style={heading}>R A P I D</Heading>
             <Text style={paragraph}>Hi {name},</Text>
             <Text style={paragraph}>
-              We received a request to reset your password. Click the button
-              below to choose a new one.
+              Thanks for signing up! Use the verification code below to verify your email address:
             </Text>
-            <Button style={button} href={resetUrl}>
-              Reset Password
-            </Button>
+            <Section style={codeBox}>
+              <Text style={codeText}>{code}</Text>
+            </Section>
             <Text style={paragraph}>
-              Or copy and paste this URL into your browser:
+              This code expires in 10 minutes.
             </Text>
-            <Link style={link} href={resetUrl}>
-              {resetUrl}
-            </Link>
             <Text style={footer}>
-              If you didn&apos;t request a password reset, you can safely ignore
-              this email.
+              If you didn&apos;t create an account, you can ignore this email.
             </Text>
-            <Text style={footer}>This link will expire in 1 hour.</Text>
           </Section>
         </Container>
       </Body>
@@ -84,24 +79,23 @@ const paragraph = {
   textAlign: "left" as const,
 };
 
-const button = {
-  backgroundColor: "#fafafa",
-  borderRadius: "0",
-  color: "#0a0a0a",
-  fontSize: "16px",
-  fontWeight: "600",
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "block",
-  padding: "12px 24px",
+const codeBox = {
+  backgroundColor: "#18181b",
+  borderRadius: "4px",
   margin: "24px 0",
+  padding: "16px",
+  textAlign: "center" as const,
 };
 
-const link = {
-  color: "#71717a",
-  fontSize: "14px",
-  textDecoration: "underline",
-  wordBreak: "break-all" as const,
+const codeText = {
+  color: "#fafafa",
+  fontFamily:
+    'ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Courier New", monospace',
+  fontSize: "32px",
+  fontWeight: "700",
+  letterSpacing: "0.3em",
+  margin: "0",
+  textAlign: "center" as const,
 };
 
 const footer = {
@@ -111,4 +105,4 @@ const footer = {
   marginTop: "24px",
 };
 
-export default ResetPasswordEmail;
+export default VerificationCodeEmail;

@@ -10,7 +10,7 @@ import { verifyTurnstile } from '@/lib/turnstile';
 import { TERMS_ACCEPTANCE_HEADER } from '@/lib/terms-acceptance';
 import { reportError } from '@/lib/report-error';
 import { prisma } from '@/lib/prisma';
-import { EmailDeliveryError } from '@/lib/email';
+import { EmailDeliveryError, sendVerificationCodeEmail } from '@/lib/email';
 
 type SignUpData = {
   email: string;
@@ -90,9 +90,14 @@ export const signUpAction = async (
 
     if (createdUser && createdUser.id === result.user.id) {
       try {
-        await auth.api.sendVerificationEmail({
-          body: { email },
-          headers: requestHeaders,
+        const code = await auth.api.createVerificationOTP({
+          body: { email: normalizedEmail, type: 'email-verification' },
+        });
+        await sendVerificationCodeEmail({
+          email,
+          name,
+          code,
+          userId: createdUser.id,
         });
       } catch (error) {
         if (error instanceof EmailDeliveryError) {

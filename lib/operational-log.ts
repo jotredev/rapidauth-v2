@@ -7,7 +7,9 @@ export type OperationalLogSource = 'emails';
 export type OperationalLogCode = 'email.delivery.sent' | 'email.delivery.failed';
 export type EmailTemplate =
   | 'verification'
+  | 'verification-code'
   | 'password-reset'
+  | 'password-reset-code'
   | 'invitation'
   | 'account-deleted'
   | 'security-notice';
@@ -30,7 +32,9 @@ export interface OperationalLogEntryData {
 
 const VALID_TEMPLATES = new Set<string>([
   'verification',
+  'verification-code',
   'password-reset',
+  'password-reset-code',
   'invitation',
   'account-deleted',
   'security-notice',

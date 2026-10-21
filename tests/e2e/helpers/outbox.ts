@@ -5,7 +5,8 @@ export type OutboxMessage = {
   to: string;
   subject: string;
   html: string;
-  url: string;
+  url?: string;
+  code?: string;
   sentAt: string;
 };
 

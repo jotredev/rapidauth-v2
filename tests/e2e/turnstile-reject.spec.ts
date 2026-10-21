@@ -62,7 +62,7 @@ test('rejecting Turnstile blocks password recovery without sending email', async
   const usersBefore = await prisma.user.count();
   await page.goto('/auth/forgot-password');
   await page.getByPlaceholder('name@example.com').fill(email);
-  const button = page.getByRole('button', { name: 'Send reset link' });
+  const button = page.getByRole('button', { name: 'Send reset code' });
   await expect(button).toBeEnabled();
   await button.click();
   await expect(page.getByText('Captcha verification failed. Please try again.')).toBeVisible();

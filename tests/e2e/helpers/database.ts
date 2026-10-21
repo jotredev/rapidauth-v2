@@ -188,16 +188,6 @@ export async function createVerificationToken(email: string, expiresIn = 3600) {
   return createEmailVerificationToken(E2E_SECRET, email, undefined, expiresIn);
 }
 
-export async function createExpiredResetToken(token: string) {
-  await prisma.verification.create({
-    data: {
-      identifier: `reset-password:${token}`,
-      value: 'e2e-expired-token',
-      expiresAt: new Date(Date.now() - 60_000),
-    },
-  });
-}
-
 export async function createTestInvitation(
   userId: string,
   options: { token?: string; expiresAt?: Date } = {},
@@ -220,6 +210,7 @@ export async function cleanE2EData() {
       OR: [
         { identifier: { startsWith: USER_INVITATION_PREFIX } },
         { identifier: { startsWith: 'e2e-' } },
+        { identifier: { contains: 'e2e-' } },
       ],
     },
   });

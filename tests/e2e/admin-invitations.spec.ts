@@ -85,7 +85,7 @@ test('admin-created user receives one invitation, accepts it, and signs in witho
   expect(messages[0]!.html).toContain('expires in 7 days');
 
   const invitePage = await browser.newPage();
-  await acceptInvitation(invitePage, getInvitationToken(messages[0]!.url), password);
+  await acceptInvitation(invitePage, getInvitationToken(messages[0]!.url!), password);
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { email },
@@ -173,9 +173,9 @@ test('resending an invitation invalidates the old link and is hidden for passwor
   expect(secondMessage.url).not.toBe(firstMessage.url);
 
   const invitePage = await browser.newPage();
-  await invitePage.goto(getInvitationPath(getInvitationToken(firstMessage.url)));
+  await invitePage.goto(getInvitationPath(getInvitationToken(firstMessage.url!)));
   await expect(invitePage.getByRole('heading', { name: 'Invitation unavailable' })).toBeVisible();
-  await invitePage.goto(getInvitationPath(getInvitationToken(secondMessage.url)));
+  await invitePage.goto(getInvitationPath(getInvitationToken(secondMessage.url!)));
   await expect(invitePage.getByRole('heading', { name: 'Accept your invitation' })).toBeVisible();
   await invitePage.close();
 

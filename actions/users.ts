@@ -391,10 +391,10 @@ export const editUserAction = async (
         await auth.api.sendVerificationEmail({
           body: { email, callbackURL: '/auth/verify-email' },
         });
-        message = 'User updated. A verification email was sent to the new address';
+        message = 'User updated. A verification code was sent to the new address';
       } catch (error) {
         reportError(error, { area: 'users.verification-email' });
-        message = 'User updated, but the verification email could not be sent';
+        message = 'User updated, but the verification code could not be sent';
       }
     }
 
@@ -1074,7 +1074,7 @@ type ResetPasswordData = {
   temporaryPassword?: string;
 };
 
-export const resetPasswordAction = async (
+export const adminResetPasswordAction = async (
   userId: string,
   values: z.infer<typeof resetPasswordSchema>
 ): Promise<{
@@ -1132,10 +1132,9 @@ export const resetPasswordAction = async (
     }
 
     if (method === 'email') {
-      await auth.api.requestPasswordReset({
+      await auth.api.requestPasswordResetEmailOTP({
         body: {
           email: user.email,
-          redirectTo: '/auth/reset-password',
         },
         headers: await headers(),
       });

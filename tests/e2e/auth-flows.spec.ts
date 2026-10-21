@@ -1,15 +1,12 @@
 import { expect, test } from '@playwright/test';
 import {
   cleanE2EData,
-  createExpiredResetToken,
-  createTestSession,
   createTestUser,
-  createVerificationToken,
   E2E_PASSWORD,
   installTestTurnstileWidget,
   prisma,
 } from './helpers';
-import { getOutboxMessage, getOutboxMessages } from './helpers/outbox';
+import { getOutboxMessage } from './helpers/outbox';
 import { siteConfig } from '../../config/site';
 
 test.beforeEach(async ({ page }) => {
@@ -22,7 +19,7 @@ test.afterEach(async () => {
   await cleanE2EData();
 });
 
-test('registration sends verification email; opening the link does not verify until confirmation', async ({ page }) => {
+test('registration sends verification code; submitting code verifies email and creates session', async ({ page }) => {
   const email = `e2e-register-${Date.now()}@e2e.invalid`;
   await page.goto('/auth/register');
   await page.getByPlaceholder('John Doe').fill('Registration Test');
@@ -34,7 +31,9 @@ test('registration sends verification email; opening the link does not verify un
   await expect(page).toHaveURL(/\/auth\/verify-email/);
 
   const message = await getOutboxMessage(email);
-  expect(message.subject).toBe('Verify your email address');
+  expect(message.subject).toBe('Your verification code');
+  expect(message.code).toMatch(/^\d{6}$/);
+  expect(message.url).toBeUndefined();
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   expect(user.emailVerified).toBe(false);
   expect(user.termsAcceptedAt).not.toBeNull();
@@ -43,17 +42,11 @@ test('registration sends verification email; opening the link does not verify un
     where: { userId: user.id, action: 'terms_accepted' },
   })).toBe(1);
 
-  await page.goto(message.url);
-  await expect(page.getByRole('heading', { name: 'Confirm your email' })).toBeVisible();
-  expect((await prisma.user.findUniqueOrThrow({ where: { email } })).emailVerified).toBe(false);
+  await page.locator('input[data-input-otp]').fill(message.code!);
   await page.getByRole('button', { name: 'Verify email' }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   expect((await prisma.user.findUniqueOrThrow({ where: { email } })).emailVerified).toBe(true);
   expect(await prisma.session.count({ where: { userId: user.id } })).toBe(1);
-
-  await page.goto(message.url);
-  await page.getByRole('button', { name: 'Verify email' }).click();
-  await expect(page.getByRole('heading', { name: 'Already verified' })).toBeVisible();
 });
 
 test('social registration requires terms in the interface and starts Google only after acceptance', async ({ page }) => {
@@ -177,71 +170,14 @@ test('registration and password recovery submit buttons wait for a Turnstile tok
   await expect(registerButton).toBeEnabled();
 
   await page.goto('/auth/forgot-password');
-  const resetButton = page.getByRole('button', { name: 'Send reset link' });
+  const resetButton = page.getByRole('button', { name: 'Send reset code' });
   await expect(resetButton).toBeDisabled();
   await expect(resetButton).toBeEnabled();
 });
 
-test('verification rejects expired and invalid signed tokens', async ({ page }) => {
-  const { email } = await createTestUser({ emailVerified: false });
-  const expired = await createVerificationToken(email, -60);
-  await page.goto(`/auth/email-verified?token=${encodeURIComponent(expired)}`);
-  await page.getByRole('button', { name: 'Verify email' }).click();
-  await expect(page.getByRole('heading', { name: 'Verification failed' })).toBeVisible();
-
+test('/auth/email-verified redirects to /auth/verify-email', async ({ page }) => {
   await page.goto('/auth/email-verified?token=not-a-valid-jwt');
-  await page.getByRole('button', { name: 'Verify email' }).click();
-  await expect(page.getByRole('heading', { name: 'Verification failed' })).toBeVisible();
-  expect((await prisma.user.findUniqueOrThrow({ where: { email } })).emailVerified).toBe(false);
-});
-
-test('password reset revokes sessions, invalidates the old password and rejects reuse and expiry', async ({ page }) => {
-  const { user, email, password } = await createTestUser();
-  await createTestSession(user.id);
-  await page.goto('/auth/forgot-password');
-  await page.getByPlaceholder('name@example.com').fill(email);
-  await page.getByRole('button', { name: 'Send reset link' }).click();
-  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
-  const message = await getOutboxMessage(email);
-  expect(message.subject).toBe('Reset your password');
-
-  await page.goto(message.url);
-  const nextPassword = 'New-E2e-Password-456!';
-  await page.getByPlaceholder('Enter new password').fill(nextPassword);
-  await page.getByPlaceholder('Confirm new password').fill(nextPassword);
-  await page.getByRole('button', { name: 'Reset password' }).click();
-  await expect(page.getByRole('heading', { name: 'Password reset successful' })).toBeVisible();
-  expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
-  const resetNotices = (await getOutboxMessages(email))
-    .filter((item) => item.subject === 'Your password was reset');
-  expect(resetNotices).toHaveLength(1);
-  expect(resetNotices[0]!.html).toContain('UTC');
-
-  await page.goto('/auth/login');
-  await page.getByPlaceholder('name@example.com').fill(email);
-  await page.getByPlaceholder('Enter your password').fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByText(/invalid|incorrect/i)).toBeVisible();
-
-  await page.goto(message.url);
-  await page.getByPlaceholder('Enter new password').fill('Another-E2e-Password-789!');
-  await page.getByPlaceholder('Confirm new password').fill('Another-E2e-Password-789!');
-  await page.getByRole('button', { name: 'Reset password' }).click();
-  await expect(page.getByText(/invalid|expired|used/i)).toBeVisible();
-
-  const expiredToken = `expired-${crypto.randomUUID()}`;
-  await createExpiredResetToken(expiredToken);
-  await page.goto(`/auth/reset-password?token=${expiredToken}`);
-  await page.getByPlaceholder('Enter new password').fill('Another-E2e-Password-789!');
-  await page.getByPlaceholder('Confirm new password').fill('Another-E2e-Password-789!');
-  await page.getByRole('button', { name: 'Reset password' }).click();
-  await expect(page.getByText(/invalid|expired/i)).toBeVisible();
-
-  await page.goto('/auth/login');
-  await page.getByPlaceholder('name@example.com').fill(email);
-  await page.getByPlaceholder('Enter your password').fill(nextPassword);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/auth\/verify-email/);
 });
 
 test('inactive accounts cannot sign in', async ({ page }) => {

@@ -73,7 +73,7 @@ export function RegisterForm() {
 
       toast.success(result.message);
       const deliveryParam =
-        result.data?.emailSent === false ? '&delivery=failed' : '';
+        result.data?.emailSent === false ? '&delivery=failed' : '&sent=1';
       router.push(
         `/auth/verify-email?email=${encodeURIComponent(result.data?.email ?? '')}${deliveryParam}`
       );

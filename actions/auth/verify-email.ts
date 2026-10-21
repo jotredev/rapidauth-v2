@@ -7,39 +7,40 @@ import { auth } from '@/lib/auth';
 import { checkRateLimit, getClientIp, hashKey } from '@/lib/rate-limit';
 import { reportError } from '@/lib/report-error';
 
-const verifyEmailTokenSchema = z.string().min(1).max(4096);
+const verifyEmailCodeSchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().trim().regex(/^\d{6}$/),
+});
 
-type VerifyEmailData = {
-  signedIn: boolean;
-};
-
-export const verifyEmailAction = async (
-  token: string
+export const verifyEmailCodeAction = async (
+  values: z.infer<typeof verifyEmailCodeSchema>
 ): Promise<{
   response: 'success' | 'error';
   message: string;
-  data: VerifyEmailData | null;
+  data: null;
 }> => {
   try {
-    const parsedToken = verifyEmailTokenSchema.safeParse(token);
+    const parsed = verifyEmailCodeSchema.safeParse(values);
 
-    if (!parsedToken.success) {
+    if (!parsed.success) {
       return {
         response: 'error',
-        message: 'Invalid verification link',
+        message: 'Invalid fields',
         data: null,
       };
     }
 
+    const { email, code } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
     const clientIp = await getClientIp();
     const rateLimit = await checkRateLimit([
       ...(clientIp
-        ? [{ key: `verify-email-confirm:ip:${clientIp}`, window: 600, max: 10 }]
+        ? [{ key: `verify-email-code:ip:${clientIp}`, window: 600, max: 10 }]
         : []),
       {
-        key: `verify-email-confirm:token:${hashKey(parsedToken.data)}`,
+        key: `verify-email-code:email:${hashKey(normalizedEmail)}`,
         window: 600,
-        max: 5,
+        max: 10,
       },
     ]);
 
@@ -51,34 +52,64 @@ export const verifyEmailAction = async (
       };
     }
 
-    const result = await auth.api.verifyEmail({
-      query: { token: parsedToken.data },
+    await auth.api.verifyEmailOTP({
+      body: { email: normalizedEmail, otp: code },
       headers: await headers(),
-      returnHeaders: true,
     });
-    const sessionCookieName = (await auth.$context).authCookies.sessionToken.name;
-    const signedIn = result.headers.getSetCookie().some((cookie) =>
-      cookie.startsWith(`${sessionCookieName}=`)
-    );
 
     return {
       response: 'success',
-      message: signedIn ? 'Email verified' : 'Email already verified',
-      data: { signedIn },
+      message: 'Email verified successfully',
+      data: null,
     };
   } catch (error) {
     if (error instanceof APIError) {
-      console.error('Verify email error:', error.message);
+      console.error('Verify email code error:', error.message, error.status);
+      const errorCode = (error.body as { code?: string } | undefined)?.code;
+      if (errorCode === 'INVALID_OTP') {
+        return {
+          response: 'error',
+          message: 'Invalid code.',
+          data: null,
+        };
+      }
+      if (errorCode === 'OTP_EXPIRED') {
+        return {
+          response: 'error',
+          message: 'This code has expired. Request a new one.',
+          data: null,
+        };
+      }
+      if (errorCode === 'TOO_MANY_ATTEMPTS') {
+        return {
+          response: 'error',
+          message: 'Too many attempts. Request a new code.',
+          data: null,
+        };
+      }
+      if (
+        error.status === 'FORBIDDEN' ||
+        (error as { statusCode?: number }).statusCode === 403
+      ) {
+        return {
+          response: 'error',
+          message:
+            error.message ||
+            (error.body as { message?: string } | undefined)?.message ||
+            'Accept your invitation from the email we sent you.',
+          data: null,
+        };
+      }
       return {
         response: 'error',
-        message: error.message ?? 'Failed to verify email',
+        message: "We couldn't verify this code.",
         data: null,
       };
     }
-    reportError(error, { area: 'auth.verify-email' });
+    reportError(error, { area: 'auth.verify-email-code' });
     return {
       response: 'error',
-      message: 'An unexpected error occurred',
+      message: "We couldn't verify this code.",
       data: null,
     };
   }

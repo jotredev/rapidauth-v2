@@ -22,7 +22,7 @@ import {
   FormLabel,
 } from '@/components/ui/form';
 import { Loader2, Mail, KeyRound, Copy, Check } from 'lucide-react';
-import { resetPasswordAction } from '@/actions/users';
+import { adminResetPasswordAction } from '@/actions/users';
 import {
   resetPasswordSchema,
   type ResetPasswordFormData,
@@ -70,7 +70,7 @@ export function ResetPasswordDialog({
     if (!user) return;
 
     startTransition(async () => {
-      const result = await resetPasswordAction(user.id, values);
+      const result = await adminResetPasswordAction(user.id, values);
 
       if (result.response === 'error') {
         toast.error(result.message);

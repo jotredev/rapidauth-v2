@@ -34,7 +34,7 @@ test('auth pages link to /support', async ({ page }) => {
     '/auth/verify-email',
     '/auth/forgot-password',
     '/auth/reset-password',
-    '/auth/reset-password?token=dummy-test-token',
+    '/auth/reset-password?email=dummy@e2e.invalid',
   ];
 
   for (const route of routes) {

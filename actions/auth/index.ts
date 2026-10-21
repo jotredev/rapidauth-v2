@@ -1,6 +1,6 @@
 // Sign In
-export { signInAction, resendVerificationEmailAction } from './sign-in';
-export { verifyEmailAction } from './verify-email';
+export { signInAction, resendVerificationCodeAction } from './sign-in';
+export { verifyEmailCodeAction } from './verify-email';
 
 // Sign Up
 export { signUpAction } from './sign-up';
@@ -13,7 +13,7 @@ export { acceptInviteAction } from './accept-invite';
 // Password
 export {
   forgotPasswordAction,
-  resetPasswordAction,
+  resetPasswordWithCodeAction,
   changePasswordAction,
 } from './password';
 

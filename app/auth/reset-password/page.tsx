@@ -3,7 +3,11 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 interface ResetPasswordPageProps {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{
+    token?: string;
+    email?: string;
+    sent?: string;
+  }>;
 }
 
 export default async function ResetPasswordPage({
@@ -12,7 +16,11 @@ export default async function ResetPasswordPage({
   const session = await getSession();
   if (session) redirect("/dashboard");
 
-  const { token } = await searchParams;
+  const { token, email, sent } = await searchParams;
 
-  return <ResetPasswordForm token={token} />;
+  if (token) {
+    redirect("/auth/forgot-password");
+  }
+
+  return <ResetPasswordForm email={email} sent={sent} />;
 }

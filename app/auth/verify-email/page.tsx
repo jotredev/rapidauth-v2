@@ -1,13 +1,19 @@
 import { VerifyEmailForm } from "@/components/auth";
 
 interface VerifyEmailPageProps {
-  searchParams: Promise<{ email?: string; delivery?: string }>;
+  searchParams: Promise<{
+    email?: string;
+    delivery?: string;
+    sent?: string;
+  }>;
 }
 
 export default async function VerifyEmailPage({
   searchParams,
 }: VerifyEmailPageProps) {
-  const { email, delivery } = await searchParams;
+  const { email, delivery, sent } = await searchParams;
 
-  return <VerifyEmailForm email={email} delivery={delivery} />;
+  return (
+    <VerifyEmailForm email={email} delivery={delivery} sent={sent} />
+  );
 }

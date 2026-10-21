@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import {
   cleanE2EData,
   createTestUser,
+  installTestTurnstileWidget,
   submitPasswordSignIn,
 } from './helpers';
 import { getOutboxMessage, getOutboxMessages } from './helpers/outbox';
@@ -31,18 +32,19 @@ test('changing a password from Profile sends one security notice', async ({ page
   expect(notices[0]!.html).not.toContain('REPLACE_WITH_CONTACT_EMAIL');
 });
 
-test('resetting a password with an email link sends one security notice', async ({ page }) => {
+test('resetting a password with a code sends one security notice', async ({ page }) => {
+  await installTestTurnstileWidget(page);
   const account = await createTestUser();
   await page.goto('/auth/forgot-password');
   await page.getByPlaceholder('name@example.com').fill(account.email);
-  await page.getByRole('button', { name: 'Send reset link' }).click();
-  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByRole('button', { name: 'Send reset code' }).click();
+  await expect(page).toHaveURL(/\/auth\/reset-password/);
   const resetMessage = await getOutboxMessage(account.email);
-  await page.goto(resetMessage.url);
+  await page.locator('input[data-input-otp]').fill(resetMessage.code!);
   await page.getByPlaceholder('Enter new password').fill('E2e-Reset-Password-456!');
   await page.getByPlaceholder('Confirm new password').fill('E2e-Reset-Password-456!');
   await page.getByRole('button', { name: 'Reset password' }).click();
-  await expect(page.getByRole('heading', { name: 'Password reset successful' })).toBeVisible();
+  await expect(page).toHaveURL(/\/auth\/login\?notice=password-reset/);
 
   const notices = (await getOutboxMessages(account.email))
     .filter((message) => message.subject === 'Your password was reset');

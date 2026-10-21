@@ -59,7 +59,7 @@ test('successful registration records operational log without email or secrets i
   expect(log.userId).toBe(user.id);
 
   const metadata = log.metadata as Record<string, unknown>;
-  expect(metadata.template).toBe('verification');
+  expect(metadata.template).toBe('verification-code');
   expect(typeof metadata.durationMs).toBe('number');
   expect(metadata.durationMs).toBeGreaterThanOrEqual(0);
 
@@ -112,20 +112,20 @@ test('registration with +delivery-fail preserves unverified user, shows error wi
   expect(log.level).toBe('error');
   expect(log.source).toBe('emails');
   const metadata = log.metadata as Record<string, unknown>;
-  expect(metadata.template).toBe('verification');
+  expect(metadata.template).toBe('verification-code');
   expect(metadata.errorCode).toBe('outbox_forced_failure');
 });
 
 test('forgot password shows identical message for non-existent, good delivery, and failed delivery accounts', async ({ page }) => {
   const expectedText =
-    "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.";
+    "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.";
 
   // Case 1: Non-existent account
   const nonExistentEmail = `e2e-nonexistent-${Date.now()}@e2e.invalid`;
   await page.goto('/auth/forgot-password');
   await page.getByPlaceholder('name@example.com').fill(nonExistentEmail);
-  await page.getByRole('button', { name: 'Send reset link' }).click();
-  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByRole('button', { name: 'Send reset code' }).click();
+  await expect(page).toHaveURL(/\/auth\/reset-password/);
   await expect(page.getByText(expectedText)).toBeVisible();
   await expect(page.getByText(expectedText).getByRole('link', { name: 'contact support' })).toHaveAttribute('href', '/support');
 
@@ -133,8 +133,8 @@ test('forgot password shows identical message for non-existent, good delivery, a
   const goodUser = await createTestUser();
   await page.goto('/auth/forgot-password');
   await page.getByPlaceholder('name@example.com').fill(goodUser.email);
-  await page.getByRole('button', { name: 'Send reset link' }).click();
-  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByRole('button', { name: 'Send reset code' }).click();
+  await expect(page).toHaveURL(/\/auth\/reset-password/);
   await expect(page.getByText(expectedText)).toBeVisible();
   await expect(page.getByText(expectedText).getByRole('link', { name: 'contact support' })).toHaveAttribute('href', '/support');
 
@@ -143,8 +143,8 @@ test('forgot password shows identical message for non-existent, good delivery, a
   const failUser = await createTestUser({ email: failEmail });
   await page.goto('/auth/forgot-password');
   await page.getByPlaceholder('name@example.com').fill(failUser.email);
-  await page.getByRole('button', { name: 'Send reset link' }).click();
-  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByRole('button', { name: 'Send reset code' }).click();
+  await expect(page).toHaveURL(/\/auth\/reset-password/);
   await expect(page.getByText(expectedText)).toBeVisible();
   await expect(page.getByText(expectedText).getByRole('link', { name: 'contact support' })).toHaveAttribute('href', '/support');
 
@@ -161,7 +161,7 @@ test('forgot password shows identical message for non-existent, good delivery, a
   const goodLog = await prisma.operationalLog.findFirstOrThrow({
     where: { userId: goodUser.user.id, code: 'email.delivery.sent' },
   });
-  expect((goodLog.metadata as Record<string, unknown>).template).toBe('password-reset');
+  expect((goodLog.metadata as Record<string, unknown>).template).toBe('password-reset-code');
 
   await expect.poll(async () =>
     prisma.operationalLog.count({
@@ -175,25 +175,25 @@ test('forgot password shows identical message for non-existent, good delivery, a
   const failLog = await prisma.operationalLog.findFirstOrThrow({
     where: { userId: failUser.user.id, code: 'email.delivery.failed' },
   });
-  expect((failLog.metadata as Record<string, unknown>).template).toBe('password-reset');
+  expect((failLog.metadata as Record<string, unknown>).template).toBe('password-reset-code');
   expect((failLog.metadata as Record<string, unknown>).errorCode).toBe('outbox_forced_failure');
 });
 
 test('resend verification shows identical message for non-existent, good delivery, and failed delivery unverified accounts', async ({ page }) => {
   const expectedText =
-    "If an account exists for this email, we sent you an email. If it doesn't arrive in a few minutes, contact support.";
+    "If an account exists for this email, we sent a code. If it doesn't arrive in a few minutes, contact support.";
 
   // Case 1: Non-existent account
   const nonExistentEmail = `e2e-unverified-none-${Date.now()}@e2e.invalid`;
   await page.goto(`/auth/verify-email?email=${encodeURIComponent(nonExistentEmail)}`);
-  await page.getByRole('button', { name: 'Resend verification email' }).click();
+  await page.getByRole('button', { name: 'Resend code' }).click();
   await expect(page.getByText(expectedText)).toBeVisible();
   await expect(page.getByText(expectedText).getByRole('link', { name: 'contact support' })).toHaveAttribute('href', '/support');
 
   // Case 2: Good delivery unverified account
   const goodAccount = await createTestUser({ emailVerified: false });
   await page.goto(`/auth/verify-email?email=${encodeURIComponent(goodAccount.email)}`);
-  await page.getByRole('button', { name: 'Resend verification email' }).click();
+  await page.getByRole('button', { name: 'Resend code' }).click();
   await expect(page.getByText(expectedText)).toBeVisible();
   await expect(page.getByText(expectedText).getByRole('link', { name: 'contact support' })).toHaveAttribute('href', '/support');
 
@@ -201,7 +201,7 @@ test('resend verification shows identical message for non-existent, good deliver
   const failEmail = `e2e-unverified-${Date.now()}+delivery-fail@e2e.invalid`;
   const failAccount = await createTestUser({ email: failEmail, emailVerified: false });
   await page.goto(`/auth/verify-email?email=${encodeURIComponent(failAccount.email)}`);
-  await page.getByRole('button', { name: 'Resend verification email' }).click();
+  await page.getByRole('button', { name: 'Resend code' }).click();
   await expect(page.getByText(expectedText)).toBeVisible();
   await expect(page.getByText(expectedText).getByRole('link', { name: 'contact support' })).toHaveAttribute('href', '/support');
 
@@ -217,7 +217,7 @@ test('resend verification shows identical message for non-existent, good deliver
   const goodLog = await prisma.operationalLog.findFirstOrThrow({
     where: { userId: goodAccount.user.id, code: 'email.delivery.sent' },
   });
-  expect((goodLog.metadata as Record<string, unknown>).template).toBe('verification');
+  expect((goodLog.metadata as Record<string, unknown>).template).toBe('verification-code');
 
   await expect.poll(async () =>
     prisma.operationalLog.count({
@@ -231,7 +231,7 @@ test('resend verification shows identical message for non-existent, good deliver
   const failLog = await prisma.operationalLog.findFirstOrThrow({
     where: { userId: failAccount.user.id, code: 'email.delivery.failed' },
   });
-  expect((failLog.metadata as Record<string, unknown>).template).toBe('verification');
+  expect((failLog.metadata as Record<string, unknown>).template).toBe('verification-code');
   expect((failLog.metadata as Record<string, unknown>).errorCode).toBe('outbox_forced_failure');
 });
 

@@ -11,7 +11,6 @@ import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { loginSchema, type LoginFormData } from '@/validations/auth';
 import {
   signInAction,
-  resendVerificationEmailAction,
   signInWithGoogle,
   signInWithGithub,
 } from '@/actions/auth';
@@ -22,10 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  TurnstileWidget,
-  isTurnstileEnabled,
-} from './turnstile-widget';
 import {
   Form,
   FormControl,
@@ -49,13 +44,7 @@ export function LoginForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = React.useState(false);
-  const [showResendVerification, setShowResendVerification] =
-    React.useState(false);
-  const [resendNotice, setResendNotice] = React.useState<string | null>(null);
-  const [isResending, setIsResending] = React.useState(false);
   const [isSocialPending, setIsSocialPending] = React.useState(false);
-  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
-  const [captchaResetKey, setCaptchaResetKey] = React.useState(0);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -71,11 +60,8 @@ export function LoginForm({
 
       if (result.response === 'error') {
         toast.error(result.message);
-        if (
-          result.message.toLowerCase().includes('email') &&
-          result.message.toLowerCase().includes('verif')
-        ) {
-          setShowResendVerification(true);
+        if (result.data?.emailNotVerified) {
+          router.push(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
         }
         return;
       }
@@ -87,31 +73,6 @@ export function LoginForm({
 
       router.push('/dashboard');
     });
-  };
-
-  const handleResendVerification = async () => {
-    const email = form.getValues('email');
-    if (!email) {
-      toast.error('Please enter your email first');
-      return;
-    }
-
-    setIsResending(true);
-    const result = await resendVerificationEmailAction(
-      email,
-      captchaToken ?? undefined
-    );
-    setCaptchaToken(null);
-    setCaptchaResetKey((key) => key + 1);
-
-    if (result.response === 'error') {
-      toast.error(result.message);
-    } else {
-      setResendNotice(result.message);
-      setShowResendVerification(false);
-    }
-
-    setIsResending(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -145,14 +106,6 @@ export function LoginForm({
       {notice && (
         <Alert className="mb-4">
           <AlertDescription>{notice}</AlertDescription>
-        </Alert>
-      )}
-      {resendNotice && (
-        <Alert className="mb-4">
-          <AlertDescription>
-            If an account exists for this email, we sent you an email. If it doesn&apos;t arrive in a few minutes,{' '}
-            <AuthLink href="/support">contact support</AuthLink>.
-          </AlertDescription>
         </Alert>
       )}
       {oauthSignupDisabledProvider && (
@@ -233,34 +186,6 @@ export function LoginForm({
               </FormItem>
             )}
           />
-
-          {showResendVerification && (
-            <>
-              <TurnstileWidget
-                action="resend-verification"
-                onToken={setCaptchaToken}
-                resetKey={captchaResetKey}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleResendVerification}
-                disabled={
-                  isResending || (isTurnstileEnabled && !captchaToken)
-                }
-              >
-                {isResending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  'Resend verification email'
-                )}
-              </Button>
-            </>
-          )}
 
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (

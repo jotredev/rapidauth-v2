@@ -44,6 +44,22 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = passwordConfirmationSchema;
 
+export const resetPasswordWithCodeSchema = z
+  .object({
+    email: z.string().trim().email("Invalid email address"),
+    code: z
+      .string()
+      .trim()
+      .length(6, "Verification code must be 6 digits")
+      .regex(/^\d{6}$/, "Code must contain only digits"),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Password is required"),
@@ -81,6 +97,9 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type ResetPasswordWithCodeFormData = z.infer<
+  typeof resetPasswordWithCodeSchema
+>;
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 export type AcceptInviteFormData = z.infer<typeof acceptInviteSchema>;
 export type TwoFactorFormData = z.infer<typeof twoFactorSchema>;
