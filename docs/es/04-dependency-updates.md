@@ -20,8 +20,8 @@ La actualización de octubre de 2026 sirve como modelo: primero versiones menore
 - [ ] CI está en verde, incluidos lint, versiones exactas, revisión de tipos, pruebas E2E, build de producción, auditoría de dependencias, sincronización del tema y trabajos de Docker.
 - [ ] Funcionan el inicio y cierre de sesión con credenciales válidas e inválidas.
 - [ ] Funcionan la creación, el cambio y la recuperación de contraseñas, incluidos los pasos de verificación de esos flujos.
-- [ ] Funcionan la verificación de email y el reenvío del correo de verificación.
-- [ ] Turnstile funciona en registro, reenvío de email y recuperación de contraseña; se rechazan tokens inválidos o ausentes.
+- [ ] Funcionan la verificación de email con código de 6 cifras y el reenvío del código de verificación.
+- [ ] Turnstile funciona en registro, reenvío del código de verificación y recuperación de contraseña; se rechazan tokens inválidos o ausentes.
 - [ ] Revisa visualmente las páginas principales frente a la versión anterior e inspecciona las áreas modificadas.
 - [ ] Compila la imagen de Docker de producción y ejecuta su comprobación de salud o las pruebas de Docker del proyecto.
 

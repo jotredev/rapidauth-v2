@@ -13,9 +13,9 @@ A production-ready Next.js 16+ authentication boilerplate with Better Auth, desi
 ### Authentication
 - Email/Password authentication with strong password validation
 - OAuth integration (Google & GitHub)
-- Email verification with Resend
+- Email verification with a 6-digit code sent via Resend
 - Two-Factor Authentication (TOTP) with backup codes
-- Password recovery flow
+- Password recovery with a 6-digit code
 - Session management with IP & User Agent tracking
 
 ### Dashboard
@@ -195,7 +195,7 @@ GITHUB_CLIENT_SECRET=""
 
 ## Turnstile (Required in production)
 
-Turnstile protects registration, verification email resends, and password reset. `bun run init:setup` asks for the two keys and can use test keys for local development. Production builds require both real keys and fail if either is missing or a test key is used.
+Turnstile protects registration, verification code resends, and password reset code requests. `bun run init:setup` asks for the two keys and can use test keys for local development. Production builds require both real keys and fail if either is missing or a test key is used.
 
 Setup guides: [English](docs/en/02-turnstile.md) · [Español](docs/es/02-turnstile.md).
 
@@ -297,9 +297,15 @@ model ActivityLog {
 
 ### Email/Password
 1. User registers with email/password
-2. Verification email sent via Resend
-3. User verifies email
-4. User can log in
+2. A 6-digit verification code is sent via Resend (valid for 10 minutes, 5 attempts)
+3. User enters the code at `/auth/verify-email` and is signed in
+4. A new code can be requested every 60 seconds; signing in with an unverified email leads back to `/auth/verify-email`
+
+### Password Recovery
+1. User requests a code at `/auth/forgot-password`
+2. A 6-digit reset code is sent via Resend (valid for 10 minutes, 5 attempts)
+3. User enters the code and a new password at `/auth/reset-password`
+4. User is sent to the login page to sign in with the new password
 
 ### OAuth
 1. User clicks Google/GitHub button
@@ -359,7 +365,11 @@ Edit the User model and update:
 ### Email Templates
 
 Edit templates in `emails/`:
-- `verification-email.tsx`
+- `verification-code-email.tsx` – email verification code
+- `password-reset-code-email.tsx` – password reset code
+- `invitation-email.tsx` – admin invitation link
+- `security-notice-email.tsx` – security notices
+- `account-deleted-email.tsx` – account deletion confirmation
 
 ## Deployment
 

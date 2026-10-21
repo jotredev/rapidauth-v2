@@ -20,8 +20,8 @@ The October 2026 upgrade is the model: first minor and patch releases, then crit
 - [ ] CI is green, including lint, exact dependency versions, type checking, E2E, production build, dependency audit, theme synchronization, and Docker jobs.
 - [ ] Sign in and sign out work with valid and invalid credentials.
 - [ ] Password creation, change, and recovery work, including the verification steps used by those flows.
-- [ ] Email verification and verification email resend work.
-- [ ] Turnstile works on registration, email resend, and password recovery; invalid or missing tokens are rejected.
+- [ ] Email verification with a 6-digit code and verification code resend work.
+- [ ] Turnstile works on registration, verification code resend, and password recovery; invalid or missing tokens are rejected.
 - [ ] Review the main pages visually against the previous version and inspect any changed areas.
 - [ ] Build the production Docker image and run its health check or the project’s Docker smoke checks.
 
