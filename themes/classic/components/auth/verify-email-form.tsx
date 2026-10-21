@@ -94,8 +94,7 @@ export function VerifyEmailForm({
         setFormError(result.message);
         return;
       }
-      router.push("/dashboard");
-      router.refresh();
+      router.push("/auth/login?notice=email-verified");
     });
   };
 

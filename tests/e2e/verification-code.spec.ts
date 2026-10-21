@@ -2,11 +2,15 @@ import { test, expect } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import {
   cleanE2EData,
+  createAdminWith2FA,
   createTestUser,
   E2E_PASSWORD,
+  enableTestTwoFactor,
   getOutboxMessage,
   getOutboxMessages,
   prisma,
+  signInWithPasswordAndTotp,
+  submitPasswordSignIn,
 } from './helpers';
 
 test.beforeEach(async () => {
@@ -17,7 +21,7 @@ test.afterEach(async () => {
   await cleanE2EData();
 });
 
-test('registration sends 6-digit code without url or links, and verifying enters dashboard with session', async ({
+test('registration sends 6-digit code without url or links, and verifying leads to login without a session', async ({
   page,
 }) => {
   const email = `e2e-reg-otp-${Date.now()}@e2e.invalid`;
@@ -42,10 +46,11 @@ test('registration sends 6-digit code without url or links, and verifying enters
   await page.locator('input[data-input-otp]').fill(message.code!);
   await page.getByRole('button', { name: 'Verify email' }).click();
 
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/auth\/login\?notice=email-verified/);
+  await expect(page.getByText('Email verified. Sign in with your password.')).toBeVisible();
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
   expect(user.emailVerified).toBe(true);
-  expect(await prisma.session.count({ where: { userId: user.id } })).toBe(1);
+  expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
 });
 
 test('verification code is hashed and not stored in plain text in database', async ({
@@ -199,7 +204,7 @@ test('resend code has 60s cooldown, delivers working new code, and shows identic
 
   await page.locator('input[data-input-otp]').fill(secondMessage.code!);
   await page.getByRole('button', { name: 'Verify email' }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/auth\/login\?notice=email-verified/);
 
   // Non-existent account
   const nonexistent = `e2e-nonexistent-${Date.now()}@e2e.invalid`;
@@ -271,4 +276,50 @@ test('pending user with direct verification code is blocked with invitation mess
   expect(user.emailVerified).toBe(false);
   expect(await prisma.session.count({ where: { userId: pendingUser.user.id } })).toBe(0);
 });
+
+test('admin email change on a 2FA user: verifying the new address does not sign in and login still requires 2FA', async ({
+  page,
+  browser,
+}) => {
+  const admin = await createAdminWith2FA({ name: 'E2E Email Change Admin' });
+  const target = await createTestUser({ name: 'E2E Email Change Target' });
+  await enableTestTwoFactor(target.user.id);
+  const newEmail = `e2e-email-change-${Date.now()}@e2e.invalid`;
+
+  await signInWithPasswordAndTotp(page, admin.email, admin.password, admin.secret);
+  await page.goto(`/dashboard/users?q=${encodeURIComponent(target.email)}`);
+  await page.getByRole('row').filter({ hasText: target.email }).getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Edit User' }).click();
+
+  await page.getByRole('dialog').getByLabel('Email Address').fill(newEmail);
+  await page.getByRole('dialog').getByRole('button', { name: 'Save Changes' }).click();
+
+  await expect.poll(async () => {
+    return prisma.user.findUnique({
+      where: { id: target.user.id },
+      select: { email: true, emailVerified: true },
+    });
+  }).toEqual({ email: newEmail, emailVerified: false });
+
+  const context = await browser.newContext();
+  const other = await context.newPage();
+  await other.goto(`/auth/verify-email?email=${encodeURIComponent(newEmail)}`);
+  const message = await getOutboxMessage(newEmail);
+  expect(message.code).toMatch(/^\d{6}$/);
+  await other.locator('input[data-input-otp]').fill(message.code!);
+  await other.getByRole('button', { name: 'Verify email' }).click();
+  await expect(other).toHaveURL(/\/auth\/login\?notice=email-verified/);
+
+  const updatedTarget = await prisma.user.findUniqueOrThrow({
+    where: { id: target.user.id },
+  });
+  expect(updatedTarget.emailVerified).toBe(true);
+  expect(await prisma.session.count({ where: { userId: target.user.id } })).toBe(0);
+
+  await submitPasswordSignIn(other, newEmail, target.password);
+  await expect(other).toHaveURL(/\/auth\/two-factor$/);
+
+  await context.close();
+});
+
 

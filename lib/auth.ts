@@ -319,7 +319,7 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: false,
     sendOnSignIn: false,
-    autoSignInAfterVerification: true,
+    autoSignInAfterVerification: false,
     beforeEmailVerification: async (user) => {
       let status = (user as { status?: string }).status;
       if (!status && user.id) {

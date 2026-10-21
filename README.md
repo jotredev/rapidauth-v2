@@ -298,7 +298,7 @@ model ActivityLog {
 ### Email/Password
 1. User registers with email/password
 2. A 6-digit verification code is sent via Resend (valid for 10 minutes, 5 attempts)
-3. User enters the code at `/auth/verify-email` and is signed in
+3. User enters the code at `/auth/verify-email` and is sent to the login page to sign in with their password (and 2FA, if enabled)
 4. A new code can be requested every 60 seconds; signing in with an unverified email leads back to `/auth/verify-email`
 
 ### Password Recovery

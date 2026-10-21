@@ -5,6 +5,7 @@ import {
   E2E_PASSWORD,
   installTestTurnstileWidget,
   prisma,
+  submitPasswordSignIn,
 } from './helpers';
 import { getOutboxMessage } from './helpers/outbox';
 import { siteConfig } from '../../config/site';
@@ -19,7 +20,7 @@ test.afterEach(async () => {
   await cleanE2EData();
 });
 
-test('registration sends verification code; submitting code verifies email and creates session', async ({ page }) => {
+test('registration sends verification code; submitting code verifies email and leads to login without a session', async ({ page }) => {
   const email = `e2e-register-${Date.now()}@e2e.invalid`;
   await page.goto('/auth/register');
   await page.getByPlaceholder('John Doe').fill('Registration Test');
@@ -44,9 +45,11 @@ test('registration sends verification code; submitting code verifies email and c
 
   await page.locator('input[data-input-otp]').fill(message.code!);
   await page.getByRole('button', { name: 'Verify email' }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/auth\/login\?notice=email-verified/);
   expect((await prisma.user.findUniqueOrThrow({ where: { email } })).emailVerified).toBe(true);
-  expect(await prisma.session.count({ where: { userId: user.id } })).toBe(1);
+  expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
+  await submitPasswordSignIn(page, email, E2E_PASSWORD);
+  await expect(page).toHaveURL(/\/dashboard/);
 });
 
 test('social registration requires terms in the interface and starts Google only after acceptance', async ({ page }) => {
