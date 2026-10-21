@@ -211,6 +211,7 @@ export function UsersContent({
         user={selectedUser}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
+        currentUserId={currentUserId}
       />
 
       {isAdmin && (

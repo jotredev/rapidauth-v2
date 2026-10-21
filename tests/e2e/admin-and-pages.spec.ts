@@ -204,6 +204,90 @@ test('admin manual reset is hidden and the server rejects a forged request for a
   expect(resetEmails).toHaveLength(1);
 });
 
+test('admin cannot change another admin email in the dialog but can still change their name', async ({ page }) => {
+  const targetAdmin = await createAdminWith2FA({ name: 'E2E Target Admin' });
+  await signInAdmin(page);
+  await openUsersForEmail(page, targetAdmin.email);
+
+  const adminRow = page.getByRole('row').filter({ hasText: targetAdmin.email });
+  await adminRow.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Edit User' }).click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Email Address')).toBeDisabled();
+  await expect(dialog.getByText("Admins can't change another admin's email.")).toBeVisible();
+  await dialog.getByLabel('Full Name').fill('E2E Renamed Admin');
+  await dialog.getByRole('button', { name: 'Save Changes' }).click();
+
+  await expect.poll(async () => {
+    const user = await prisma.user.findUnique({
+      where: { id: targetAdmin.user.id },
+      select: { name: true },
+    });
+    return user?.name;
+  }).toBe('E2E Renamed Admin');
+
+  const refreshedAdmin = await prisma.user.findUniqueOrThrow({
+    where: { id: targetAdmin.user.id },
+    select: { email: true, emailVerified: true },
+  });
+  expect(refreshedAdmin.email).toBe(targetAdmin.email);
+  expect(refreshedAdmin.emailVerified).toBe(true);
+});
+
+test('server rejects a forged email change for another admin and still allows it for a regular user', async ({ page }) => {
+  const targetAdmin = await createAdminWith2FA({ name: 'E2E Forged Target Admin' });
+  const regularUser = await createTestUser({ name: 'E2E Regular Edit User' });
+  const regularNewEmail = `e2e-regular-new-${Date.now()}@e2e.invalid`;
+  const forgedEmail = `e2e-forged-${Date.now()}@e2e.invalid`;
+
+  await signInAdmin(page);
+  await openUsersForEmail(page, regularUser.email);
+
+  const regularRow = page.getByRole('row').filter({ hasText: regularUser.email });
+  await regularRow.getByRole('button', { name: 'Open menu' }).click();
+  await page.getByRole('menuitem', { name: 'Edit User' }).click();
+
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Email Address').fill(regularNewEmail);
+
+  const originalRequestPromise = page.waitForRequest(
+    (request) => request.method() === 'POST' && Boolean(request.headers()['next-action']),
+  );
+  await dialog.getByRole('button', { name: 'Save Changes' }).click();
+  const originalRequest = await originalRequestPromise;
+
+  await expect.poll(async () => {
+    const user = await prisma.user.findUnique({
+      where: { id: regularUser.user.id },
+      select: { email: true },
+    });
+    return user?.email;
+  }).toBe(regularNewEmail);
+
+  const originalHeaders = originalRequest.headers();
+  const response = await page.request.post(originalRequest.url(), {
+    headers: {
+      'next-action': originalHeaders['next-action']!,
+      'next-router-state-tree': originalHeaders['next-router-state-tree'] ?? '',
+      accept: 'text/x-component',
+      'content-type': 'text/plain;charset=UTF-8',
+    },
+    data: JSON.stringify([targetAdmin.user.id, { name: 'E2E Forged Target Admin', email: forgedEmail }]),
+    maxRedirects: 0,
+  });
+
+  expect(await response.text()).toContain("Admins can't change another admin's email.");
+
+  const refreshedAdmin = await prisma.user.findUniqueOrThrow({
+    where: { id: targetAdmin.user.id },
+    select: { email: true, emailVerified: true },
+  });
+  expect(refreshedAdmin.email).toBe(targetAdmin.email);
+  expect(refreshedAdmin.emailVerified).toBe(true);
+  expect(await getOutboxMessages(forgedEmail)).toHaveLength(0);
+});
+
 test('expired temporary passwords reject correct credentials, preserve normal invalid-password errors, and expire open sessions', async ({ page, browser }) => {
   const account = await createTestUser();
   await signInAdmin(page);

@@ -142,10 +142,14 @@ rapidauth-better-auth/
 │   │   ├── forgot-password/
 │   │   ├── reset-password/
 │   │   ├── verify-email/
+│   │   ├── accept-invite/
+│   │   ├── accept-terms/
+│   │   ├── change-password/
 │   │   └── two-factor/
 │   └── dashboard/          # Protected dashboard
 │       ├── profile/
 │       ├── activity/
+│       ├── logs/           # Admin only
 │       └── users/          # Admin only
 ├── actions/                # Server Actions
 │   ├── auth/               # Auth actions
@@ -321,13 +325,13 @@ model ActivityLog {
 
 ## Route Protection
 
-The middleware automatically protects routes:
+`proxy.ts` only makes an optimistic check: requests to `/dashboard/*` without a session cookie are redirected to `/auth/login`. The real session and role checks happen in layouts, pages and inside every server action.
 
 | Route | Access |
 |-------|--------|
-| `/auth/*` | Public (redirects if logged in) |
+| `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password` | Public (redirect to `/dashboard` if signed in) |
 | `/dashboard/*` | Authenticated users |
-| `/dashboard/users` | Admin only |
+| `/dashboard/users`, `/dashboard/logs` | Admins only (admins who sign in with a password must have 2FA enabled) |
 
 ## Server Actions
 

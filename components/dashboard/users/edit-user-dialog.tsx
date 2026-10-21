@@ -33,6 +33,7 @@ interface EditUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  currentUserId: string;
 }
 
 export function EditUserDialog({
@@ -40,9 +41,11 @@ export function EditUserDialog({
   open,
   onOpenChange,
   onSuccess,
+  currentUserId,
 }: EditUserDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const isOtherAdmin = user?.role === 'admin' && user.id !== currentUserId;
 
   const form = useForm<EditUserFormData>({
     resolver: zodResolver(editUserSchema),
@@ -122,12 +125,15 @@ export function EditUserDialog({
                   {user?.provider !== 'email' && (
                     <p className='text-xs text-muted-foreground'>Managed by {user?.provider}. Cannot be changed.</p>
                   )}
+                  {user?.provider === 'email' && isOtherAdmin && (
+                    <p className='text-xs text-muted-foreground'>Admins can&apos;t change another admin&apos;s email.</p>
+                  )}
                   <FormControl>
                     <Input
                       {...field}
                       type='email'
                       className='bg-background border-border'
-                      disabled={user?.provider !== 'email'}
+                      disabled={user?.provider !== 'email' || isOtherAdmin}
                     />
                   </FormControl>
                   <FormMessage />

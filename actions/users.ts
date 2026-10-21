@@ -326,7 +326,7 @@ export const editUserAction = async (
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, role: true },
     });
 
     if (!user) {
@@ -338,6 +338,14 @@ export const editUserAction = async (
     }
 
     const emailChanged = email !== user.email.toLowerCase();
+
+    if (emailChanged && user.role === 'admin' && user.id !== session.user.id) {
+      return {
+        response: 'error',
+        message: "Admins can't change another admin's email.",
+        data: null,
+      };
+    }
 
     // Check if user is OAuth — cannot change email
     if (emailChanged) {
