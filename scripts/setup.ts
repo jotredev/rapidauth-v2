@@ -1616,8 +1616,7 @@ async function runSetup() {
   const isConfigured = Boolean(
     existingEnv.DATABASE_URL &&
     existingEnv.BETTER_AUTH_SECRET &&
-    existingEnv.BETTER_AUTH_URL &&
-    existingEnv.FROM_EMAIL
+    existingEnv.BETTER_AUTH_URL
   );
   let selection = forcedSection ?? '';
   if (!selection && isConfigured) {
