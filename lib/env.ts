@@ -84,6 +84,28 @@ function resolveEmailProvider(env: EnvSource): EmailProvider {
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1'];
 
+/**
+ * True when DATABASE_URL is the PostgreSQL defined in docker/db.yaml: a local
+ * host, the same user, password and database, and the port Docker publishes
+ * (DB_PORT, default 5432). Any other URL, such as Neon, is an external database.
+ */
+export function isDockerDatabaseUrl(databaseUrl: string | undefined, dbPort?: string): boolean {
+  if (!databaseUrl?.trim()) return false;
+  try {
+    const url = new URL(databaseUrl);
+    return (
+      ['postgresql:', 'postgres:'].includes(url.protocol) &&
+      [...LOCAL_HOSTS, '[::1]'].includes(url.hostname) &&
+      (url.port || '5432') === (dbPort?.trim() || '5432') &&
+      decodeURIComponent(url.username) === 'rapidauth' &&
+      decodeURIComponent(url.password) === 'rapidauth' &&
+      url.pathname === '/rapidauth'
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** An unset or unparsable BETTER_AUTH_URL is not treated as remote. */
 function isRemoteUrl(value: string | undefined): boolean {
   if (!value?.trim()) return false;
@@ -166,7 +188,7 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
 
   const provider = resolveEmailProvider(env);
   const config: ResolvedEnv = {
-    database: { docker: env.DOCKER_DATABASE === 'true' },
+    database: { docker: isDockerDatabaseUrl(env.DATABASE_URL, env.DB_PORT) },
     email: {
       provider,
       resendApiKey: env.RESEND_API_KEY,

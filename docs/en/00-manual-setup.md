@@ -114,7 +114,7 @@ Template maintainers should run `bun run theme:sync-classic` after changing auth
 
 Run `bun run db:switch` and choose an external PostgreSQL database or the local Docker database. The wizard saves the previous URL as a comment in `.env`, then runs `prisma db push` and the seed against the new database. Database records are not copied between the two databases.
 
-You can switch manually by changing `DATABASE_URL` and `DOCKER_DATABASE` in `.env`. Set `DOCKER_DATABASE=true` for the local Docker database and remove the variable or set it to `false` for an external database. Then run:
+You can switch manually by changing `DATABASE_URL` in `.env`. `bun dev` starts Docker only when it points to the local Docker database. Then run:
 
 ```sh
 bun run db:push

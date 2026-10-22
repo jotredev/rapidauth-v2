@@ -114,7 +114,7 @@ Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` despu
 
 Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma db push` y el seed contra la base nueva. Los datos no se copian entre bases.
 
-También puedes cambiarla manualmente editando `DATABASE_URL` y `DOCKER_DATABASE` en `.env`. Usa `DOCKER_DATABASE=true` con la base local en Docker; para una base externa, quita la variable o asígnale `false`. Luego ejecuta:
+También puedes cambiarla manualmente editando `DATABASE_URL` en `.env`. `bun dev` solo inicia Docker si apunta a la base local de Docker. Luego ejecuta:
 
 ```sh
 bun run db:push

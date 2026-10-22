@@ -21,6 +21,7 @@ import {
 import { createS3Storage } from '../lib/storage';
 import { getThemeChangedPaths } from './lib/theme-safety';
 import { getSupportEmail } from '../lib/support-email';
+import { isDockerDatabaseUrl } from '../lib/env';
 
 // ============================================================================
 // CONFIGURATION
@@ -812,7 +813,6 @@ async function askDatabaseUrl(
 ): Promise<{
   url: string;
   dockerDatabase: boolean;
-  dockerDatabaseValue?: string;
   port?: string;
 } | undefined> {
   const databaseVariable = ENV_VARIABLES.find((variable) => variable.key === 'DATABASE_URL');
@@ -821,7 +821,7 @@ async function askDatabaseUrl(
   if (existingEnv.DATABASE_URL) {
     try {
       const current = new URL(existingEnv.DATABASE_URL);
-      const isDocker = existingEnv.DOCKER_DATABASE === 'true' || current.searchParams.get('sslmode') === 'disable';
+      const isDocker = isDockerDatabaseUrl(existingEnv.DATABASE_URL, existingEnv.DB_PORT);
       println(`  Current database: ${current.hostname}${current.port ? `:${current.port}` : ''}${isDocker ? ' (Docker)' : ' (external)'}`);
       println();
     } catch {
@@ -851,8 +851,7 @@ async function askDatabaseUrl(
     if (choice === '3') {
       return {
         url: existingEnv.DATABASE_URL,
-        dockerDatabase: existingEnv.DOCKER_DATABASE === 'true',
-        dockerDatabaseValue: existingEnv.DOCKER_DATABASE,
+        dockerDatabase: isDockerDatabaseUrl(existingEnv.DATABASE_URL, existingEnv.DB_PORT),
       };
     }
 
@@ -1212,7 +1211,7 @@ async function askSupportEmail(existingValue?: string): Promise<string> {
 }
 
 const ENV_SECTION_KEYS: Record<string, string[]> = {
-  database: ['DATABASE_URL', 'DB_PORT', 'DOCKER_DATABASE'],
+  database: ['DATABASE_URL', 'DB_PORT'],
   auth: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
   email: ['RESEND_API_KEY', 'FROM_EMAIL'],
   support: ['SUPPORT_EMAIL'],
@@ -1249,13 +1248,11 @@ function updateEnvSections(
   const quotedValue = (value: string) => `"${value.replaceAll('"', '\\"')}"`;
   const renderedValue = (key: string, value: string) => `${key}=${quotedValue(value)}`;
 
-  const dockerDatabaseComment = '# bun dev starts the local Docker database when this is true.';
-  const leavingDockerDatabase = sections.includes('database') && envVars.DOCKER_DATABASE !== 'true';
+  const leavingDockerDatabase = sections.includes('database') && !isDockerDatabaseUrl(envVars.DATABASE_URL, envVars.DB_PORT);
 
   const updated: string[] = [];
   for (const line of lines) {
     // An external database needs neither the Docker note nor the local Docker port.
-    if (leavingDockerDatabase && line.trim() === dockerDatabaseComment) continue;
     if (leavingDockerDatabase && /^\s*DB_PORT\s*=/.test(line)) continue;
     const assignment = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)(.*)$/);
     if (!assignment || !selectedKeys.has(assignment[2])) {
@@ -1287,9 +1284,6 @@ function updateEnvSections(
     const missing = keys.filter((key) => envVars[key] !== undefined && envVars[key] !== '' && !insertedKeys.has(key)
       && !(leavingDockerDatabase && key === 'DB_PORT'));
     const comments: string[] = [];
-    if (section === 'database' && envVars.DOCKER_DATABASE === 'true' && !updated.includes(dockerDatabaseComment)) {
-      comments.push(dockerDatabaseComment);
-    }
     if (section === 'captcha' && (isTurnstileTestSiteKey(envVars.TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(envVars.TURNSTILE_SECRET_KEY)) && !updated.some((line) => line.startsWith('# Test keys: local development only.'))) {
       comments.push('# Test keys: local development only. Set real keys before deploying (docs/en/02-turnstile.md)');
     }
@@ -1729,11 +1723,6 @@ async function runSetup() {
       newEnv.DATABASE_URL = database.url;
       databaseRunsInDocker = database.dockerDatabase;
       if (database.port) newEnv.DB_PORT = database.port;
-      if (database.dockerDatabase) {
-        newEnv.DOCKER_DATABASE = 'true';
-      } else if (database.dockerDatabaseValue !== undefined) {
-        newEnv.DOCKER_DATABASE = database.dockerDatabaseValue;
-      }
     } else if (category.key === 'email') {
       // Handle email category specially
       const categoryVars = ENV_VARIABLES.filter(

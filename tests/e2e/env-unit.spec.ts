@@ -43,10 +43,19 @@ test.describe('environment resolution', () => {
     });
   });
 
-  test('detects the Docker database only when DOCKER_DATABASE is "true"', () => {
-    expect(resolveEnv({ DOCKER_DATABASE: 'true' }).config.database.docker).toBe(true);
-    expect(resolveEnv({ DOCKER_DATABASE: 'false' }).config.database.docker).toBe(false);
-    expect(resolveEnv({ DOCKER_DATABASE: '1' }).config.database.docker).toBe(false);
+  test('detects the Docker database from DATABASE_URL and DB_PORT', () => {
+    const local = 'postgresql://rapidauth:rapidauth@localhost:5432/rapidauth?sslmode=disable';
+    const docker = (env: Record<string, string>) => resolveEnv(env).config.database.docker;
+    expect(docker({ DATABASE_URL: local })).toBe(true);
+    expect(docker({ DATABASE_URL: local.replace('localhost', '127.0.0.1') })).toBe(true);
+    expect(docker({ DATABASE_URL: local.replace('localhost', '[::1]') })).toBe(true);
+    expect(docker({ DATABASE_URL: local.replace(':5432', ':55432'), DB_PORT: '55432' })).toBe(true);
+    expect(docker({ DATABASE_URL: local.replace(':5432', ':55432') })).toBe(false);
+    expect(docker({ DATABASE_URL: local, DB_PORT: '55432' })).toBe(false);
+    expect(docker({ DATABASE_URL: 'postgresql://u:p@ep-x.neon.tech:5432/neondb?sslmode=require' })).toBe(false);
+    expect(docker({ DATABASE_URL: local.replace('rapidauth@', 'other@') })).toBe(false);
+    expect(docker({ DATABASE_URL: 'not a url' })).toBe(false);
+    expect(docker({})).toBe(false);
   });
 
   test('resolves the email provider', () => {
@@ -184,7 +193,7 @@ test.describe('environment resolution', () => {
   test('formats a short summary from resolved values only', () => {
     const secret = 'super-secret-value';
     const { config } = resolveEnv({
-      DOCKER_DATABASE: 'true',
+      DATABASE_URL: 'postgresql://rapidauth:rapidauth@localhost:5432/rapidauth?sslmode=disable',
       RESEND_API_KEY: secret,
       ...google,
       NEXT_PUBLIC_SENTRY_DSN: 'https://public@o0.ingest.sentry.io/1',

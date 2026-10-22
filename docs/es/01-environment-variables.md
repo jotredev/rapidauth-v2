@@ -14,11 +14,11 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 - **Advertencia:** `sslmode=disable` solo se usa con la base PostgreSQL local en Docker. Nunca lo uses en producción.
 - **Secreta:** Sí. Contiene credenciales de la base de datos.
 
-### `DOCKER_DATABASE`
+### `DB_PORT`
 
-- **Propósito:** Activa el inicio automático del servicio PostgreSQL local en Docker antes de que `bun dev` ejecute lint y Next.js.
-- **Obligatoria:** No. Su valor predeterminado es `false`; `init:setup` la establece como `true` cuando eliges una base local en Docker.
-- **Valores:** `true` o `false`. Solo el valor exacto `true` inicia Docker. Al elegir una base externa, el asistente elimina esta variable; al conservar una `DATABASE_URL` existente, también conserva su valor actual.
+- **Propósito:** Puerto del equipo donde escucha el PostgreSQL local en Docker (`docker/db.yaml`).
+- **Obligatoria:** No. Su valor predeterminado es `5432`.
+- **Detección de Docker:** `bun dev` inicia la base de Docker solo si `DATABASE_URL` apunta a ella: host `localhost`, `127.0.0.1` o `::1`, usuario `rapidauth`, contraseña `rapidauth`, base `rapidauth` y puerto igual a `DB_PORT` (o `5432`). Cualquier otra URL, como la de Neon, nunca inicia Docker.
 - **Secreta:** No.
 
 ## Better Auth
