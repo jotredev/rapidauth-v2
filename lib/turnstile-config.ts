@@ -19,20 +19,3 @@ export function isTurnstileTestSiteKey(value: string | undefined): boolean {
 export function isTurnstileTestSecretKey(value: string | undefined): boolean {
   return Boolean(value && TEST_SECRET_KEYS.has(value));
 }
-
-export function getTurnstileConfigError(
-  env: Record<string, string | undefined>,
-): string | null {
-  const { NEXT_PUBLIC_TURNSTILE_SITE_KEY: siteKey, TURNSTILE_SECRET_KEY: secretKey } = env;
-  const guide = 'docs/en/02-turnstile.md and docs/es/02-turnstile.md';
-
-  if (!siteKey || !secretKey) {
-    return `Cloudflare Turnstile is required for production builds. Set both NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY. See ${guide}.`;
-  }
-
-  if (isTurnstileTestSiteKey(siteKey) || isTurnstileTestSecretKey(secretKey)) {
-    return `Cloudflare Turnstile test keys cannot be used in production builds. Set real NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY values. See ${guide}.`;
-  }
-
-  return null;
-}

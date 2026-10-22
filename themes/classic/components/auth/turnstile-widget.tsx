@@ -3,9 +3,6 @@
 import * as React from 'react';
 import Script from 'next/script';
 
-const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-export const isTurnstileEnabled = Boolean(siteKey);
-
 type TurnstileApi = {
   render(
     container: HTMLElement,
@@ -28,12 +25,14 @@ declare global {
 }
 
 interface TurnstileWidgetProps {
+  siteKey?: string;
   action: string;
   onToken: (token: string | null) => void;
   resetKey: number;
 }
 
 export function TurnstileWidget({
+  siteKey,
   action,
   onToken,
   resetKey,
@@ -74,7 +73,7 @@ export function TurnstileWidget({
       'expired-callback': () => onTokenRef.current(null),
       'error-callback': () => onTokenRef.current(null),
     });
-  }, [action]);
+  }, [action, siteKey]);
 
   React.useEffect(
     () => () => {

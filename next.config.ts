@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { getTurnstileConfigError } from "./lib/turnstile-config";
 import {
   getSentryBuildConfig,
   getSentryEnvironment,
@@ -33,14 +32,6 @@ const nextConfig = (phase: string): NextConfig => {
         '\n⚠️  FILE STORAGE: STORAGE_DRIVER=local stores uploaded files on this server. Configure persistent disk or mount a volume at /app/storage in production. See docs/en/05-file-storage.md.\n',
       );
     }
-  }
-
-  if (
-    phase === PHASE_PRODUCTION_BUILD &&
-    process.env.RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK !== "1"
-  ) {
-    const error = getTurnstileConfigError(process.env);
-    if (error) throw new Error(error);
   }
 
   return {

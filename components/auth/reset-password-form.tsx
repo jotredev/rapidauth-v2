@@ -48,17 +48,18 @@ import {
 } from "@/components/ui/form";
 import {
   TurnstileWidget,
-  isTurnstileEnabled,
 } from "./turnstile-widget";
 
 interface ResetPasswordFormProps {
   email?: string;
   sent?: string;
+  turnstileSiteKey?: string;
 }
 
 export function ResetPasswordForm({
   email = "",
   sent,
+  turnstileSiteKey,
 }: ResetPasswordFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -319,6 +320,7 @@ export function ResetPasswordForm({
 
             <div className="space-y-3 pt-2">
               <TurnstileWidget
+                siteKey={turnstileSiteKey}
                 action="forgot-password"
                 onToken={setCaptchaToken}
                 resetKey={captchaResetKey}
@@ -331,7 +333,7 @@ export function ResetPasswordForm({
                 disabled={
                   isResending ||
                   resendCooldown > 0 ||
-                  (isTurnstileEnabled && !captchaToken)
+                  (Boolean(turnstileSiteKey) && !captchaToken)
                 }
               >
                 {isResending ? (

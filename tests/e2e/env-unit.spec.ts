@@ -4,7 +4,7 @@ import { formatEnvSummary, resolveEnv } from '../../lib/env';
 const google = { GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' };
 const github = { GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' };
 const turnstile = {
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'site',
+  TURNSTILE_SITE_KEY: 'site',
   TURNSTILE_SECRET_KEY: 'secret',
 };
 const s3 = {
@@ -92,11 +92,11 @@ test.describe('environment resolution', () => {
   });
 
   test('reports an incomplete Turnstile pair', () => {
-    const { config, error } = resolveEnv({ NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'site' });
+    const { config, error } = resolveEnv({ TURNSTILE_SITE_KEY: 'site' });
     expect(config.turnstile.enabled).toBe(false);
     expect(error).toContain('Turnstile: missing TURNSTILE_SECRET_KEY');
     expect(resolveEnv({ TURNSTILE_SECRET_KEY: 's' }).error).toContain(
-      'missing NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+      'missing TURNSTILE_SITE_KEY',
     );
   });
 
@@ -124,7 +124,7 @@ test.describe('environment resolution', () => {
     expect(problems).toHaveLength(4);
     expect(error).toContain('GOOGLE_CLIENT_SECRET');
     expect(error).toContain('GITHUB_CLIENT_ID');
-    expect(error).toContain('NEXT_PUBLIC_TURNSTILE_SITE_KEY');
+    expect(error).toContain('TURNSTILE_SITE_KEY');
     expect(error).toContain('S3_REGION');
     expect(error?.startsWith('Incomplete environment configuration:')).toBe(true);
   });
@@ -139,7 +139,7 @@ test.describe('environment resolution', () => {
     const { config, error } = resolveEnv({
       GOOGLE_CLIENT_ID: ' ',
       GOOGLE_CLIENT_SECRET: ' ',
-      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ' ',
+      TURNSTILE_SITE_KEY: ' ',
     });
     expect(config.google.enabled).toBe(true);
     expect(config.turnstile.enabled).toBe(false);

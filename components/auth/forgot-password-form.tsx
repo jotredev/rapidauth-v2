@@ -18,7 +18,6 @@ import { AuthCard, AuthLink } from "./auth-card";
 import { SupportLink } from "./support-link";
 import {
   TurnstileWidget,
-  isTurnstileEnabled,
 } from "./turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +30,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({
+  turnstileSiteKey,
+}: {
+  turnstileSiteKey?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
@@ -112,6 +115,8 @@ export function ForgotPasswordForm() {
           />
 
           <TurnstileWidget
+
+            siteKey={turnstileSiteKey}
             action="forgot-password"
             onToken={setCaptchaToken}
             resetKey={captchaResetKey}
@@ -120,7 +125,7 @@ export function ForgotPasswordForm() {
           <Button
             type="submit"
             className="w-full"
-            disabled={isPending || (isTurnstileEnabled && !captchaToken)}
+            disabled={isPending || (Boolean(turnstileSiteKey) && !captchaToken)}
           >
             {isPending ? (
               <>

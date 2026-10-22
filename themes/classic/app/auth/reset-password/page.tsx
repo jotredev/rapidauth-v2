@@ -1,5 +1,6 @@
 import { ResetPasswordForm } from "@/components/auth";
 import { getSession } from "@/lib/auth";
+import { getEnv } from "@/lib/env";
 import { redirect } from "next/navigation";
 
 interface ResetPasswordPageProps {
@@ -22,5 +23,10 @@ export default async function ResetPasswordPage({
     redirect("/auth/forgot-password");
   }
 
-  return <ResetPasswordForm email={email} sent={sent} />;
+  const { turnstile } = getEnv().config;
+  const turnstileSiteKey = turnstile.enabled ? turnstile.siteKey : undefined;
+
+  return (
+    <ResetPasswordForm email={email} sent={sent} turnstileSiteKey={turnstileSiteKey} />
+  );
 }

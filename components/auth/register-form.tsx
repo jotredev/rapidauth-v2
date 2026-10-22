@@ -23,7 +23,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
   TurnstileWidget,
-  isTurnstileEnabled,
 } from './turnstile-widget';
 import {
   Form,
@@ -38,11 +37,16 @@ import {
 export function RegisterForm({
   googleEnabled = false,
   githubEnabled = false,
+  turnstileSiteKey,
 }: {
   googleEnabled?: boolean;
   githubEnabled?: boolean;
+  turnstileSiteKey?: string;
 }) {
   const hasOAuth = googleEnabled || githubEnabled;
+  const socialProviderNames = [googleEnabled && "Google", githubEnabled && "GitHub"]
+    .filter(Boolean)
+    .join(" or ");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = React.useState(false);
@@ -272,7 +276,7 @@ export function RegisterForm({
           <Button
             type="submit"
             className="w-full"
-            disabled={isPending || (isTurnstileEnabled && !captchaToken)}
+            disabled={isPending || (Boolean(turnstileSiteKey) && !captchaToken)}
           >
             {isPending ? (
               <>
@@ -285,6 +289,8 @@ export function RegisterForm({
           </Button>
 
           <TurnstileWidget
+
+            siteKey={turnstileSiteKey}
             action="signup"
             onToken={setCaptchaToken}
             resetKey={captchaResetKey}
@@ -305,7 +311,7 @@ export function RegisterForm({
 
               {!acceptedTerms && (
                 <p className="text-center text-sm text-muted-foreground">
-                  Accept the Terms of Service and Privacy Policy to continue with Google or GitHub.
+                  Accept the Terms of Service and Privacy Policy to continue with {socialProviderNames}.
                 </p>
               )}
 

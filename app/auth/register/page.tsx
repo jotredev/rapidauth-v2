@@ -6,7 +6,13 @@ import { redirect } from "next/navigation";
 export default async function RegisterPage() {
   const session = await getSession();
   if (session) redirect("/dashboard");
-  const { google, github } = getEnv().config;
+  const { google, github, turnstile } = getEnv().config;
 
-  return <RegisterForm googleEnabled={google.enabled} githubEnabled={github.enabled} />;
+  return (
+    <RegisterForm
+      googleEnabled={google.enabled}
+      githubEnabled={github.enabled}
+      turnstileSiteKey={turnstile.enabled ? turnstile.siteKey : undefined}
+    />
+  );
 }

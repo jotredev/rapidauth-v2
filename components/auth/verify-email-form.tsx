@@ -29,7 +29,6 @@ import {
 } from "@/components/ui/form";
 import {
   TurnstileWidget,
-  isTurnstileEnabled,
 } from "./turnstile-widget";
 import {
   verifyEmailCodeAction,
@@ -52,12 +51,14 @@ interface VerifyEmailFormProps {
   email?: string;
   delivery?: string;
   sent?: string;
+  turnstileSiteKey?: string;
 }
 
 export function VerifyEmailForm({
   email = "",
   delivery,
   sent,
+  turnstileSiteKey,
 }: VerifyEmailFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -242,6 +243,7 @@ export function VerifyEmailForm({
 
             <div className="space-y-3 pt-2">
               <TurnstileWidget
+                siteKey={turnstileSiteKey}
                 action="resend-verification"
                 onToken={setCaptchaToken}
                 resetKey={captchaResetKey}
@@ -254,7 +256,7 @@ export function VerifyEmailForm({
                 disabled={
                   isResending ||
                   resendCooldown > 0 ||
-                  (isTurnstileEnabled && !captchaToken)
+                  (Boolean(turnstileSiteKey) && !captchaToken)
                 }
               >
                 {isResending ? (
