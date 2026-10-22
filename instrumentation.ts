@@ -7,12 +7,15 @@ let warnedAboutInvalidDsn = false;
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const [{ validateStorageConfig }, { warnAboutTrustedProxyConfiguration }] =
-      await Promise.all([
-        import('./instrumentation-node'),
-        import('./lib/client-ip'),
-      ]);
-    validateStorageConfig();
+    const [
+      { printEnvironmentSummary, validateEnvironment },
+      { warnAboutTrustedProxyConfiguration },
+    ] = await Promise.all([
+      import('./instrumentation-node'),
+      import('./lib/client-ip'),
+    ]);
+    validateEnvironment();
+    printEnvironmentSummary();
     warnAboutTrustedProxyConfiguration();
   }
 

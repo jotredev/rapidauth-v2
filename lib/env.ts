@@ -36,8 +36,10 @@ const PAIRS = [
   },
 ] as const;
 
-function has(env: EnvSource, key: string): boolean {
-  return Boolean(env[key]?.trim());
+// Pairs follow the same rule as lib/social-providers.ts and lib/turnstile.ts:
+// any non-empty value counts as set, even one made only of spaces.
+function isSet(env: EnvSource, key: string): boolean {
+  return Boolean(env[key]);
 }
 
 /**
@@ -45,7 +47,7 @@ function has(env: EnvSource, key: string): boolean {
  * and incomplete (an error) when only one of them is set.
  */
 function resolvePair(env: EnvSource, keys: readonly [string, string]) {
-  const missing = keys.filter((key) => !has(env, key));
+  const missing = keys.filter((key) => !isSet(env, key));
   return {
     enabled: missing.length === 0,
     missing: missing.length === keys.length ? [] : missing,
@@ -54,7 +56,7 @@ function resolvePair(env: EnvSource, keys: readonly [string, string]) {
 
 function resolveEmailProvider(env: EnvSource): EmailProvider {
   if (env.EMAIL_DELIVERY?.trim().toLowerCase() === 'outbox') return 'outbox';
-  return has(env, 'RESEND_API_KEY') ? 'resend' : 'mailpit';
+  return env.RESEND_API_KEY?.trim() ? 'resend' : 'mailpit';
 }
 
 export function resolveEnv(env: EnvSource = process.env): EnvResolution {
@@ -95,6 +97,27 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
       ? `Incomplete environment configuration:\n${problems.map((line) => `- ${line}`).join('\n')}`
       : null,
   };
+}
+
+const EMAIL_LABELS: Record<EmailProvider, string> = {
+  resend: 'Resend',
+  mailpit: 'Mailpit',
+  outbox: 'local outbox (testing)',
+};
+
+/** Short startup summary. Built only from resolved values: never keys, URLs or DSNs. */
+export function formatEnvSummary(config: ResolvedEnv): string {
+  const state = (enabled: boolean) => (enabled ? 'on' : 'off');
+  return [
+    'Environment:',
+    `  Database:  ${config.database.docker ? 'Docker PostgreSQL' : 'external PostgreSQL'}`,
+    `  Emails:    ${EMAIL_LABELS[config.email.provider]}`,
+    `  Files:     ${config.storage.driver === 's3' ? 'S3' : 'local disk'}`,
+    `  Turnstile: ${state(config.turnstile.enabled)}`,
+    `  Google:    ${state(config.google.enabled)}`,
+    `  GitHub:    ${state(config.github.enabled)}`,
+    `  Sentry:    ${state(config.sentry.enabled)}`,
+  ].join('\n');
 }
 
 let cached: EnvResolution | undefined;

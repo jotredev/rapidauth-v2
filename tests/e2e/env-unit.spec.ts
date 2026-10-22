@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { resolveEnv } from '../../lib/env';
+import { formatEnvSummary, resolveEnv } from '../../lib/env';
 
 const google = { GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' };
 const github = { GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' };
@@ -123,5 +123,44 @@ test.describe('environment resolution', () => {
     const env = { ...google };
     resolveEnv(env);
     expect(env).toEqual(google);
+  });
+
+  test('pairs use the same rule as the app: any non-empty value counts as set', () => {
+    const { config, error } = resolveEnv({
+      GOOGLE_CLIENT_ID: ' ',
+      GOOGLE_CLIENT_SECRET: ' ',
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ' ',
+    });
+    expect(config.google.enabled).toBe(true);
+    expect(config.turnstile.enabled).toBe(false);
+    expect(error).toContain('Turnstile: missing TURNSTILE_SECRET_KEY');
+    expect(error).not.toContain('Google');
+  });
+
+  test('formats a short summary from resolved values only', () => {
+    const secret = 'super-secret-value';
+    const { config } = resolveEnv({
+      DOCKER_DATABASE: 'true',
+      RESEND_API_KEY: secret,
+      ...google,
+      NEXT_PUBLIC_SENTRY_DSN: 'https://public@o0.ingest.sentry.io/1',
+    });
+    const summary = formatEnvSummary(config);
+    expect(summary).toBe(
+      [
+        'Environment:',
+        '  Database:  Docker PostgreSQL',
+        '  Emails:    Resend',
+        '  Files:     local disk',
+        '  Turnstile: off',
+        '  Google:    on',
+        '  GitHub:    off',
+        '  Sentry:    on',
+      ].join('\n'),
+    );
+    expect(summary).not.toContain(secret);
+    expect(summary).not.toContain('sentry.io');
+    expect(formatEnvSummary(resolveEnv({}).config)).toContain('Emails:    Mailpit');
+    expect(formatEnvSummary(resolveEnv(s3).config)).toContain('Files:     S3');
   });
 });
