@@ -11,7 +11,7 @@ export function SupportLink({ className }: SupportLinkProps) {
       Need help?{' '}
       <Link
         href="/support"
-        className="font-medium text-foreground underline-offset-4 hover:underline"
+        className="font-normal text-link underline-offset-4 hover:underline"
       >
         Contact support
       </Link>

@@ -4,6 +4,7 @@ import { getAdminAccess } from "@/lib/admin-access";
 import { prisma } from "@/lib/prisma";
 import { hasAcceptedCurrentTerms } from "@/lib/terms-acceptance";
 import { DashboardShell } from "@/components/dashboard";
+import packageJson from "@/package.json";
 
 export default async function DashboardLayout({
   children,
@@ -46,7 +47,8 @@ export default async function DashboardLayout({
   return (
     <DashboardShell
       user={user}
-      brandName="R A P I D"
+      brandName="rapidauth"
+      version={packageJson.version}
       hasAdminAccess={hasAdminAccess}
     >
       {children}

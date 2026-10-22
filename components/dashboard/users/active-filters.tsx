@@ -26,8 +26,8 @@ export function ActiveFilters({ filters, onRemoveFilter, onClearAll }: ActiveFil
       {filters.roles.map((role) => (
         <Badge
           key={`role-${role}`}
-          variant='secondary'
-          className='gap-1 capitalize cursor-pointer hover:bg-secondary/80'
+          variant='outline'
+          className='gap-1 capitalize cursor-pointer font-normal'
           onClick={() => onRemoveFilter('role', role)}
         >
           {role}
@@ -38,8 +38,8 @@ export function ActiveFilters({ filters, onRemoveFilter, onClearAll }: ActiveFil
       {filters.statuses.map((status) => (
         <Badge
           key={`status-${status}`}
-          variant='secondary'
-          className='gap-1 capitalize cursor-pointer hover:bg-secondary/80'
+          variant='outline'
+          className='gap-1 capitalize cursor-pointer font-normal'
           onClick={() => onRemoveFilter('status', status)}
         >
           {USER_STATUS_MAP[status]?.label || status}
@@ -50,8 +50,8 @@ export function ActiveFilters({ filters, onRemoveFilter, onClearAll }: ActiveFil
       {filters.providers.map((provider) => (
         <Badge
           key={`provider-${provider}`}
-          variant='secondary'
-          className='gap-1 cursor-pointer hover:bg-secondary/80'
+          variant='outline'
+          className='gap-1 cursor-pointer font-normal'
           onClick={() => onRemoveFilter('provider', provider)}
         >
           {PROVIDER_CONFIG[provider]?.label || provider}
@@ -60,6 +60,7 @@ export function ActiveFilters({ filters, onRemoveFilter, onClearAll }: ActiveFil
       ))}
 
       <button
+        type='button'
         onClick={onClearAll}
         className='text-xs text-muted-foreground hover:text-foreground ml-2'
       >

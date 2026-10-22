@@ -32,6 +32,7 @@ export interface SessionData {
 
 interface ActiveSessionsProps {
   sessions: SessionData[];
+  total?: number;
   onSessionRevoked?: () => void;
 }
 
@@ -192,17 +193,20 @@ function SessionItem({
 
 export function ActiveSessions({
   sessions,
+  total,
   onSessionRevoked,
 }: ActiveSessionsProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [revokingId, setRevokingId] = React.useState<string | null>(null);
   const [localSessions, setLocalSessions] = React.useState(sessions);
   const [prevSessions, setPrevSessions] = React.useState(sessions);
+  const [revokedCount, setRevokedCount] = React.useState(0);
   const [confirmAllOpen, setConfirmAllOpen] = React.useState(false);
 
   if (sessions !== prevSessions) {
     setPrevSessions(sessions);
     setLocalSessions(sessions);
+    setRevokedCount(0);
   }
 
   const handleRevokeSession = async (sessionId: string) => {
@@ -216,6 +220,7 @@ export function ActiveSessions({
     }
 
     setLocalSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setRevokedCount((prev) => prev + 1);
     toast.success(result.message);
     onSessionRevoked?.();
     setRevokingId(null);
@@ -231,19 +236,25 @@ export function ActiveSessions({
       return;
     }
 
+    const revokedAmount = localSessions.filter((s) => !s.isCurrent).length;
     setLocalSessions((prev) => prev.filter((s) => s.isCurrent));
+    setRevokedCount((prev) => prev + revokedAmount);
     toast.success(result.message);
     onSessionRevoked?.();
     setIsLoading(false);
   };
 
   const otherSessionsCount = localSessions.filter((s) => !s.isCurrent).length;
+  const effectiveTotal = Math.max(
+    0,
+    (total ?? (localSessions.length + revokedCount)) - revokedCount,
+  );
 
   return (
     <Card className="gap-y-0 p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-lg font-medium mb-1">Active Sessions</h3>
+          <h3 className="text-[15px] font-semibold mb-1">Active Sessions</h3>
           <p className="text-sm text-muted-foreground">
             Manage your active sessions across all devices.
           </p>
@@ -299,8 +310,8 @@ export function ActiveSessions({
 
       {localSessions.length > 0 && (
         <p className="text-xs text-muted-foreground mt-4">
-          {localSessions.length}{" "}
-          {localSessions.length === 1 ? "active session" : "active sessions"} total
+          {effectiveTotal}{" "}
+          {effectiveTotal === 1 ? "active session" : "active sessions"} total
         </p>
       )}
     </Card>

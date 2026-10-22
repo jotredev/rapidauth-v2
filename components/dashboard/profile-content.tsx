@@ -2,15 +2,15 @@
 
 import * as React from "react";
 import { PageHeader } from "@/components/dashboard";
+import { TableFooter } from "@/components/dashboard/table-footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User, Mail, Lock, Bell, Camera, Save, Shield, History, Monitor } from "lucide-react";
+import { User, Mail, Lock, Camera, Save, Shield, History, Monitor } from "lucide-react";
 import { TwoFactorStatus } from "./two-factor-setup";
 import { ActivityLog, type ActivityLogEntry } from "./activity-log";
 import { ActiveSessions, type SessionData } from "./active-sessions";
@@ -18,6 +18,12 @@ import { AccountDeletionDialog } from "./account-deletion-dialog";
 import { changePasswordAction, updateProfileAction, uploadAvatarAction } from "@/actions/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import type { PageSize } from "@/lib/list-pagination";
+import {
+  buildProfileQueryString,
+  type ProfileListParams,
+  type ProfileTab,
+} from "@/lib/profile-query";
 
 interface ProfileData {
   name: string;
@@ -32,6 +38,13 @@ interface ProfileContentProps {
   hasPassword?: boolean;
   activityLogs?: ActivityLogEntry[];
   sessions?: SessionData[];
+  initialParams: ProfileListParams;
+  activityPage: number;
+  activityTotalPages: number;
+  sessionsTotal: number;
+  sessionsPage: number;
+  sessionsTotalPages: number;
+  pageSize: PageSize;
 }
 
 export function ProfileContent({
@@ -41,9 +54,40 @@ export function ProfileContent({
   hasPassword = !isOAuthUser,
   activityLogs = [],
   sessions = [],
+  initialParams,
+  activityPage,
+  activityTotalPages,
+  sessionsTotal,
+  sessionsPage,
+  sessionsTotalPages,
+  pageSize,
 }: ProfileContentProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = React.useState(twoFactorEnabled);
+  const [isPending, startTransition] = React.useTransition();
+  const [tab, setTab] = React.useState<ProfileTab>(initialParams.tab);
+  const [prevTab, setPrevTab] = React.useState<ProfileTab>(initialParams.tab);
+
+  if (initialParams.tab !== prevTab) {
+    setPrevTab(initialParams.tab);
+    setTab(initialParams.tab);
+  }
+
+  const router = useRouter();
+
+  const href = React.useCallback((next: ProfileListParams) => {
+    const qs = buildProfileQueryString(next);
+    return qs ? `/dashboard/profile?${qs}` : '/dashboard/profile';
+  }, []);
+
+  const navigate = React.useCallback(
+    (next: ProfileListParams) => {
+      startTransition(() => {
+        router.replace(href(next), { scroll: false });
+      });
+    },
+    [href, router],
+  );
 
   const [profile, setProfile] = React.useState(initialProfile);
 
@@ -52,15 +96,6 @@ export function ProfileContent({
     new: "",
     confirm: "",
   });
-
-  const [notifications, setNotifications] = React.useState({
-    email: true,
-    push: false,
-    marketing: false,
-    security: true,
-  });
-
-  const router = useRouter();
 
   const handleSaveProfile = async () => {
     setIsLoading(true);
@@ -104,11 +139,19 @@ export function ProfileContent({
       <PageHeader
         title="Profile"
         description="Manage your account settings and preferences."
-        dateRangeOptions={[]}
       />
 
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className="mb-6 bg-secondary border border-border">
+      <div className="flex flex-col gap-6 p-5">
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            const next = value as ProfileTab;
+            setTab(next);
+            navigate({ ...initialParams, tab: next });
+          }}
+          className="w-full"
+        >
+        <TabsList variant="line" className="mb-6">
           <TabsTrigger value="general" className="gap-2">
             <User className="h-4 w-4" strokeWidth={1.5} />
             General
@@ -116,10 +159,6 @@ export function ProfileContent({
           <TabsTrigger value="security" className="gap-2">
               <Lock className="h-4 w-4" strokeWidth={1.5} />
               Security
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" strokeWidth={1.5} />
-            Notifications
           </TabsTrigger>
           <TabsTrigger value="sessions" className="gap-2">
             <Monitor className="h-4 w-4" strokeWidth={1.5} />
@@ -324,91 +363,61 @@ export function ProfileContent({
           <AccountDeletionDialog hasPassword={hasPassword} />
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
-          <Card className="gap-y-0 p-6">
-            <h3 className="text-lg font-medium mb-1">Notification Preferences</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Choose how you want to be notified.
-            </p>
-
-            <div className="space-y-6 max-w-md">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Email Notifications</p>
-                  <p className="text-xs text-muted-foreground">
-                    Receive notifications via email.
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.email}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, email: checked })
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Push Notifications</p>
-                  <p className="text-xs text-muted-foreground">
-                    Receive push notifications in your browser.
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.push}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, push: checked })
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Marketing Emails</p>
-                  <p className="text-xs text-muted-foreground">
-                    Receive updates about new features and tips.
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.marketing}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, marketing: checked })
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Security Alerts</p>
-                  <p className="text-xs text-muted-foreground">
-                    Get notified about security events.
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.security}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, security: checked })
-                  }
-                />
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="sessions" className="space-y-6">
-          <ActiveSessions sessions={sessions} />
+          <ActiveSessions
+            sessions={sessions}
+            total={sessionsTotal}
+            onSessionRevoked={() => router.refresh()}
+          />
+          <TableFooter
+            page={sessionsPage}
+            totalPages={sessionsTotalPages}
+            pageSize={pageSize}
+            isPending={isPending}
+            getPageHref={(p) =>
+              href({ ...initialParams, tab: 'sessions', sessionsPage: p })
+            }
+            onPageChange={(p) =>
+              navigate({ ...initialParams, tab: 'sessions', sessionsPage: p })
+            }
+            onPageSizeChange={(s) =>
+              navigate({
+                ...initialParams,
+                tab: 'sessions',
+                pageSize: s,
+                activityPage: 1,
+                sessionsPage: 1,
+              })
+            }
+          />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-6">
           <ActivityLog activities={activityLogs} />
+          <TableFooter
+            page={activityPage}
+            totalPages={activityTotalPages}
+            pageSize={pageSize}
+            isPending={isPending}
+            getPageHref={(p) =>
+              href({ ...initialParams, tab: 'activity', activityPage: p })
+            }
+            onPageChange={(p) =>
+              navigate({ ...initialParams, tab: 'activity', activityPage: p })
+            }
+            onPageSizeChange={(s) =>
+              navigate({
+                ...initialParams,
+                tab: 'activity',
+                pageSize: s,
+                activityPage: 1,
+                sessionsPage: 1,
+              })
+            }
+          />
         </TabsContent>
       </Tabs>
+      </div>
     </>
   );
 }

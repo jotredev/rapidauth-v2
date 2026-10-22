@@ -463,7 +463,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
       {/* ─── Loader ─── */}
       <div className="loader fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background">
         <span
-          className="loader-text opacity-0 font-serif text-2xl tracking-[0.3em] text-foreground sm:text-3xl"
+          className="loader-text opacity-0 font-normal text-2xl text-foreground sm:text-3xl"
         >
           RAPID
         </span>
@@ -474,7 +474,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
       <nav className={`fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-6 py-4 sm:px-10 transition-all duration-300 ${scrolled ? "bg-background/90 backdrop-blur-md border-b border-border/60 py-3" : ""}`}>
         <Link
           href="/"
-          className="nav-item font-serif text-lg tracking-[0.2em] text-foreground transition-opacity hover:opacity-70"
+          className="nav-item font-normal text-lg text-foreground transition-opacity hover:opacity-70"
         >
           RAPID
         </Link>
@@ -567,36 +567,22 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
           HERO SECTION
       ════════════════════════════════════════════ */}
       <section className="relative flex min-h-screen flex-col items-center justify-center px-6 pt-20">
-        {/* Background orbs */}
-        <div
-          className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2"
-          data-speed="-0.3"
-        >
-          <div className="h-[500px] w-[700px] rounded-full bg-[#c9a87c]/[0.04] blur-[120px]" />
-        </div>
-        <div
-          className="absolute bottom-1/4 right-0"
-          data-speed="0.2"
-        >
-          <div className="h-[400px] w-[400px] rounded-full bg-[#8a8981]/[0.05] blur-[100px]" />
-        </div>
-
         {/* Hero content */}
         <div className="relative text-center">
           {/* Main text */}
           <div className="overflow-hidden">
-            <h1 className="hero-line font-serif text-[clamp(4rem,15vw,14rem)] leading-[0.85] tracking-[-0.02em] text-foreground">
+            <h1 className="hero-line font-semibold tracking-tight text-[clamp(4rem,15vw,14rem)] leading-[0.85] text-foreground">
               RAPID
             </h1>
           </div>
           <div className="overflow-hidden mt-2">
-            <p className="hero-line font-serif text-[clamp(1.8rem,5vw,5rem)] leading-[0.95] tracking-[0.05em] text-muted-foreground/80 font-normal italic">
+            <p className="hero-line font-normal text-[clamp(1.8rem,5vw,5rem)] leading-[0.95] text-muted-foreground/80">
               auth
             </p>
           </div>
 
           {/* Decorative line */}
-          <div className="hero-line-deco mx-auto my-8 h-px w-32 origin-left bg-gradient-to-r from-transparent via-[#dcdacb]/30 to-transparent sm:w-48" />
+          <div className="hero-line-deco mx-auto my-8 h-px w-32 origin-left bg-gradient-to-r from-transparent via-foreground/30 to-transparent sm:w-48" />
 
           {/* Subtitle */}
           <p className="hero-sub mx-auto max-w-md text-base leading-relaxed text-muted-foreground sm:max-w-lg sm:text-lg">
@@ -609,7 +595,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
             <Link
               href="/auth/register"
-              className="hero-cta group relative inline-flex items-center gap-2 bg-foreground px-8 py-3.5 text-sm font-medium tracking-wide text-background transition-all hover:bg-foreground/90"
+              className="hero-cta group relative inline-flex items-center gap-2 rounded-md bg-foreground px-8 py-3.5 text-sm font-normal text-background transition-all hover:bg-foreground/90"
               data-hover
             >
               Start Building
@@ -629,7 +615,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
             </Link>
             <Link
               href="/dashboard"
-              className="hero-cta inline-flex items-center gap-2 border border-foreground/15 px-8 py-3.5 text-sm tracking-wide text-foreground/80 transition-all hover:border-foreground/30 hover:text-foreground"
+              className="hero-cta inline-flex items-center gap-2 rounded-md border border-foreground/15 px-8 py-3.5 text-sm font-normal text-foreground/80 transition-all hover:border-foreground/30 hover:text-foreground"
               data-hover
             >
               View Demo
@@ -639,7 +625,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
 
         {/* Scroll indicator */}
         <div className="scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground/60">
+          <span className="text-sm text-muted-foreground">
             Scroll
           </span>
           <div className="flex h-7 w-4 items-start justify-center rounded-full border border-muted-foreground/30 pt-1">
@@ -659,7 +645,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
           {[...Array(4)].map((_, i) => (
             <span
               key={i}
-              className="mx-0 text-sm font-light tracking-[0.25em] text-muted-foreground/60 sm:text-base"
+              className="mx-0 text-sm font-normal tracking-[0.25em] text-muted-foreground/60 sm:text-base"
             >
               {MARQUEE_TEXT}
             </span>
@@ -672,10 +658,10 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
       ════════════════════════════════════════════ */}
       <section id="features" className="py-24 sm:py-32">
         <div className="features-header px-6 sm:px-10 mb-16 sm:mb-0">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             What&apos;s Included
           </p>
-          <h2 className="mt-3 font-serif text-3xl sm:text-5xl leading-tight text-foreground">
+          <h2 className="mt-3 font-semibold tracking-tight text-3xl sm:text-5xl leading-tight text-foreground">
             Everything you need.
             <br />
             <span className="text-muted-foreground/70">Nothing you don&apos;t.</span>
@@ -692,7 +678,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
                 >
                   {/* Number */}
                   <div>
-                    <span className="text-[11px] tracking-[0.2em] text-muted-foreground/50">
+                    <span className="text-xs text-muted-foreground/50">
                       {f.num}
                     </span>
                     {/* Decorative corner */}
@@ -700,7 +686,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
                   </div>
 
                   <div className="mt-auto pt-10 sm:pt-0">
-                    <h3 className="font-serif text-xl sm:text-2xl text-foreground mb-4">
+                    <h3 className="font-semibold tracking-tight text-xl sm:text-2xl text-foreground mb-4">
                       {f.title}
                     </h3>
                     <p className="text-sm leading-relaxed text-muted-foreground">
@@ -709,7 +695,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
                   </div>
 
                   {/* Bottom line accent */}
-                  <div className="absolute bottom-0 left-0 h-px w-0 bg-gradient-to-r from-[#c9a87c]/60 to-transparent transition-all duration-700 group-hover:w-full" />
+                  <div className="absolute bottom-0 left-0 h-px w-0 bg-gradient-to-r from-foreground/60 to-transparent transition-all duration-700 group-hover:w-full" />
                 </div>
               ))}
             </div>
@@ -726,18 +712,18 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
             <div key={i} className="stat-item text-center md:text-left">
               <div className="flex items-baseline justify-center gap-1 md:justify-start">
                 <span
-                  className="stat-number font-serif text-5xl sm:text-6xl md:text-7xl text-foreground"
+                  className="stat-number font-semibold tracking-tight text-5xl sm:text-6xl md:text-7xl text-foreground"
                   data-value={stat.value}
                 >
                   0
                 </span>
                 {stat.suffix && (
-                  <span className="font-serif text-2xl sm:text-3xl text-muted-foreground">
+                  <span className="font-semibold tracking-tight text-2xl sm:text-3xl text-muted-foreground">
                     {stat.suffix}
                   </span>
                 )}
               </div>
-              <p className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground/70 sm:text-sm">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {stat.label}
               </p>
             </div>
@@ -751,10 +737,10 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
       <section className="relative py-24 sm:py-32">
         <div className="mx-auto max-w-5xl px-6 sm:px-10">
           <div className="fade-in mb-12 sm:mb-16">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Developer Experience
             </p>
-            <h2 className="mt-3 font-serif text-3xl sm:text-5xl text-foreground">
+            <h2 className="mt-3 font-semibold tracking-tight text-3xl sm:text-5xl text-foreground">
               Ship in minutes.
             </h2>
           </div>
@@ -764,9 +750,9 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
             {/* Tab bar */}
             <div className="flex items-center gap-0 border-b border-border px-4 py-2.5">
               <div className="flex gap-1.5 mr-6">
-                <div className="h-2.5 w-2.5 rounded-full bg-[#f43f5e]/40" />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]/40" />
-                <div className="h-2.5 w-2.5 rounded-full bg-[#34d399]/40" />
+                <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
+                <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
+                <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
               </div>
               <span className="text-[11px] tracking-wider text-muted-foreground/60">
                 auth.ts
@@ -778,34 +764,34 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
               <code>
                 <span className="text-muted-foreground/50">{"// lib/auth.ts"}</span>
                 {"\n"}
-                <span className="text-[#c9a87c]">import</span>
+                <span className="text-link">import</span>
                 <span className="text-foreground">{" { betterAuth } "}</span>
-                <span className="text-[#c9a87c]">from</span>
+                <span className="text-link">from</span>
                 <span className="text-muted-foreground">
                   {' "better-auth"'}
                 </span>
                 {"\n"}
-                <span className="text-[#c9a87c]">import</span>
+                <span className="text-link">import</span>
                 <span className="text-foreground">
                   {" { prismaAdapter } "}
                 </span>
-                <span className="text-[#c9a87c]">from</span>
+                <span className="text-link">from</span>
                 <span className="text-muted-foreground">
                   {' "better-auth/adapters/prisma"'}
                 </span>
                 {"\n"}
-                <span className="text-[#c9a87c]">import</span>
+                <span className="text-link">import</span>
                 <span className="text-foreground">
                   {" { twoFactor } "}
                 </span>
-                <span className="text-[#c9a87c]">from</span>
+                <span className="text-link">from</span>
                 <span className="text-muted-foreground">
                   {' "better-auth/plugins"'}
                 </span>
                 {"\n\n"}
-                <span className="text-[#c9a87c]">export const</span>
+                <span className="text-link">export const</span>
                 <span className="text-foreground"> auth </span>
-                <span className="text-[#c9a87c]">=</span>
+                <span className="text-link">=</span>
                 <span className="text-foreground"> betterAuth</span>
                 <span className="text-muted-foreground">{"({"}</span>
                 {"\n"}
@@ -819,7 +805,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
                 <span className="text-foreground">
                   {"  emailAndPassword: { enabled: "}
                 </span>
-                <span className="text-[#34d399]">true</span>
+                <span className="text-success">true</span>
                 <span className="text-foreground">{" },"}</span>
                 {"\n"}
                 <span className="text-foreground">
@@ -833,9 +819,6 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
                 </span>
               </code>
             </pre>
-
-            {/* Glow effect */}
-            <div className="absolute -bottom-20 left-1/2 h-40 w-80 -translate-x-1/2 bg-[#c9a87c]/[0.03] blur-[80px]" />
           </div>
         </div>
       </section>
@@ -846,10 +829,10 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
       <section id="stack" className="py-24 sm:py-32">
         <div className="mx-auto max-w-5xl px-6 sm:px-10">
           <div className="fade-in mb-14">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Built With
             </p>
-            <h2 className="mt-3 font-serif text-3xl sm:text-5xl text-foreground">
+            <h2 className="mt-3 font-semibold tracking-tight text-3xl sm:text-5xl text-foreground">
               Modern stack.
               <br />
               <span className="text-muted-foreground/70">Zero compromise.</span>
@@ -876,13 +859,8 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
           CTA
       ════════════════════════════════════════════ */}
       <section className="cta-section relative overflow-hidden py-32 sm:py-44">
-        {/* Background orb */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="h-[500px] w-[500px] rounded-full bg-[#c9a87c]/[0.03] blur-[150px]" />
-        </div>
-
         <div className="relative mx-auto max-w-4xl px-6 text-center sm:px-10">
-          <h2 className="cta-text font-serif text-4xl leading-tight sm:text-6xl md:text-7xl lg:text-8xl text-foreground">
+          <h2 className="cta-text font-semibold tracking-tight text-4xl leading-tight sm:text-6xl md:text-7xl lg:text-8xl text-foreground">
             Start building
             <br />
             <span className="italic text-muted-foreground/60">today.</span>
@@ -890,7 +868,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
           <div className="mt-10 sm:mt-14">
             <Link
               href="/auth/register"
-              className="cta-button group relative inline-flex items-center gap-3 bg-foreground px-10 py-4 text-sm font-medium tracking-wider text-background transition-all hover:bg-foreground/90"
+              className="cta-button group relative inline-flex items-center gap-3 rounded-md bg-foreground px-10 py-4 text-sm font-normal text-background transition-all hover:bg-foreground/90"
               data-hover
             >
               GET STARTED FREE
@@ -921,7 +899,7 @@ export function LandingContent({ user }: { user?: LandingUser | null }) {
       <footer className="landing-footer border-t border-border">
         <div className="footer-content mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 py-10 sm:flex-row sm:px-10">
           <div className="flex items-center gap-8">
-            <span className="font-serif text-sm tracking-[0.2em] text-foreground/60">
+            <span className="font-normal text-sm text-foreground/60">
               RAPID
             </span>
             <span className="text-xs text-muted-foreground/40">

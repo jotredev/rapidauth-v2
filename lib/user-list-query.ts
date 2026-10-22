@@ -1,7 +1,12 @@
 import type { Prisma } from '@prisma/client';
 import * as z from 'zod';
+import {
+  DEFAULT_PAGE_SIZE,
+  type PageSize,
+  pageSizeSchema,
+  parsePageSize,
+} from './list-pagination';
 
-export const USERS_PAGE_SIZE = 20;
 export const USER_SEARCH_MAX_LENGTH = 100;
 
 export const USER_ROLES = ['admin', 'moderator', 'user'] as const;
@@ -18,6 +23,7 @@ export type UserProviderFilter = z.infer<typeof userProviderSchema>;
 
 export interface UserListParams {
   page: number;
+  pageSize: PageSize;
   q: string;
   roles: UserRoleFilter[];
   statuses: UserStatusFilter[];
@@ -31,6 +37,7 @@ export type UserListSearchParams = Record<
 
 export const userListParamsSchema = z.object({
   page: z.number().int().min(1),
+  pageSize: pageSizeSchema,
   q: z.string().max(USER_SEARCH_MAX_LENGTH),
   roles: z.array(userRoleSchema),
   statuses: z.array(userStatusSchema),
@@ -39,6 +46,7 @@ export const userListParamsSchema = z.object({
 
 const rawSearchParamsSchema = z.object({
   page: z.union([z.string(), z.array(z.string())]).optional(),
+  pageSize: z.union([z.string(), z.array(z.string())]).optional(),
   q: z.union([z.string(), z.array(z.string())]).optional(),
   role: z.union([z.string(), z.array(z.string())]).optional(),
   status: z.union([z.string(), z.array(z.string())]).optional(),
@@ -86,6 +94,7 @@ export function parseUserListSearchParams(
 
   return {
     page: pageSchema.parse(firstValue(raw.page) ?? 1),
+    pageSize: parsePageSize(firstValue(raw.pageSize)),
     q: searchSchema.parse(rawSearch),
     roles: parseAllowedValues(allValues(raw.role), userRoleSchema),
     statuses: parseAllowedValues(allValues(raw.status), userStatusSchema),
@@ -96,6 +105,7 @@ export function parseUserListSearchParams(
 export function buildUserListQueryString(params: UserListParams): string {
   const searchParams = new URLSearchParams();
   searchParams.set('page', String(params.page));
+  if (params.pageSize !== DEFAULT_PAGE_SIZE) searchParams.set('pageSize', String(params.pageSize));
 
   if (params.q) searchParams.set('q', params.q);
   params.roles.forEach((role) => searchParams.append('role', role));

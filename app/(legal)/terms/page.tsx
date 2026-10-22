@@ -17,12 +17,12 @@ export default function TermsPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-border pb-8">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Legal</p>
-        <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">Terms of Service</h1>
+        <p className="text-sm font-normal text-muted-foreground">Legal</p>
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Terms of Service</h1>
         <p className="text-sm text-muted-foreground">Last updated: {siteConfig.lastUpdated}</p>
       </header>
 
-      <div className="space-y-9 text-base leading-7 text-muted-foreground [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:text-foreground [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:opacity-70">
+      <div className="space-y-9 text-base leading-7 text-muted-foreground [&_h2]:mb-3 [&_h2]:font-semibold [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:text-foreground [&_a]:text-link [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:opacity-70">
         <section>
           <h2>1. Acceptance of these terms</h2>
           <p>These Terms of Service govern your use of {siteConfig.appName}, operated by {siteConfig.legalEntityName} (“we,” “us,” or “our”). By creating an account or using the service, you agree to these terms. If you do not agree, do not use the service.</p>

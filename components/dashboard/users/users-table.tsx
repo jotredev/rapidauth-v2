@@ -3,8 +3,7 @@
 import { DataTable, StatusBadge, type Column, type StatusType } from '@/components/dashboard';
 import type { User } from '@/actions/users';
 import { UserActions } from './user-actions';
-import { USER_STATUS_MAP, ROLE_COLORS } from './types';
-import { Badge } from '@/components/ui/badge';
+import { USER_STATUS_MAP } from './types';
 import { PROVIDER_CONFIG } from './provider-icons';
 
 interface UsersTableProps {
@@ -19,6 +18,7 @@ interface UsersTableProps {
   onResetPassword: (user: User) => void;
   onResendInvitation: (user: User) => void;
   onToggleStatus: (user: User) => void;
+  hiddenColumns: string[];
 }
 
 export function UsersTable({
@@ -33,8 +33,9 @@ export function UsersTable({
   onResetPassword,
   onResendInvitation,
   onToggleStatus,
+  hiddenColumns,
 }: UsersTableProps) {
-  const columns: Column<User>[] = [
+  const allColumns: Column<User>[] = [
     {
       key: 'name',
       header: 'User',
@@ -45,7 +46,7 @@ export function UsersTable({
           <div className='flex items-center gap-3'>
             <div className='flex flex-col'>
               <div className='flex items-center gap-2'>
-                <span className='font-medium text-foreground'>{item.name}</span>
+                <span className='text-foreground font-normal'>{item.name}</span>
                 <span
                   className={`${provider.color}`}
                   title={`Signed in with ${provider.label}`}
@@ -63,14 +64,7 @@ export function UsersTable({
       key: 'role',
       header: 'Role',
       render: (item) => (
-        <Badge
-          variant="outline"
-          className={`h-auto font-normal capitalize ${
-            ROLE_COLORS[item.role] || ROLE_COLORS.user
-          }`}
-        >
-          {item.role}
-        </Badge>
+        <span className='rounded bg-muted px-2 py-0.5 font-mono text-[13px] text-foreground/80'>{item.role}</span>
       ),
     },
     {
@@ -88,7 +82,7 @@ export function UsersTable({
       key: 'createdAt',
       header: 'Joined',
       render: (item) => (
-        <span className='text-muted-foreground'>{item.createdAt}</span>
+        <span className='font-mono text-[13px] text-muted-foreground'>{item.createdAt}</span>
       ),
     },
     {
@@ -116,6 +110,7 @@ export function UsersTable({
       ),
     },
   ];
+  const columns = allColumns.filter((c) => !hiddenColumns.includes(c.key));
 
   return (
     <DataTable
@@ -124,7 +119,6 @@ export function UsersTable({
       selectable
       selectedIds={selectedIds}
       onSelectionChange={onSelectionChange}
-      embedded
     />
   );
 }

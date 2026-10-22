@@ -16,12 +16,12 @@ export default function SupportPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-border pb-8">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Help</p>
-        <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">Support</h1>
+        <p className="text-sm font-normal text-muted-foreground">Help</p>
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Support</h1>
         <p className="text-sm text-muted-foreground">Need help with your account or have questions?</p>
       </header>
 
-      <div className="space-y-9 text-base leading-7 text-muted-foreground [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:text-foreground [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:opacity-70">
+      <div className="space-y-9 text-base leading-7 text-muted-foreground [&_h2]:mb-3 [&_h2]:font-semibold [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:text-foreground [&_a]:text-link [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:opacity-70">
         <section>
           <h2>Did not receive an email?</h2>
           <p>
@@ -34,7 +34,7 @@ export default function SupportPage() {
           <p>
             If you still need help, write to us from the email address associated with your account. Describe what you were trying to do and include any relevant details or error messages.
           </p>
-          <p className="font-medium text-foreground">
+          <p className="font-semibold text-foreground">
             Never include account passwords, temporary verification codes, or two-factor backup codes in your message.
           </p>
           <p>

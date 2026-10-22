@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { getAdminAccess } from "@/lib/admin-access";
 import { getUsers } from "@/actions/users";
 import { UsersContent } from "@/components/dashboard";
+import { getColumnsCookieName, readHiddenColumns } from "@/lib/table-columns";
 import {
   buildUserListQueryString,
   parseUserListSearchParams,
@@ -23,6 +25,12 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
   if ((await getAdminAccess(session)) !== 'admin') {
     redirect("/dashboard");
   }
+
+  const cookieStore = await cookies();
+  const hiddenColumns = readHiddenColumns(
+    'users',
+    cookieStore.get(getColumnsCookieName('users'))?.value,
+  );
 
   const params = parseUserListSearchParams(await searchParams);
   const result = await getUsers(params);
@@ -54,6 +62,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
       initialParams={params}
       isAdmin={true}
       currentUserId={session.user.id}
+      hiddenColumns={hiddenColumns}
     />
   );
 }

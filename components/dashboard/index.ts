@@ -10,18 +10,18 @@ export {
 
 export {
   Header,
-  type Notification,
 } from "./header";
+
+export { DateRangePicker } from "./date-range-picker";
 
 export {
   PageHeader,
-  exportAction,
-  type DateRangeOption,
   type ActionButton,
   type PageHeaderProps,
 } from "./page-header";
 
 export { DashboardShell } from "./dashboard-shell";
+export { CommandPalette, type CommandPaletteProps, type CommandPalettePage } from "./command-palette";
 
 // Page Content Components (Client)
 export { DashboardContent } from "./dashboard-content";
@@ -57,16 +57,12 @@ export { ConfirmDialog, type ConfirmDialogProps } from "./confirm-dialog";
 export {
   MetricCard,
   MetricGrid,
-  metricIcons,
   type MetricCardProps,
   type MetricGridProps,
-  type TrendDirection,
 } from "./metric-card";
 
 export {
   BarChart,
-  createMonthlyData,
-  monthlyLabels,
   type BarChartData,
   type BarChartProps,
 } from "./bar-chart";
@@ -76,6 +72,8 @@ export {
   type Column,
   type DataTableProps,
 } from "./data-table";
+export { TableFooter, type TableFooterProps } from "./table-footer";
+export { ColumnPicker, type ColumnPickerProps } from "./column-picker";
 
 export {
   StatusBadge,

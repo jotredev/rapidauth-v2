@@ -1,12 +1,16 @@
 import type { Prisma } from '@prisma/client';
 import * as z from 'zod';
+import {
+  DEFAULT_PAGE_SIZE,
+  type PageSize,
+  pageSizeSchema,
+  parsePageSize,
+} from './list-pagination';
 import type {
   OperationalLogLevel,
   OperationalLogSource,
   OperationalLogCode,
 } from './operational-log';
-
-export const OPERATIONAL_LOGS_PAGE_SIZE = 20;
 
 export const OPERATIONAL_LOG_LEVELS = [
   'info',
@@ -30,6 +34,7 @@ export const operationalLogCodeSchema = z.enum(OPERATIONAL_LOG_CODES);
 
 export interface OperationalLogListParams {
   page: number;
+  pageSize: PageSize;
   levels: OperationalLogLevel[];
   source: OperationalLogSource | null;
   code: OperationalLogCode | null;
@@ -45,6 +50,7 @@ const USER_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
 
 export const operationalLogListParamsSchema = z.object({
   page: z.number().int().min(1),
+  pageSize: pageSizeSchema,
   levels: z.array(operationalLogLevelSchema),
   source: operationalLogSourceSchema.nullable(),
   code: operationalLogCodeSchema.nullable(),
@@ -53,6 +59,7 @@ export const operationalLogListParamsSchema = z.object({
 
 const rawSearchParamsSchema = z.object({
   page: z.union([z.string(), z.array(z.string())]).optional(),
+  pageSize: z.union([z.string(), z.array(z.string())]).optional(),
   level: z.union([z.string(), z.array(z.string())]).optional(),
   source: z.union([z.string(), z.array(z.string())]).optional(),
   code: z.union([z.string(), z.array(z.string())]).optional(),
@@ -105,6 +112,7 @@ export function parseOperationalLogSearchParams(
 
   return {
     page: pageSchema.parse(firstValue(raw.page) ?? 1),
+    pageSize: parsePageSize(firstValue(raw.pageSize)),
     levels: parseAllowedValues(allValues(raw.level), operationalLogLevelSchema),
     source: sourceParsed.success ? sourceParsed.data : null,
     code: codeParsed.success ? codeParsed.data : null,
@@ -117,6 +125,7 @@ export function buildOperationalLogQueryString(
 ): string {
   const searchParams = new URLSearchParams();
   searchParams.set('page', String(params.page));
+  if (params.pageSize !== DEFAULT_PAGE_SIZE) searchParams.set('pageSize', String(params.pageSize));
 
   params.levels.forEach((lvl) => searchParams.append('level', lvl));
   if (params.source) searchParams.set('source', params.source);

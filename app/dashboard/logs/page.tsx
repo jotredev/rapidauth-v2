@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { getSession } from '@/lib/auth';
 import { getAdminAccess } from '@/lib/admin-access';
 import { getOperationalLogs } from '@/actions/operational-logs';
 import { SystemLogsContent } from '@/components/dashboard';
+import { getColumnsCookieName, readHiddenColumns } from '@/lib/table-columns';
 import {
   buildOperationalLogQueryString,
   parseOperationalLogSearchParams,
@@ -23,6 +25,12 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
   if ((await getAdminAccess(session)) !== 'admin') {
     redirect('/dashboard');
   }
+
+  const cookieStore = await cookies();
+  const hiddenColumns = readHiddenColumns(
+    'system-logs',
+    cookieStore.get(getColumnsCookieName('system-logs'))?.value,
+  );
 
   const params = parseOperationalLogSearchParams(await searchParams);
   const result = await getOperationalLogs(params);
@@ -53,6 +61,7 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
       totalPages={result.data.totalPages}
       initialParams={params}
       filterUser={result.data.filterUser}
+      hiddenColumns={hiddenColumns}
     />
   );
 }

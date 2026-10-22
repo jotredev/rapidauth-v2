@@ -1,28 +1,17 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Nunito_Sans, Instrument_Serif } from 'next/font/google';
+import { IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/theme-provider';
+import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 
-const nunitoSans = Nunito_Sans({ variable: '--font-sans', subsets: ['latin'] });
-
-const instrumentSerif = Instrument_Serif({
-  weight: '400',
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ['400', '600'],
   subsets: ['latin'],
-  variable: '--font-serif',
+  variable: '--font-ibm-plex-mono',
   display: 'swap',
-});
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
@@ -39,11 +28,10 @@ export default function RootLayout({
     <html
       suppressHydrationWarning
       lang='en'
-      className={cn('font-sans', nunitoSans.variable, instrumentSerif.variable)}
+      className={cn('font-sans', ibmPlexMono.variable)}
     >
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className='antialiased'>
+        <NextTopLoader color='var(--link)' height={2} showSpinner={false} shadow={false} />
         <ThemeProvider
           attribute='class'
           defaultTheme='dark'

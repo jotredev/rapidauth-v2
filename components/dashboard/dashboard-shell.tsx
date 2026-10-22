@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar, type NavSection, type UserProfile } from "./sidebar";
 import { Header } from "./header";
+import { CommandPalette } from "./command-palette";
 import { signOut } from "@/actions/auth";
 import {
   LayoutDashboard,
@@ -10,22 +12,24 @@ import {
   UserCircle,
   Activity,
   ScrollText,
+  LifeBuoy,
 } from "lucide-react";
 
 function getNavigation(isAdmin: boolean): NavSection[] {
-  const menuItems = [
-    { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  ];
-
-  // Only show admin links for admins
-  if (isAdmin) {
-    menuItems.push({ title: "Users", href: "/dashboard/users", icon: Users });
-    menuItems.push({ title: "Activity", href: "/dashboard/activity", icon: Activity });
-    menuItems.push({ title: "System logs", href: "/dashboard/logs", icon: ScrollText });
-  }
-
+  const menuItems = isAdmin
+    ? [
+        { title: "Users", href: "/dashboard/users", icon: Users },
+        { title: "Activity", href: "/dashboard/activity", icon: Activity },
+        { title: "System logs", href: "/dashboard/logs", icon: ScrollText },
+      ]
+    : [];
 
   return [
+    {
+      items: [
+        { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      ],
+    },
     {
       title: "Menu",
       items: menuItems,
@@ -34,6 +38,7 @@ function getNavigation(isAdmin: boolean): NavSection[] {
       title: "Account",
       items: [
         { title: "Profile", href: "/dashboard/profile", icon: UserCircle },
+        { title: "Support", href: "/support", icon: LifeBuoy },
       ],
     },
   ];
@@ -43,6 +48,7 @@ interface DashboardShellProps {
   children: React.ReactNode;
   user?: UserProfile;
   brandName?: string;
+  version?: string;
   hasAdminAccess?: boolean;
 }
 
@@ -53,32 +59,50 @@ export function DashboardShell({
     email: "admin@example.com",
     role: "Admin",
   },
-  brandName = "R A P I D",
+  brandName = "rapidauth",
+  version,
   hasAdminAccess = false,
 }: DashboardShellProps) {
+  const [collapsed, setCollapsed] = React.useState(false);
+  const [commandOpen, setCommandOpen] = React.useState(false);
+
   const handleLogout = async () => {
     await signOut();
   };
 
   const navigation = getNavigation(hasAdminAccess);
+  const pages = navigation.flatMap((s) => s.items);
 
   const sidebarProps = {
     brandName,
+    version,
     navigation,
     user,
     onLogout: handleLogout,
+    onOpenCommand: () => setCommandOpen(true),
   };
 
+  const pathname = usePathname();
+  const showDateRange = hasAdminAccess && pathname === '/dashboard';
+
   return (
-    <div className="h-screen overflow-hidden flex bg-background">
-      <Sidebar {...sidebarProps} />
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <Header sidebarProps={sidebarProps} searchPlaceholder="Search users..." />
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10 relative z-0">
-          <div className="max-w-7xl mx-auto flex flex-col gap-10">
-            {children}
-            <div className="h-10" />
-          </div>
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <CommandPalette
+        pages={pages}
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        onLogout={handleLogout}
+      />
+      <Sidebar {...sidebarProps} collapsed={collapsed} />
+      <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <Header
+          sidebarProps={sidebarProps}
+          collapsed={collapsed}
+          onToggleSidebar={() => setCollapsed((value) => !value)}
+          showDateRange={showDateRange}
+        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex min-h-full flex-col">{children}</div>
         </div>
       </main>
     </div>

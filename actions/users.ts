@@ -22,7 +22,6 @@ import { deleteUserRecord } from '@/lib/user-deletion';
 import {
   buildUsersWhere,
   getDisplayedAuthProvider,
-  USERS_PAGE_SIZE,
   userListParamsSchema,
   type UserListParams,
 } from '@/lib/user-list-query';
@@ -1321,8 +1320,8 @@ export async function getUsers(params: UserListParams): Promise<{
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
-        skip: (parsedParams.data.page - 1) * USERS_PAGE_SIZE,
-        take: USERS_PAGE_SIZE,
+        skip: (parsedParams.data.page - 1) * parsedParams.data.pageSize,
+        take: parsedParams.data.pageSize,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: {
           accounts: {
@@ -1395,7 +1394,7 @@ export async function getUsers(params: UserListParams): Promise<{
       };
     });
 
-    const totalPages = Math.max(1, Math.ceil(total / USERS_PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(total / parsedParams.data.pageSize));
 
     return {
       response: 'success',
@@ -1404,7 +1403,7 @@ export async function getUsers(params: UserListParams): Promise<{
         users,
         total,
         page: Math.min(parsedParams.data.page, totalPages),
-        pageSize: USERS_PAGE_SIZE,
+        pageSize: parsedParams.data.pageSize,
         totalPages,
       },
     };

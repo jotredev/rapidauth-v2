@@ -11,33 +11,18 @@ export interface StatusBadgeProps {
   className?: string;
 }
 
-const statusConfig: Record<StatusType, { dot: string; badge: string }> = {
-  success: {
-    dot: 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]',
-    badge: 'border-emerald-500/20 text-emerald-400 bg-emerald-500/10',
-  },
-  warning: {
-    dot: 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]',
-    badge: 'border-amber-500/20 text-amber-400 bg-amber-500/10',
-  },
-  error: {
-    dot: 'bg-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]',
-    badge: 'border-rose-500/20 text-rose-400 bg-rose-500/10',
-  },
-  info: {
-    dot: 'bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.5)]',
-    badge: 'border-blue-500/20 text-blue-400 bg-blue-500/10',
-  },
-  neutral: {
-    dot: 'bg-muted-foreground',
-    badge: 'border-border text-muted-foreground bg-muted',
-  },
+const statusConfig: Record<StatusType, string> = {
+  success: 'text-success',
+  warning: 'text-warning',
+  error: 'text-destructive',
+  info: 'text-link',
+  neutral: 'text-muted-foreground',
 };
 
 export function StatusBadge({
   status,
   label,
-  showDot = true,
+  showDot = false,
   className,
 }: StatusBadgeProps) {
   const config = statusConfig[status];
@@ -45,13 +30,13 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-normal border',
-        config.badge,
+        'inline-flex items-center gap-1.5 text-sm font-normal',
+        config,
         className,
       )}
     >
       {showDot && (
-        <div className={cn('w-1.5 h-1.5 rounded-full', config.dot)} />
+        <span className="size-1.5 rounded-full bg-current" />
       )}
       {label}
     </span>

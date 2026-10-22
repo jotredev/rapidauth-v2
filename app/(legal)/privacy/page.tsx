@@ -20,12 +20,12 @@ export default function PrivacyPage() {
   return (
     <article className="space-y-10">
       <header className="space-y-4 border-b border-border pb-8">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Legal</p>
-        <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">Privacy Policy</h1>
+        <p className="text-sm font-normal text-muted-foreground">Legal</p>
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground">Last updated: {siteConfig.lastUpdated}</p>
       </header>
 
-      <div className="space-y-9 text-base leading-7 text-muted-foreground [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:leading-tight [&_h2]:text-foreground [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:opacity-70">
+      <div className="space-y-9 text-base leading-7 text-muted-foreground [&_h2]:mb-3 [&_h2]:font-semibold [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:text-foreground [&_a]:text-link [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:opacity-70">
         <section>
           <h2>1. Who we are and what this covers</h2>
           <p>{siteConfig.legalEntityName} (“we,” “us,” or “our”) operates {siteConfig.appName}. This policy explains personal information processed when you create an account, use the dashboard, or contact us. The service is intended for account management and authentication.</p>

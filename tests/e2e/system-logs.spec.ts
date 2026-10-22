@@ -81,6 +81,10 @@ test('pagination with 25 logs filtered by userId', async ({ page }) => {
   await page.goto(`/dashboard/logs?userId=${account.user.id}&page=99`);
   await expect.poll(() => new URL(page.url()).searchParams.get('page')).toBe('2');
   await expect(page.locator('tbody tr')).toHaveCount(5);
+
+  await page.goto(`/dashboard/logs?userId=${account.user.id}&pageSize=50`);
+  await expect(page.locator('tbody tr')).toHaveCount(25);
+  await expect(page.getByText('Page 1 of 1')).toBeVisible();
 });
 
 test('filters by level, code, and userId chip removal', async ({ page }) => {

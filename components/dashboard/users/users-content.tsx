@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { PageHeader } from '@/components/dashboard';
+import { PageHeader, ColumnPicker } from '@/components/dashboard';
 import { ConfirmDialog } from '@/components/dashboard/confirm-dialog';
+import { TableFooter } from '@/components/dashboard/table-footer';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import type { User } from '@/actions/users';
 import { cn } from '@/lib/utils';
 import type { UserListParams } from '@/lib/user-list-query';
@@ -17,7 +17,6 @@ import { AddUserDialog } from './add-user-dialog';
 import { EditUserDialog } from './edit-user-dialog';
 import { ChangeRoleDialog } from './change-role-dialog';
 import { ResetPasswordDialog } from './reset-password-dialog';
-import { UsersPagination } from './users-pagination';
 import { UserPlus } from 'lucide-react';
 
 interface UsersContentProps {
@@ -29,6 +28,7 @@ interface UsersContentProps {
   initialParams: UserListParams;
   isAdmin?: boolean;
   currentUserId: string;
+  hiddenColumns: string[];
 }
 
 export function UsersContent({
@@ -40,9 +40,17 @@ export function UsersContent({
   initialParams,
   isAdmin = true,
   currentUserId,
+  hiddenColumns,
 }: UsersContentProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const clearSelection = useCallback(() => setSelectedIds([]), []);
+  const [hidden, setHidden] = useState<string[]>(hiddenColumns);
+  const [prevHiddenColumns, setPrevHiddenColumns] = useState<string[]>(hiddenColumns);
+
+  if (hiddenColumns.join('.') !== prevHiddenColumns.join('.')) {
+    setPrevHiddenColumns(hiddenColumns);
+    setHidden(hiddenColumns);
+  }
 
   const {
     searchQuery,
@@ -53,6 +61,7 @@ export function UsersContent({
     removeFilter,
     clearAllFilters,
     goToPage,
+    setPageSize,
     getPageHref,
     isPending,
   } = useUsersFilters({ initialParams, onParamsChange: clearSelection });
@@ -116,7 +125,6 @@ export function UsersContent({
       <PageHeader
         title='Users'
         description='Manage your platform users.'
-        dateRangeOptions={[]}
       >
         {isAdmin && (
           <Button onClick={openAddDialog}>
@@ -126,16 +134,24 @@ export function UsersContent({
         )}
       </PageHeader>
 
-      <div className='dark:border dark:border-border bg-card'>
-        <div className='flex flex-col gap-3 p-4 dark:border-b dark:border-border'>
-          <SearchAndFilters
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            filters={filters}
-            onFiltersChange={setFilters}
-            activeFilterCount={activeFilterCount}
-          />
-
+      <div className='flex flex-col'>
+        <div className='flex flex-col gap-2.5 px-5 py-2.5'>
+          <div className='flex flex-col gap-2.5 sm:flex-row'>
+            <div className='flex-1'>
+              <SearchAndFilters
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                filters={filters}
+                onFiltersChange={setFilters}
+                activeFilterCount={activeFilterCount}
+              />
+            </div>
+            <ColumnPicker
+              tableId='users'
+              hidden={hidden}
+              onHiddenChange={setHidden}
+            />
+          </div>
           <div className='flex flex-wrap items-center justify-between gap-2'>
             <div>
               {(searchQuery || activeFilterCount > 0) && (
@@ -156,9 +172,8 @@ export function UsersContent({
             </p>
           </div>
         </div>
-
         <div
-          className={cn('transition-opacity', isPending && 'opacity-50')}
+          className={cn('border-t border-border transition-opacity', isPending && 'opacity-50')}
           aria-busy={isPending}
         >
           <UsersTable
@@ -173,22 +188,18 @@ export function UsersContent({
             onResetPassword={openResetPasswordDialog}
             onResendInvitation={handleResendInvitation}
             onToggleStatus={openStatusDialog}
+            hiddenColumns={hidden}
           />
         </div>
-
-        {totalPages > 1 && (
-          <>
-            <Separator />
-            <UsersPagination
-              page={page}
-              totalPages={totalPages}
-              isPending={isPending}
-              getPageHref={getPageHref}
-              onPageChange={goToPage}
-            />
-          </>
-        )}
-      </div>
+        <TableFooter
+          page={page}
+          totalPages={totalPages}
+          pageSize={initialParams.pageSize}
+          isPending={isPending}
+          getPageHref={getPageHref}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+        />
 
       {selectedIds.length > 0 && (
         <BulkActionsBar
@@ -284,17 +295,18 @@ export function UsersContent({
         onConfirm={handleBulkChangeRole}
       />
 
-      {isAdmin && (
-        <ConfirmDialog
-          open={bulkDeleteDialogOpen}
-          onOpenChange={setBulkDeleteDialogOpen}
-          title='Delete Users'
-          description={`Are you sure you want to delete ${selectedIds.length} users? This action cannot be undone.`}
-          confirmLabel='Delete All'
-          variant='destructive'
-          onConfirm={handleBulkDelete}
-        />
-      )}
+        {isAdmin && (
+          <ConfirmDialog
+            open={bulkDeleteDialogOpen}
+            onOpenChange={setBulkDeleteDialogOpen}
+            title='Delete Users'
+            description={`Are you sure you want to delete ${selectedIds.length} users? This action cannot be undone.`}
+            confirmLabel='Delete All'
+            variant='destructive'
+            onConfirm={handleBulkDelete}
+          />
+        )}
+      </div>
     </>
   );
 }

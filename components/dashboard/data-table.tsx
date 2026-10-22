@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -14,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export interface Column<T> {
   key: string;
@@ -36,7 +34,7 @@ export interface DataTableProps<T extends { id: string }> {
   viewAllLabel?: string;
   onRowClick?: (item: T) => void;
   className?: string;
-  embedded?: boolean;
+  tableClassName?: string;
 }
 
 export function DataTable<T extends { id: string }>({
@@ -51,7 +49,7 @@ export function DataTable<T extends { id: string }>({
   viewAllLabel = "View All",
   onRowClick,
   className,
-  embedded = false,
+  tableClassName,
 }: DataTableProps<T>) {
   const allSelected = data.length > 0 && selectedIds.length === data.length;
   const someSelected = selectedIds.length > 0 && selectedIds.length < data.length;
@@ -72,11 +70,29 @@ export function DataTable<T extends { id: string }>({
     }
   };
 
-  const tableContent = (
-    <ScrollArea className="w-full">
-        <Table className="min-w-[800px]">
+  return (
+    <section className={cn("flex flex-col", className)}>
+      {title && (
+        <div className="flex items-center justify-between px-5 pt-4 pb-3">
+          <div>
+            <h2 className="text-[15px] font-semibold">{title}</h2>
+            {description && (
+              <span className="text-[13px] text-muted-foreground">
+                {description}
+              </span>
+            )}
+          </div>
+          {viewAllHref && (
+            <Button variant="outline" size="sm" asChild className="hidden sm:flex">
+              <Link href={viewAllHref}>{viewAllLabel}</Link>
+            </Button>
+          )}
+        </div>
+      )}
+      <div className={cn("overflow-x-auto", title && "border-t border-border")}>
+        <Table className={cn("min-w-[800px]", tableClassName)}>
           <TableHeader>
-            <TableRow className="border-b border-border bg-background/50 hover:bg-background/50">
+            <TableRow className="border-b border-border">
               {selectable && (
                 <TableHead className="w-12 text-center">
                   <Checkbox
@@ -87,7 +103,6 @@ export function DataTable<T extends { id: string }>({
                       }
                     }}
                     onCheckedChange={handleSelectAll}
-                    className="border-accent data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
                 </TableHead>
               )}
@@ -95,7 +110,7 @@ export function DataTable<T extends { id: string }>({
                 <TableHead
                   key={column.key}
                   className={cn(
-                    "text-xs text-muted-foreground uppercase tracking-widest font-normal",
+                    "text-sm font-semibold text-foreground whitespace-nowrap",
                     column.headerClassName
                   )}
                 >
@@ -112,7 +127,8 @@ export function DataTable<T extends { id: string }>({
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
                   className={cn(
-                    "border-b border-border hover:bg-accent/50 transition-colors cursor-pointer group",
+                    "border-b border-border hover:bg-muted/50 transition-colors group",
+                    onRowClick && "cursor-pointer",
                     rowIndex === data.length - 1 && "border-b-0"
                   )}
                 >
@@ -123,14 +139,13 @@ export function DataTable<T extends { id: string }>({
                         onCheckedChange={(checked) =>
                           handleSelectRow(item.id, checked as boolean)
                         }
-                        className="border-accent group-hover:border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </TableCell>
                   )}
                   {columns.map((column) => (
                     <TableCell
                       key={column.key}
-                      className={cn("text-sm font-light", column.className)}
+                      className={cn("text-sm font-normal", column.className)}
                     >
                       {column.render
                         ? column.render(item, rowIndex)
@@ -142,34 +157,7 @@ export function DataTable<T extends { id: string }>({
             })}
           </TableBody>
         </Table>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-  );
-
-  if (embedded) {
-    return tableContent;
-  }
-
-  return (
-    <Card className={cn("overflow-hidden flex flex-col", className)}>
-      {title && (
-        <div className="p-5 sm:p-6 dark:border-b dark:border-border flex justify-between items-center">
-          <div>
-            <h2 className="text-base font-normal tracking-tight mb-1">{title}</h2>
-            {description && (
-              <span className="text-xs text-muted-foreground font-light">
-                {description}
-              </span>
-            )}
-          </div>
-          {viewAllHref && (
-            <Button variant="outline" size="sm" asChild className="hidden sm:flex">
-              <Link href={viewAllHref}>{viewAllLabel}</Link>
-            </Button>
-          )}
-        </div>
-      )}
-      {tableContent}
-    </Card>
+      </div>
+    </section>
   );
 }

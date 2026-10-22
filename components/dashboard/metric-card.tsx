@@ -1,123 +1,89 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  Package,
-  Tag,
-  MousePointer,
-  type LucideIcon,
-} from "lucide-react";
-
-export type TrendDirection = "up" | "down" | "neutral";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
 export interface MetricCardProps {
   title: string;
-  value: string | number;
-  change?: number;
-  trend?: TrendDirection;
-  icon?: LucideIcon;
-  prefix?: string;
-  suffix?: string;
+  value: number;
+  change?: number | null; // sin variación: undefined o null → no se pinta nada
+  changeLabel?: string; // p. ej. 'vs previous period'
   className?: string;
 }
-
-const trendConfig = {
-  up: {
-    icon: ArrowUpRight,
-    className: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  },
-  down: {
-    icon: ArrowDownRight,
-    className: "text-rose-400 bg-rose-500/10 border-rose-500/20",
-  },
-  neutral: {
-    icon: ArrowUpRight,
-    className: "text-muted-foreground bg-muted border-border",
-  },
-};
 
 export function MetricCard({
   title,
   value,
   change,
-  trend = "neutral",
-  icon: Icon,
-  prefix = "",
-  suffix = "",
+  changeLabel,
   className,
-}: MetricCardProps) {
-  const trendData = trendConfig[trend];
-  const TrendIcon = trendData.icon;
+}: MetricCardProps): React.JSX.Element {
+  const hasChange = typeof change === 'number';
+  const isPositive = hasChange && change >= 0;
+  const sign = isPositive ? '+' : '−';
 
   return (
-    <Card
-      className={cn(
-        "p-5 flex flex-col gap-4 relative overflow-hidden group dark:hover:border-accent transition-colors",
-        className
-      )}
+    <div
+      data-slot="metric"
+      className={cn('px-5 py-3.5 transition-colors hover:bg-muted/40', className)}
     >
-      <div className="flex justify-between items-center z-10">
-        <span className="text-xs text-muted-foreground font-light tracking-widest uppercase">
-          {title}
-        </span>
-        {Icon && (
-          <div className="w-8 h-8 rounded-md bg-secondary dark:border dark:border-accent flex items-center justify-center group-hover:bg-accent transition-colors">
-            <Icon className="h-[18px] w-[18px] text-foreground" strokeWidth={1.5} />
-          </div>
-        )}
+      <div className="text-[13px] text-muted-foreground">{title}</div>
+      <div data-slot="metric-value" className="mt-1 text-2xl font-semibold">
+        {value.toLocaleString('en-US')}
       </div>
-      <div className="flex items-end gap-3 z-10 mt-2">
-        <span className="text-3xl font-normal tracking-tight">
-          {prefix}
-          {typeof value === "number" ? value.toLocaleString() : value}
-          {suffix}
-        </span>
-        {change !== undefined && (
-          <span
-            className={cn(
-              "text-xs font-light flex items-center gap-0.5 mb-1.5 px-1.5 py-0.5 rounded-full border",
-              trendData.className
-            )}
-          >
-            <TrendIcon className="h-3 w-3" strokeWidth={1.5} />
-            {Math.abs(change)}%
-          </span>
-        )}
-      </div>
-    </Card>
+      {hasChange && (
+        <div
+          className={cn(
+            'text-xs',
+            isPositive ? 'text-success' : 'text-destructive'
+          )}
+        >
+          {sign}
+          {Math.abs(change)}%
+          {changeLabel ? ` ${changeLabel}` : ''}
+        </div>
+      )}
+    </div>
   );
 }
 
-// Preset metric cards for common use cases
+function getCellBorderClass(index: number): string {
+  const mobileBorderB = index < 2 ? 'border-b border-border lg:border-b-0' : '';
+  const isLastMobileInRow = index % 2 === 1;
+  const isLastDesktopInRow = index % 4 === 3;
+
+  if (isLastDesktopInRow) {
+    return cn(mobileBorderB);
+  }
+  if (isLastMobileInRow) {
+    return cn(mobileBorderB, 'lg:border-r lg:border-border');
+  }
+  return cn(mobileBorderB, 'border-r border-border');
+}
+
 export interface MetricGridProps {
   metrics: MetricCardProps[];
   className?: string;
 }
 
-export function MetricGrid({ metrics, className }: MetricGridProps) {
+export function MetricGrid({
+  metrics,
+  className,
+}: MetricGridProps): React.JSX.Element {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6",
+        'grid grid-cols-2 border-b border-border lg:grid-cols-4',
         className
       )}
     >
       {metrics.map((metric, index) => (
-        <MetricCard key={index} {...metric} />
+        <MetricCard
+          key={metric.title}
+          {...metric}
+          className={cn(getCellBorderClass(index), metric.className)}
+        />
       ))}
     </div>
   );
 }
-
-// Example preset icons mapping
-export const metricIcons = {
-  revenue: DollarSign,
-  orders: Package,
-  price: Tag,
-  conversion: MousePointer,
-} as const;

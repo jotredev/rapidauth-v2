@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,12 +16,16 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
-  Home,
-  Users,
-  ChevronUp,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  ShieldCheck,
   User,
   LogOut,
   Menu,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,7 +37,7 @@ export interface NavItem {
 }
 
 export interface NavSection {
-  title: string;
+  title?: string;
   items: NavItem[];
 }
 
@@ -45,171 +48,261 @@ export interface UserProfile {
   avatar?: string;
 }
 
-interface SidebarProps {
+export interface SidebarProps {
   brandName?: string;
+  version?: string;
   navigation?: NavSection[];
   user?: UserProfile;
   onLogout?: () => void | Promise<void>;
+  onOpenCommand?: () => void;
+  collapsed?: boolean;
   className?: string;
 }
 
-const defaultNavigation: NavSection[] = [
-  {
-    title: "Menu",
-    items: [
-      { title: "Dashboard", href: "/dashboard", icon: Home },
-      { title: "Users", href: "/dashboard/users", icon: Users },
-    ],
-  },
-  {
-    title: "Account",
-    items: [
-      { title: "Profile", href: "/dashboard/profile", icon: User },
-    ],
-  },
-];
-
-const defaultUser: UserProfile = {
-  name: "Isabella Swan",
-  email: "admin@aether.com",
-  role: "Admin",
-  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop",
-};
-
-function NavLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
-  return (
-    <Link
-      href={item.href}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 text-sm transition-all group rounded-md",
-        isActive
-          ? "bg-primary text-primary-foreground font-medium shadow-[0_0_15px_rgba(220,218,203,0.1)]"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent font-light"
-      )}
-    >
-      <item.icon
-        className={cn(
-          "h-[18px] w-[18px] shrink-0 transition-colors",
-          isActive ? "" : "group-hover:text-foreground"
-        )}
-        strokeWidth={1.5}
-      />
-      <span className="flex-1">{item.title}</span>
-      {item.badge && (
-        <span className="bg-secondary text-foreground text-xs py-0.5 px-2 rounded-sm font-light">
-          {item.badge}
-        </span>
-      )}
-    </Link>
-  );
+interface SidebarContentProps extends SidebarProps {
+  inSheet?: boolean;
 }
 
 function SidebarContent({
-  brandName = "A E T H E R",
-  navigation = defaultNavigation,
-  user = defaultUser,
+  brandName = "rapidauth",
+  version,
+  navigation = [],
+  user,
   onLogout,
-}: SidebarProps) {
+  onOpenCommand,
+  collapsed = false,
+  inSheet = false,
+}: SidebarContentProps) {
   const pathname = usePathname();
 
   return (
     <>
       {/* Brand */}
-      <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <Link
-          href="/"
-          className="text-lg tracking-[0.15em] font-medium uppercase"
-        >
-          {brandName}
-        </Link>
+      <div
+        className={cn(
+          "h-[54px] border-b border-sidebar-border flex items-center shrink-0",
+          collapsed ? "justify-center px-0" : "px-[18px]",
+          inSheet && "pr-12"
+        )}
+      >
+        {collapsed ? (
+          <Link
+            href="/"
+            aria-label={brandName}
+            className="flex items-center justify-center"
+          >
+            <ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />
+          </Link>
+        ) : (
+          <>
+            <Link href="/" className="flex items-center gap-2.5 min-w-0">
+              <ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />
+              <span className="text-[17px] font-normal truncate">{brandName}</span>
+            </Link>
+            {version && (
+              <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                v{version}
+              </span>
+            )}
+          </>
+        )}
       </div>
 
       {/* Nav Links */}
-      <ScrollArea className="flex-1 py-6 px-3">
-        <nav className="flex flex-col gap-1">
-          {navigation.map((section, idx) => (
-            <React.Fragment key={section.title}>
-              {idx > 0 && <div className="mt-5" />}
-              <span className="text-xs uppercase tracking-widest font-light text-muted-foreground px-3 mb-2 mt-2">
-                {section.title}
-              </span>
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  isActive={pathname === item.href}
-                />
-              ))}
-            </React.Fragment>
-          ))}
+      <div className="flex-1 overflow-y-auto p-2.5">
+        <nav className="flex flex-col">
+          {onOpenCommand &&
+            (collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenCommand}
+                    className="flex items-center justify-center rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  >
+                    <Search className="size-4 shrink-0" strokeWidth={1.75} />
+                    <span className="sr-only">Go to...</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Go to... ⌘K</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenCommand}
+                className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[15px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                <Search className="size-4 shrink-0" strokeWidth={1.75} />
+                <span>Go to...</span>
+                <kbd className="ml-auto text-xs text-muted-foreground font-sans">
+                  ⌘ K
+                </kbd>
+              </button>
+            ))}
+          {navigation
+            .filter((section) => section.items && section.items.length > 0)
+            .map((section, sectionIdx) => (
+              <div
+                key={section.title ?? `section-${sectionIdx}`}
+                className={cn(
+                  collapsed && sectionIdx > 0 && "pt-3",
+                  sectionIdx === 0 && onOpenCommand && "pt-1"
+                )}
+              >
+                {!collapsed && section.title && (
+                  <div className="px-2.5 pt-[18px] pb-1.5 text-sm text-muted-foreground font-normal">
+                    {section.title}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  {section.items.map((item) => {
+                    const isActive = pathname === item.href;
+                    const Icon = item.icon;
+
+                    if (collapsed) {
+                      return (
+                        <Tooltip key={item.href}>
+                          <TooltipTrigger asChild>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex items-center justify-center rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                isActive &&
+                                  "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                              )}
+                            >
+                              <Icon
+                                className="size-4 shrink-0"
+                                strokeWidth={1.75}
+                              />
+                              <span className="sr-only">{item.title}</span>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {item.title}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[15px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          isActive &&
+                            "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                        )}
+                      >
+                        <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+                        <span>{item.title}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
         </nav>
-      </ScrollArea>
+      </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-border shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-full flex items-center gap-3 px-2 py-2 hover:bg-accent transition-colors text-left rounded-md">
-              <Avatar className="h-8 w-8 rounded-full border border-accent shrink-0">
-                <AvatarImage
-                  src={user.avatar}
-                  alt={user.name}
-                />
-                <AvatarFallback className="bg-secondary text-foreground text-xs rounded-full">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-normal truncate">{user.name}</span>
-                <span className="text-xs text-muted-foreground font-light truncate">
-                  {user.role}
-                </span>
-              </div>
-              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="top"
-            align="start"
-            className="w-56 mb-2"
-          >
-            <DropdownMenuLabel className="font-normal py-3">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {user.email}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="py-2.5">
-              <Link href="/dashboard/profile" className="flex items-center gap-3 cursor-pointer">
-                <User className="h-4 w-4" strokeWidth={1.5} />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onLogout}
-              className="text-destructive focus:text-destructive cursor-pointer py-2.5 gap-3"
+      <div
+        className={cn(
+          "border-t border-sidebar-border shrink-0",
+          collapsed ? "p-2 flex justify-center" : "px-3.5 py-3"
+        )}
+      >
+        {user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md hover:bg-sidebar-accent transition-colors text-left flex items-center",
+                  collapsed
+                    ? "justify-center p-1"
+                    : "w-full gap-2.5 p-1"
+                )}
+              >
+                <Avatar className="h-8 w-8 shrink-0">
+                  {user.avatar && (
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                  )}
+                  <AvatarFallback className="bg-muted text-xs text-sidebar-foreground">
+                    {user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {collapsed ? (
+                  <span className="sr-only">{user.name}</span>
+                ) : (
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-sm font-normal truncate">
+                      {user.name}
+                    </span>
+                    <span className="text-[13px] text-muted-foreground truncate">
+                      {user.email}
+                    </span>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side={collapsed ? "right" : "top"}
+              align={collapsed ? "end" : "start"}
+              className={cn("mb-2", collapsed ? "w-56" : "w-(--radix-dropdown-menu-trigger-width)")}
             >
-              <LogOut className="h-4 w-4" strokeWidth={1.5} />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuLabel className="font-normal py-3">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-semibold">{user.name}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="py-2.5">
+                <Link
+                  href="/dashboard/profile"
+                  className="flex items-center gap-3 cursor-pointer"
+                >
+                  <User className="size-4" strokeWidth={1.75} />
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onLogout}
+                className="text-destructive focus:text-destructive cursor-pointer py-2.5 gap-3"
+              >
+                <LogOut className="size-4" strokeWidth={1.75} />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </>
   );
 }
 
-export function Sidebar(props: SidebarProps) {
+export function Sidebar({
+  className,
+  collapsed = false,
+  ...props
+}: SidebarProps) {
   return (
-    <aside className="hidden lg:flex w-64 border-r border-border flex-col h-full bg-background shrink-0">
-      <SidebarContent {...props} />
+    <aside
+      className={cn(
+        "hidden lg:flex flex-col h-full shrink-0 bg-sidebar border-r border-sidebar-border transition-[width]",
+        collapsed ? "w-14" : "w-[228px]",
+        className
+      )}
+    >
+      <SidebarContent {...props} collapsed={collapsed} />
     </aside>
   );
 }
@@ -217,21 +310,36 @@ export function Sidebar(props: SidebarProps) {
 export function MobileSidebar(props: SidebarProps) {
   const [open, setOpen] = React.useState(false);
 
+  const handleOpenCommand = props.onOpenCommand
+    ? () => {
+        setOpen(false);
+        props.onOpenCommand?.();
+      }
+    : undefined;
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden text-muted-foreground hover:text-foreground"
+          className="lg:hidden size-8 text-muted-foreground hover:text-foreground"
         >
-          <Menu className="h-6 w-6" strokeWidth={1.5} />
+          <Menu className="size-4" strokeWidth={1.75} />
           <span className="sr-only">Toggle menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 p-0 bg-background border-r border-border">
+      <SheetContent
+        side="left"
+        className="w-[228px] p-0 bg-sidebar border-r border-sidebar-border"
+      >
         <div className="flex flex-col h-full">
-          <SidebarContent {...props} />
+          <SidebarContent
+            {...props}
+            onOpenCommand={handleOpenCommand}
+            collapsed={false}
+            inSheet={true}
+          />
         </div>
       </SheetContent>
     </Sheet>

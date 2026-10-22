@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { useRouter } from 'nextjs-toploader/app';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { PageHeader } from '@/components/dashboard';
-import { UsersPagination } from '@/components/dashboard/users';
+import { PageHeader, ColumnPicker } from '@/components/dashboard';
+import { TABLE_COLUMNS } from '@/lib/table-columns';
+import { TableFooter } from '@/components/dashboard/table-footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,9 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import type { PageSize } from '@/lib/list-pagination';
 import {
   buildOperationalLogQueryString,
   OPERATIONAL_LOG_CODES,
@@ -60,34 +59,39 @@ interface SystemLogsContentProps {
   totalPages: number;
   initialParams: OperationalLogListParams;
   filterUser: OperationalLogUser | null;
+  hiddenColumns: string[];
 }
 
 function formatUtc(isoString: string): string {
-  const d = new Date(isoString);
-  const utcDate = new Date(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate(),
-    d.getUTCHours(),
-    d.getUTCMinutes(),
-    d.getUTCSeconds(),
-  );
-  return format(utcDate, "yyyy-MM-dd HH:mm:ss 'UTC'");
+  return `${new Date(isoString).toISOString().slice(0, 19).replace('T', ' ')} UTC`;
 }
 
 function renderLevelBadge(level: OperationalLogLevel) {
   switch (level) {
     case 'info':
-      return <Badge variant="secondary">{level}</Badge>;
+      return (
+        <span className="font-mono text-[13px] text-muted-foreground">
+          {level}
+        </span>
+      );
     case 'warn':
       return (
-        <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        <span className="font-mono text-[13px] text-warning">
           {level}
-        </Badge>
+        </span>
       );
     case 'error':
+      return (
+        <span className="font-mono text-[13px] text-destructive">
+          {level}
+        </span>
+      );
     case 'critical':
-      return <Badge variant="destructive">{level}</Badge>;
+      return (
+        <span className="font-mono text-[13px] font-semibold text-destructive">
+          {level}
+        </span>
+      );
   }
 }
 
@@ -103,7 +107,7 @@ function renderDetails(metadata: OperationalLogMetadata | null) {
   }
   if (metadata.errorCode) {
     parts.push(
-      <span key="errorCode" className="text-destructive font-medium">
+      <span key="errorCode" className="text-destructive font-normal">
         errorCode: {metadata.errorCode}
       </span>,
     );
@@ -133,9 +137,19 @@ export function SystemLogsContent({
   totalPages,
   initialParams,
   filterUser,
+  hiddenColumns,
 }: SystemLogsContentProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
+  const [hidden, setHidden] = React.useState<string[]>(hiddenColumns);
+  const [prevHiddenColumns, setPrevHiddenColumns] = React.useState<string[]>(hiddenColumns);
+
+  if (hiddenColumns.join('.') !== prevHiddenColumns.join('.')) {
+    setPrevHiddenColumns(hiddenColumns);
+    setHidden(hiddenColumns);
+  }
+
+  const visibleColumnsCount = TABLE_COLUMNS['system-logs'].length - hidden.length;
 
   const navigateWithParams = React.useCallback(
     (nextParams: OperationalLogListParams) => {
@@ -186,6 +200,7 @@ export function SystemLogsContent({
   const handleClearFilters = () => {
     navigateWithParams({
       page: 1,
+      pageSize: initialParams.pageSize,
       levels: [],
       source: null,
       code: null,
@@ -197,6 +212,14 @@ export function SystemLogsContent({
     navigateWithParams({
       ...initialParams,
       page: newPage,
+    });
+  };
+
+  const handlePageSizeChange = (newPageSize: PageSize) => {
+    navigateWithParams({
+      ...initialParams,
+      page: 1,
+      pageSize: newPageSize,
     });
   };
 
@@ -220,12 +243,11 @@ export function SystemLogsContent({
       <PageHeader
         title="System logs"
         description="Delivery events and other operational records. Email addresses, codes and tokens are never stored."
-        dateRangeOptions={[]}
       />
 
-      <div className="dark:border dark:border-border bg-card">
+      <div className="flex flex-col">
         {/* Filters and Search Bar */}
-        <div className="flex flex-col gap-3 p-4 dark:border-b dark:border-border">
+        <div className="flex flex-col gap-2.5 px-5 py-2.5">
           <div className="flex flex-wrap items-center gap-3">
             {/* Level Filter */}
             <DropdownMenu>
@@ -308,6 +330,14 @@ export function SystemLogsContent({
                 Clear filters
               </Button>
             )}
+
+            <div className="ml-auto">
+              <ColumnPicker
+                tableId="system-logs"
+                hidden={hidden}
+                onHiddenChange={setHidden}
+              />
+            </div>
           </div>
 
           {/* Active chips / summary */}
@@ -350,38 +380,50 @@ export function SystemLogsContent({
 
         {/* Logs Table */}
         <div
-          className={cn('transition-opacity', isPending && 'opacity-50')}
+          className={cn('border-t border-border transition-opacity', isPending && 'opacity-50')}
           aria-busy={isPending}
         >
-          <ScrollArea className="w-full">
+          <div className="overflow-x-auto">
             <Table className="min-w-[800px]">
               <TableHeader>
-                <TableRow className="border-b border-border bg-background/50 hover:bg-background/50">
-                  <TableHead className="text-xs text-muted-foreground uppercase tracking-widest font-normal w-48">
-                    Time
-                  </TableHead>
-                  <TableHead className="text-xs text-muted-foreground uppercase tracking-widest font-normal w-24">
-                    Level
-                  </TableHead>
-                  <TableHead className="text-xs text-muted-foreground uppercase tracking-widest font-normal w-28">
-                    Source
-                  </TableHead>
-                  <TableHead className="text-xs text-muted-foreground uppercase tracking-widest font-normal w-52">
-                    Code
-                  </TableHead>
-                  <TableHead className="text-xs text-muted-foreground uppercase tracking-widest font-normal w-48">
-                    User
-                  </TableHead>
-                  <TableHead className="text-xs text-muted-foreground uppercase tracking-widest font-normal">
-                    Details
-                  </TableHead>
+                <TableRow className="border-b border-border">
+                  {!hidden.includes('time') && (
+                    <TableHead className="text-sm font-semibold text-foreground w-48">
+                      Time
+                    </TableHead>
+                  )}
+                  {!hidden.includes('level') && (
+                    <TableHead className="text-sm font-semibold text-foreground w-24">
+                      Level
+                    </TableHead>
+                  )}
+                  {!hidden.includes('source') && (
+                    <TableHead className="text-sm font-semibold text-foreground w-28">
+                      Source
+                    </TableHead>
+                  )}
+                  {!hidden.includes('code') && (
+                    <TableHead className="text-sm font-semibold text-foreground w-52">
+                      Code
+                    </TableHead>
+                  )}
+                  {!hidden.includes('user') && (
+                    <TableHead className="text-sm font-semibold text-foreground w-48">
+                      User
+                    </TableHead>
+                  )}
+                  {!hidden.includes('details') && (
+                    <TableHead className="text-sm font-semibold text-foreground">
+                      Details
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {logs.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={visibleColumnsCount}
                       className="h-32 text-center text-sm text-muted-foreground"
                     >
                       No logs match these filters.
@@ -391,57 +433,64 @@ export function SystemLogsContent({
                   logs.map((log) => (
                     <TableRow
                       key={log.id}
-                      className="border-b border-border hover:bg-accent/50 transition-colors"
+                      className="border-b border-border hover:bg-muted/50 transition-colors"
                     >
-                      <TableCell className="text-xs font-mono whitespace-nowrap text-muted-foreground">
-                        {formatUtc(log.createdAt)}
-                      </TableCell>
-                      <TableCell>{renderLevelBadge(log.level)}</TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">
-                        {log.source}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono font-medium">
-                        {log.code}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {log.user ? (
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground">
-                              {log.user.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {log.user.email}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono">
-                        {renderDetails(log.metadata)}
-                      </TableCell>
+                      {!hidden.includes('time') && (
+                        <TableCell className="text-xs font-mono whitespace-nowrap text-muted-foreground">
+                          {formatUtc(log.createdAt)}
+                        </TableCell>
+                      )}
+                      {!hidden.includes('level') && (
+                        <TableCell>{renderLevelBadge(log.level)}</TableCell>
+                      )}
+                      {!hidden.includes('source') && (
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {log.source}
+                        </TableCell>
+                      )}
+                      {!hidden.includes('code') && (
+                        <TableCell className="text-xs font-mono font-normal">
+                          {log.code}
+                        </TableCell>
+                      )}
+                      {!hidden.includes('user') && (
+                        <TableCell className="text-sm">
+                          {log.user ? (
+                            <div className="flex flex-col">
+                              <span className="font-normal text-foreground">
+                                {log.user.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {log.user.email}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {!hidden.includes('details') && (
+                        <TableCell className="text-xs font-mono">
+                          {renderDetails(log.metadata)}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <>
-            <Separator />
-            <UsersPagination
-              page={page}
-              totalPages={totalPages}
-              isPending={isPending}
-              getPageHref={getPageHref}
-              onPageChange={handlePageChange}
-            />
-          </>
-        )}
+        <TableFooter
+          page={page}
+          totalPages={totalPages}
+          pageSize={initialParams.pageSize}
+          isPending={isPending}
+          getPageHref={getPageHref}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
     </>
   );

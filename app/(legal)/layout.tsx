@@ -11,7 +11,7 @@ export default function LegalLayout({
           <Link
             href="/"
             aria-label={`Return to ${siteConfig.appName} home`}
-            className="font-serif text-xl tracking-[0.15em] transition-opacity hover:opacity-70"
+            className="text-[17px] font-normal transition-opacity hover:opacity-70"
           >
             {siteConfig.appName}
           </Link>

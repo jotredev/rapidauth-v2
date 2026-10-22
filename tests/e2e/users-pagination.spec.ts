@@ -270,6 +270,7 @@ test('query parsing and where translation ignore invalid values and encode displ
 
   expect(params).toEqual({
     page: 1,
+    pageSize: 20,
     q: 'a'.repeat(100),
     roles: ['admin'],
     statuses: ['pending', 'active'],
@@ -307,3 +308,59 @@ test('query parsing and where translation ignore invalid values and encode displ
   expect(getDisplayedAuthProvider(['github'])).toBe('github');
   expect(getDisplayedAuthProvider(['credential'])).toBe('email');
 });
+
+test('rows per page changes the page size on the server and invalid sizes fall back to 20', async ({ page }) => {
+  const prefix = `e2e-page-size-${Date.now()}`;
+  await createTestUsers(
+    Array.from({ length: 55 }, (_, index) => ({
+      name: `Page Size User ${index + 1}`,
+      email: `${prefix}-${String(index + 1).padStart(2, '0')}@e2e.invalid`,
+    })),
+  );
+  await signInAdmin(page);
+  await page.goto(`/dashboard/users?q=${encodeURIComponent(prefix)}`);
+  await expect(page.locator('tbody tr')).toHaveCount(20);
+  await expect(page.getByText('Page 1 of 3')).toBeVisible();
+
+  await page.getByRole('combobox', { name: 'Rows per page' }).click();
+  await page.getByRole('option', { name: '50' }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('pageSize')).toBe('50');
+  await expect.poll(() => new URL(page.url()).searchParams.get('page')).toBe('1');
+  await expect(page.locator('tbody tr')).toHaveCount(50);
+  await expect(page.getByText('Showing 1–50 of 55 users')).toBeVisible();
+  await expect(page.getByText('Page 1 of 2')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Go to last page' }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('page')).toBe('2');
+  await expect(page.locator('tbody tr')).toHaveCount(5);
+  expect(new URL(page.url()).searchParams.get('q')).toBe(prefix);
+
+  await page.goto(`/dashboard/users?q=${encodeURIComponent(prefix)}&pageSize=7`);
+  await expect(page.locator('tbody tr')).toHaveCount(20);
+  await expect(page.getByText('Page 1 of 3')).toBeVisible();
+});
+
+test('columns can be hidden, stay hidden after reload, and required columns cannot be hidden', async ({ page }) => {
+  await signInAdmin(page);
+  await page.goto('/dashboard/users');
+  const header = page.locator('thead');
+  await expect(header.getByText('Last Active', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: /^Columns/ }).click();
+  await expect(page.getByRole('menuitemcheckbox', { name: 'User' })).toBeDisabled();
+  await page.getByRole('menuitemcheckbox', { name: 'Last Active' }).click();
+  await page.keyboard.press('Escape');
+
+  await expect(header.getByText('Last Active', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Columns/ })).toContainText('4/5');
+
+  await page.reload();
+  await expect(header.getByText('Last Active', { exact: true })).toHaveCount(0);
+  await expect(header.getByText('Role', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: /^Columns/ }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Last Active' }).click();
+  await page.keyboard.press('Escape');
+  await expect(header.getByText('Last Active', { exact: true })).toBeVisible();
+});
+

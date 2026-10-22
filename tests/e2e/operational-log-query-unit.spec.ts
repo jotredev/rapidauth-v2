@@ -53,6 +53,7 @@ test.describe('operational log query unit tests', () => {
     expect(
       buildOperationalLogsWhere({
         page: 1,
+        pageSize: 20,
         levels: [],
         source: null,
         code: null,
@@ -64,6 +65,7 @@ test.describe('operational log query unit tests', () => {
     expect(
       buildOperationalLogsWhere({
         page: 1,
+        pageSize: 20,
         levels: ['error', 'critical'],
         source: null,
         code: null,
@@ -76,6 +78,7 @@ test.describe('operational log query unit tests', () => {
     expect(
       buildOperationalLogsWhere({
         page: 1,
+        pageSize: 20,
         levels: [],
         source: 'emails',
         code: null,
@@ -88,6 +91,7 @@ test.describe('operational log query unit tests', () => {
     expect(
       buildOperationalLogsWhere({
         page: 1,
+        pageSize: 20,
         levels: [],
         source: null,
         code: 'email.delivery.sent',
@@ -100,6 +104,7 @@ test.describe('operational log query unit tests', () => {
     expect(
       buildOperationalLogsWhere({
         page: 1,
+        pageSize: 20,
         levels: [],
         source: null,
         code: null,
@@ -113,6 +118,7 @@ test.describe('operational log query unit tests', () => {
     expect(
       buildOperationalLogsWhere({
         page: 1,
+        pageSize: 20,
         levels: ['info'],
         source: 'emails',
         code: 'email.delivery.sent',
@@ -131,6 +137,7 @@ test.describe('operational log query unit tests', () => {
   test('buildOperationalLogQueryString deja de nuevo los mismos parámetros que parse', () => {
     const originalParams = {
       page: 3,
+      pageSize: 20 as const,
       levels: ['warn', 'error'] as const,
       source: 'emails' as const,
       code: 'email.delivery.failed' as const,
@@ -139,6 +146,7 @@ test.describe('operational log query unit tests', () => {
 
     const qs = buildOperationalLogQueryString({
       page: originalParams.page,
+      pageSize: originalParams.pageSize,
       levels: [...originalParams.levels],
       source: originalParams.source,
       code: originalParams.code,
@@ -148,6 +156,7 @@ test.describe('operational log query unit tests', () => {
     const searchParams = new URLSearchParams(qs);
     const parsedAgain = parseOperationalLogSearchParams({
       page: searchParams.get('page') ?? undefined,
+      pageSize: searchParams.get('pageSize') ?? undefined,
       level: searchParams.getAll('level'),
       source: searchParams.get('source') ?? undefined,
       code: searchParams.get('code') ?? undefined,
@@ -156,6 +165,7 @@ test.describe('operational log query unit tests', () => {
 
     expect(parsedAgain).toEqual({
       page: originalParams.page,
+      pageSize: 20,
       levels: originalParams.levels,
       source: originalParams.source,
       code: originalParams.code,

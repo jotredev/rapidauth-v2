@@ -7,6 +7,12 @@ import {
   ADMIN_TWO_FACTOR_REQUIRED_MESSAGE,
   getAdminAccess,
 } from '@/lib/admin-access';
+import type { PageSize } from '@/lib/list-pagination';
+import {
+  buildActivityLogWhere,
+  activityLogListParamsSchema,
+  type ActivityLogListParams,
+} from '@/lib/activity-log-query';
 
 // ============================================
 // TYPES
@@ -24,14 +30,24 @@ export interface ActivityLog {
   createdAt: string;
 }
 
+export interface ActivityLogPage {
+  logs: ActivityLog[];
+  total: number;
+  page: number;
+  pageSize: PageSize;
+  totalPages: number;
+}
+
 // ============================================
 // GET ACTIVITY LOGS ACTION
 // ============================================
 
-export const getActivityLogs = async (): Promise<{
+export const getActivityLogs = async (
+  params: ActivityLogListParams,
+): Promise<{
   response: 'success' | 'error';
   message: string;
-  data: ActivityLog[] | null;
+  data: ActivityLogPage | null;
 }> => {
   try {
     const session = await getSession();
@@ -51,22 +67,38 @@ export const getActivityLogs = async (): Promise<{
       };
     }
 
-    const logs = await prisma.activityLog.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 500,
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
+    const parsedParams = activityLogListParamsSchema.safeParse(params);
+    if (!parsedParams.success) {
+      return {
+        response: 'error',
+        message: 'Invalid activity log parameters',
+        data: null,
+      };
+    }
+
+    const where = buildActivityLogWhere(parsedParams.data);
+
+    const [total, logs] = await prisma.$transaction([
+      prisma.activityLog.count({ where }),
+      prisma.activityLog.findMany({
+        where,
+        skip: (parsedParams.data.page - 1) * parsedParams.data.pageSize,
+        take: parsedParams.data.pageSize,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
-    const data = logs.map((log) => ({
+    const totalPages = Math.max(1, Math.ceil(total / parsedParams.data.pageSize));
+
+    const data: ActivityLog[] = logs.map((log) => ({
       id: log.id,
       userId: log.userId,
       userName: log.user.name,
@@ -81,7 +113,13 @@ export const getActivityLogs = async (): Promise<{
     return {
       response: 'success',
       message: 'Activity logs fetched successfully',
-      data,
+      data: {
+        logs: data,
+        total,
+        page: Math.min(parsedParams.data.page, totalPages),
+        pageSize: parsedParams.data.pageSize,
+        totalPages,
+      },
     };
   } catch (error) {
     reportError(error, { area: 'activity.list' });

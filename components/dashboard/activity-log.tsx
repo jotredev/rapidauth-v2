@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -285,7 +284,7 @@ export function ActivityLog({ activities, isLoading }: ActivityLogProps) {
   if (isLoading) {
     return (
       <Card className="gap-y-0 p-6">
-        <h3 className="text-lg font-medium mb-1">Registro de Actividad</h3>
+        <h3 className="text-[15px] font-semibold mb-1">Registro de Actividad</h3>
         <p className="text-sm text-muted-foreground mb-4">
           Historial de acciones en tu cuenta.
         </p>
@@ -300,7 +299,7 @@ export function ActivityLog({ activities, isLoading }: ActivityLogProps) {
 
   return (
     <Card className="gap-y-0 p-6">
-      <h3 className="text-lg font-medium mb-1">Registro de Actividad</h3>
+      <h3 className="text-[15px] font-semibold mb-1">Registro de Actividad</h3>
       <p className="text-sm text-muted-foreground mb-4">
         Historial de acciones en tu cuenta.
       </p>
@@ -311,13 +310,11 @@ export function ActivityLog({ activities, isLoading }: ActivityLogProps) {
           <p className="text-sm">No hay actividad registrada aún.</p>
         </div>
       ) : (
-        <ScrollArea className="h-[400px] pr-4">
-          <div className="space-y-0">
-            {activities.map((activity) => (
-              <ActivityItem key={activity.id} activity={activity} />
-            ))}
-          </div>
-        </ScrollArea>
+        <div className="space-y-0">
+          {activities.map((activity) => (
+            <ActivityItem key={activity.id} activity={activity} />
+          ))}
+        </div>
       )}
     </Card>
   );

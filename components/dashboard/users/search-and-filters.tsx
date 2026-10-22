@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Popover,
   PopoverContent,
@@ -62,10 +61,12 @@ export function SearchAndFilters({
           placeholder='Search by name or email...'
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className='pl-9 bg-background border-border'
+          className='h-9 font-mono text-sm pl-9 bg-background border-border'
         />
         {searchQuery && (
           <button
+            type='button'
+            aria-label='Clear search'
             onClick={() => onSearchChange('')}
             className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
           >
@@ -77,27 +78,25 @@ export function SearchAndFilters({
       {/* Filters */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant='outline' className='gap-2 shrink-0'>
+          <Button variant='outline' size='sm' className='gap-2 shrink-0'>
             <SlidersHorizontal className='h-4 w-4' />
             Filters
             {activeFilterCount > 0 && (
-              <Badge
-                variant='secondary'
-                className='ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]'
-              >
+              <span className='rounded bg-muted px-1.5 text-[13px]'>
                 {activeFilterCount}
-              </Badge>
+              </span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent align='end' className='w-80 p-0 bg-card border-border'>
           {/* Header */}
           <div className='flex items-center justify-between px-4 py-3 border-b border-border'>
-            <h4 className='text-sm font-medium'>Filters</h4>
+            <h4 className='text-sm font-semibold'>Filters</h4>
             {activeFilterCount > 0 && (
               <button
+                type='button'
                 onClick={clearFilters}
-                className='text-xs text-primary hover:text-primary/80 font-medium'
+                className='text-xs text-link hover:underline font-normal'
               >
                 Clear all
               </button>
@@ -107,13 +106,14 @@ export function SearchAndFilters({
           <div className='p-4 space-y-5'>
             {/* Role Filter */}
             <div className='space-y-3'>
-              <label className='text-xs text-muted-foreground uppercase tracking-wider font-medium'>
+              <label className='text-sm text-muted-foreground font-normal'>
                 Role
               </label>
               <div className='flex flex-wrap gap-2'>
                 {['admin', 'moderator', 'user'].map((role) => (
                   <button
                     key={role}
+                    type='button'
                     onClick={() => toggleRole(role)}
                     className={`px-3 py-1.5 text-xs border rounded-md capitalize transition-colors ${
                       filters.roles.includes(role)
@@ -129,21 +129,18 @@ export function SearchAndFilters({
 
             {/* Status Filter */}
             <div className='space-y-3'>
-              <label className='text-xs text-muted-foreground uppercase tracking-wider font-medium'>
+              <label className='text-sm text-muted-foreground font-normal'>
                 Status
               </label>
               <div className='flex flex-wrap gap-2'>
                 {Object.entries(USER_STATUS_MAP).map(([key, { label }]) => (
                   <button
                     key={key}
+                    type='button'
                     onClick={() => toggleStatus(key)}
                     className={`px-3 py-1.5 text-xs border rounded-md transition-colors ${
                       filters.statuses.includes(key)
-                        ? key === 'active'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : key === 'pending'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        ? 'bg-muted text-foreground border-foreground/20'
                         : 'border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground hover:bg-muted/50'
                     }`}
                   >
@@ -155,7 +152,7 @@ export function SearchAndFilters({
 
             {/* Provider Filter */}
             <div className='space-y-3'>
-              <label className='text-xs text-muted-foreground uppercase tracking-wider font-medium'>
+              <label className='text-sm text-muted-foreground font-normal'>
                 Auth Provider
               </label>
               <div className='flex flex-wrap gap-2'>
@@ -165,10 +162,11 @@ export function SearchAndFilters({
                   return (
                     <button
                       key={provider}
+                      type='button'
                       onClick={() => toggleProvider(provider)}
                       className={`px-3 py-1.5 text-xs border rounded-md transition-colors flex items-center gap-2 ${
                         filters.providers.includes(provider)
-                          ? 'bg-primary/10 text-primary border-primary/20'
+                          ? 'bg-muted text-foreground border-foreground/20'
                           : 'border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground hover:bg-muted/50'
                       }`}
                     >

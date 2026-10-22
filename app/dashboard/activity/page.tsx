@@ -1,21 +1,39 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
-import { getAdminAccess } from "@/lib/admin-access";
-import { getActivityLogs } from "@/actions/activity";
-import { ActivityLogsContent } from "@/components/dashboard/activity-logs-content";
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth';
+import { getAdminAccess } from '@/lib/admin-access';
+import { getActivityLogs } from '@/actions/activity';
+import { ActivityLogsContent } from '@/components/dashboard/activity-logs-content';
+import { getColumnsCookieName, readHiddenColumns } from '@/lib/table-columns';
+import {
+  buildActivityLogQueryString,
+  parseActivityLogSearchParams,
+  type ActivityLogSearchParams,
+} from '@/lib/activity-log-query';
 
-export default async function ActivityPage() {
+interface ActivityPageProps {
+  searchParams: Promise<ActivityLogSearchParams>;
+}
+
+export default async function ActivityPage({ searchParams }: ActivityPageProps) {
   const session = await getSession();
 
   if (!session) {
-    redirect("/auth/login");
+    redirect('/auth/login');
   }
 
   if ((await getAdminAccess(session)) !== 'admin') {
-    redirect("/dashboard");
+    redirect('/dashboard');
   }
 
-  const result = await getActivityLogs();
+  const cookieStore = await cookies();
+  const hiddenColumns = readHiddenColumns(
+    'activity',
+    cookieStore.get(getColumnsCookieName('activity'))?.value,
+  );
+
+  const params = parseActivityLogSearchParams(await searchParams);
+  const result = await getActivityLogs(params);
 
   if (result.response === 'error' || !result.data) {
     return (
@@ -25,5 +43,24 @@ export default async function ActivityPage() {
     );
   }
 
-  return <ActivityLogsContent logs={result.data} />;
+  if (result.data.page !== params.page) {
+    redirect(
+      `/dashboard/activity?${buildActivityLogQueryString({
+        ...params,
+        page: result.data.page,
+      })}`,
+    );
+  }
+
+  return (
+    <ActivityLogsContent
+      logs={result.data.logs}
+      total={result.data.total}
+      page={result.data.page}
+      pageSize={result.data.pageSize}
+      totalPages={result.data.totalPages}
+      initialParams={params}
+      hiddenColumns={hiddenColumns}
+    />
+  );
 }

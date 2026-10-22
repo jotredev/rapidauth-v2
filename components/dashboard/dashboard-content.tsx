@@ -1,173 +1,127 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   PageHeader,
   MetricGrid,
   BarChart,
   DataTable,
   StatusBadge,
-  createMonthlyData,
   type Column,
   type StatusType,
-} from "@/components/dashboard";
-import { Users, UserCheck, UserX, UserPlus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-
-interface RecentUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
-  createdAt: string;
-}
-
-interface DashboardMetrics {
-  totalUsers: number;
-  totalUsersChange: number;
-  activeUsers: number;
-  activeUsersChange: number;
-  inactiveUsers: number;
-  inactiveUsersChange: number;
-  newThisMonth: number;
-  newThisMonthChange: number;
-}
+} from '@/components/dashboard';
+import type {
+  DashboardMetrics,
+  ChartPoint,
+  RecentUser,
+} from '@/actions/dashboard';
+import type { BucketUnit, DashboardRange } from '@/lib/dashboard-range';
 
 const userStatusMap: Record<string, { status: StatusType; label: string }> = {
-  active: { status: "success", label: "Active" },
-  pending: { status: "warning", label: "Pending" },
-  inactive: { status: "error", label: "Inactive" },
-};
-
-const roleColors: Record<string, string> = {
-  admin: "text-purple-400 bg-purple-50 border-purple-200 dark:bg-purple-500/10 dark:border-purple-500/20",
-  moderator: "text-blue-400 bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/20",
-  user: "text-muted-foreground bg-muted border-border",
+  active: { status: 'success', label: 'Active' },
+  pending: { status: 'warning', label: 'Pending' },
+  inactive: { status: 'error', label: 'Inactive' },
 };
 
 const columns: Column<RecentUser>[] = [
   {
-    key: "name",
-    header: "Name",
+    key: 'name',
+    header: 'Name',
     render: (item) => (
       <div className="flex flex-col">
-        <span className="font-medium text-foreground">{item.name}</span>
+        <span className="text-foreground font-normal">{item.name}</span>
         <span className="text-xs text-muted-foreground">{item.email}</span>
       </div>
     ),
   },
   {
-    key: "role",
-    header: "Role",
+    key: 'role',
+    header: 'Role',
     render: (item) => (
-      <Badge
-        variant="outline"
-        className={`h-auto font-normal capitalize ${
-          roleColors[item.role] || roleColors.user
-        }`}
-      >
+      <span className="rounded bg-muted px-2 py-0.5 font-mono text-[13px] text-foreground/80">
         {item.role}
-      </Badge>
+      </span>
     ),
   },
   {
-    key: "status",
-    header: "Status",
+    key: 'status',
+    header: 'Status',
     render: (item) => {
-      const config = userStatusMap[item.status] || { status: "neutral" as StatusType, label: item.status };
+      const config = userStatusMap[item.status] || {
+        status: 'neutral' as StatusType,
+        label: item.status,
+      };
       return <StatusBadge status={config.status} label={config.label} />;
     },
   },
   {
-    key: "createdAt",
-    header: "Joined",
+    key: 'createdAt',
+    header: 'Joined',
     render: (item) => (
-      <span className="text-muted-foreground">{item.createdAt}</span>
+      <span className="font-mono text-[13px] text-muted-foreground">{item.createdAt}</span>
     ),
   },
 ];
 
-interface DashboardContentProps {
+export interface DashboardContentProps {
   metrics: DashboardMetrics;
-  chartData: number[];
+  chartData: ChartPoint[];
+  unit: BucketUnit;
+  range: DashboardRange;
   recentUsers: RecentUser[];
 }
 
 export function DashboardContent({
   metrics,
   chartData,
+  unit,
   recentUsers,
-}: DashboardContentProps) {
-  const [dateRange, setDateRange] = React.useState("30d");
-  const [chartTab, setChartTab] = React.useState("monthly");
-
-  const formattedChartData = createMonthlyData(chartData);
-
-  const metricCards = [
-    {
-      title: "Total Users",
-      value: metrics.totalUsers,
-      change: metrics.totalUsersChange,
-      trend: "up" as const,
-      icon: Users,
-    },
-    {
-      title: "Active Users",
-      value: metrics.activeUsers,
-      change: metrics.activeUsersChange,
-      trend: "up" as const,
-      icon: UserCheck,
-    },
-    {
-      title: "Inactive Users",
-      value: metrics.inactiveUsers,
-      change: metrics.inactiveUsersChange,
-      trend: "down" as const,
-      icon: UserX,
-    },
-    {
-      title: "New This Month",
-      value: metrics.newThisMonth,
-      change: metrics.newThisMonthChange,
-      trend: "up" as const,
-      icon: UserPlus,
-    },
-  ];
-
+}: DashboardContentProps): React.JSX.Element {
   return (
     <>
       <PageHeader
         title="Dashboard"
         description="Overview of your user base and activity."
-        selectedDateRange={dateRange}
-        onDateRangeChange={setDateRange}
       />
 
-      <MetricGrid metrics={metricCards} />
-
-      <BarChart
-        title="User Growth"
-        description="New user registrations per month."
-        data={formattedChartData}
-        tabs={[
-          { label: "Monthly", value: "monthly" },
-          { label: "Weekly", value: "weekly" },
-        ]}
-        activeTab={chartTab}
-        onTabChange={setChartTab}
-        highlightIndex={11}
-        formatValue={(value) => `${value} users`}
-      />
-
-      <DataTable
-        title="Recent Users"
-        description="Latest registered users on the platform."
-        columns={columns}
-        data={recentUsers}
-        viewAllHref="/dashboard/users"
-        viewAllLabel="View All Users"
-      />
+      <div className="flex flex-col">
+        <MetricGrid
+          metrics={[
+            {
+              title: 'Total Users',
+              value: metrics.totalUsers,
+              change: metrics.totalUsersChange,
+              changeLabel: 'in period',
+            },
+            { title: 'Active Users', value: metrics.activeUsers },
+            { title: 'Inactive Users', value: metrics.inactiveUsers },
+            {
+              title: 'New in period',
+              value: metrics.newInPeriod,
+              change: metrics.newInPeriodChange,
+              changeLabel: 'vs previous period',
+            },
+          ]}
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr]">
+          <BarChart
+            title="User Growth"
+            description={`New user registrations per ${unit}.`}
+            data={chartData}
+            className="min-w-0 border-b border-border lg:border-b-0 lg:border-r"
+          />
+          <DataTable
+            title="Recent Users"
+            description="Latest registered users on the platform."
+            columns={columns}
+            data={recentUsers}
+            viewAllHref="/dashboard/users"
+            viewAllLabel="View All Users"
+            className="min-w-0"
+            tableClassName="min-w-0"
+          />
+        </div>
+      </div>
     </>
   );
 }

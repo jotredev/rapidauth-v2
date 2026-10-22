@@ -3,6 +3,11 @@
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { reportError } from '@/lib/report-error';
+import type { PageSize } from '@/lib/list-pagination';
+import {
+  type ProfileListParams,
+  profileListParamsSchema,
+} from '@/lib/profile-query';
 
 // ============================================
 // TYPES
@@ -40,13 +45,22 @@ export interface ProfilePageData {
   hasPassword: boolean;
   activityLogs: ActivityLogEntry[];
   sessions: SessionData[];
+  activityTotal: number;
+  activityPage: number;
+  activityTotalPages: number;
+  sessionsTotal: number;
+  sessionsPage: number;
+  sessionsTotalPages: number;
+  pageSize: PageSize;
 }
 
 // ============================================
 // GET PROFILE DATA ACTION
 // ============================================
 
-export const getProfileData = async (): Promise<{
+export const getProfileData = async (
+  params: ProfileListParams,
+): Promise<{
   response: 'success' | 'error';
   message: string;
   data: ProfilePageData | null;
@@ -57,11 +71,30 @@ export const getProfileData = async (): Promise<{
       return { response: 'error', message: 'Unauthorized', data: null };
     }
 
+    const validation = profileListParamsSchema.safeParse(params);
+    if (!validation.success) {
+      return {
+        response: 'error',
+        message: 'Invalid profile parameters',
+        data: null,
+      };
+    }
+
+    const { activityPage, sessionsPage, pageSize } = validation.data;
     const userId = session.user.id;
     const currentSessionId = session.session.id;
+    const now = new Date();
 
     // Get user's 2FA status, image, activity logs, and sessions from database
-    const [user, oauthAccounts, credentialAccount, activityLogs, sessions] = await Promise.all([
+    const [
+      user,
+      oauthAccounts,
+      credentialAccount,
+      activityTotal,
+      activityLogs,
+      sessionsTotal,
+      sessions,
+    ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: { name: true, email: true, twoFactorEnabled: true, image: true },
@@ -74,17 +107,29 @@ export const getProfileData = async (): Promise<{
         where: { userId, providerId: 'credential', password: { not: null } },
         select: { id: true },
       }),
+      prisma.activityLog.count({
+        where: { userId },
+      }),
       prisma.activityLog.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (activityPage - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.session.count({
+        where: {
+          userId,
+          expiresAt: { gt: now },
+        },
       }),
       prisma.session.findMany({
         where: {
           userId,
-          expiresAt: { gt: new Date() }, // Only active (non-expired) sessions
+          expiresAt: { gt: now },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (sessionsPage - 1) * pageSize,
+        take: pageSize,
         select: { id: true, userAgent: true, ipAddress: true, createdAt: true, expiresAt: true },
       }),
     ]);
@@ -124,6 +169,12 @@ export const getProfileData = async (): Promise<{
       isCurrent: s.id === currentSessionId,
     }));
 
+    const activityTotalPages = Math.max(1, Math.ceil(activityTotal / pageSize));
+    const resolvedActivityPage = Math.min(activityPage, activityTotalPages);
+
+    const sessionsTotalPages = Math.max(1, Math.ceil(sessionsTotal / pageSize));
+    const resolvedSessionsPage = Math.min(sessionsPage, sessionsTotalPages);
+
     return {
       response: 'success',
       message: 'Profile data fetched successfully',
@@ -134,6 +185,13 @@ export const getProfileData = async (): Promise<{
         hasPassword: credentialAccount !== null,
         activityLogs: parsedActivityLogs,
         sessions: formattedSessions,
+        activityTotal,
+        activityPage: resolvedActivityPage,
+        activityTotalPages,
+        sessionsTotal,
+        sessionsPage: resolvedSessionsPage,
+        sessionsTotalPages,
+        pageSize,
       },
     };
   } catch (error) {

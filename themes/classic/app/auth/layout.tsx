@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthBrand } from '@/components/auth/auth-card';
 
 export default function AuthLayout({
   children,
@@ -8,16 +9,11 @@ export default function AuthLayout({
   return (
     <div className='min-h-screen flex bg-background'>
       {/* Left side - Branding */}
-      <div className='hidden lg:flex lg:w-1/2 bg-card border-r border-border flex-col justify-between p-10'>
-        <Link
-          href='/'
-          className='text-lg tracking-[0.15em] font-medium uppercase'
-        >
-          RapidAuth
-        </Link>
+      <div className='hidden lg:flex lg:w-1/2 bg-background border-r border-border flex-col justify-between p-10'>
+        <AuthBrand />
 
         <div className='space-y-6'>
-          <blockquote className='text-2xl font-light leading-relaxed'>
+          <blockquote className='text-2xl font-semibold tracking-tight leading-relaxed'>
             Build faster. Ship sooner. Scale effortlessly.
           </blockquote>
           <p className='text-muted-foreground text-sm'>
@@ -34,13 +30,8 @@ export default function AuthLayout({
       <div className='flex-1 flex items-center justify-center p-6 lg:p-10'>
         <div className='w-full max-w-md'>
           {/* Mobile logo */}
-          <div className='lg:hidden mb-8 text-center'>
-            <Link
-              href='/'
-              className='text-lg tracking-[0.15em] font-medium uppercase'
-            >
-              RapidAuth
-            </Link>
+          <div className='lg:hidden mb-8 flex justify-center'>
+            <AuthBrand />
           </div>
 
           {children}

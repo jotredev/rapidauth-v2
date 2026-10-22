@@ -4,17 +4,11 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Calendar, Download, ChevronDown, type LucideIcon } from "lucide-react";
-
-export interface DateRangeOption {
-  label: string;
-  value: string;
-}
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info, type LucideIcon } from "lucide-react";
 
 export interface ActionButton {
   label: string;
@@ -26,82 +20,44 @@ export interface ActionButton {
 export interface PageHeaderProps {
   title: string;
   description?: string;
-  dateRangeOptions?: DateRangeOption[];
-  selectedDateRange?: string;
-  onDateRangeChange?: (value: string) => void;
   actions?: ActionButton[];
   className?: string;
   children?: React.ReactNode;
 }
 
-const defaultDateRangeOptions: DateRangeOption[] = [
-  { label: "Last 7 Days", value: "7d" },
-  { label: "Last 30 Days", value: "30d" },
-  { label: "Last 90 Days", value: "90d" },
-  { label: "This Year", value: "1y" },
-];
-
 export function PageHeader({
   title,
   description,
-  dateRangeOptions = defaultDateRangeOptions,
-  selectedDateRange = "30d",
-  onDateRangeChange,
   actions,
   className,
   children,
 }: PageHeaderProps) {
-  const selectedOption = dateRangeOptions.find((o) => o.value === selectedDateRange);
-
   return (
     <div
+      data-slot="page-header"
       className={cn(
-        "flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4",
+        "flex min-h-14 flex-wrap items-center gap-2 border-b border-border px-5 py-2",
         className
       )}
     >
-      <div>
-        <h1 className="text-2xl lg:text-3xl tracking-tight font-normal mb-1">
-          {title}
-        </h1>
-        {description && (
-          <p className="text-sm font-light text-muted-foreground">
-            {description}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-3 w-full sm:w-auto">
-        {children}
+      <h1 className="text-[19px] font-semibold leading-tight">{title}</h1>
+      {description && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="About this page"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Info className="size-[15px]" strokeWidth={1.75} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{description}</TooltipContent>
+        </Tooltip>
+      )}
 
-        {dateRangeOptions.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex-1 sm:flex-none justify-between sm:justify-center gap-2"
-              >
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-                  {selectedOption?.label || "Select Range"}
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {dateRangeOptions.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  onClick={() => onDateRangeChange?.(option.value)}
-                  className={cn(
-                    selectedDateRange === option.value && "bg-accent"
-                  )}
-                >
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="ml-auto flex items-center gap-2">
+        {children}
 
         {actions?.map((action, index) => {
           const Icon = action.icon;
@@ -109,14 +65,11 @@ export function PageHeader({
             <Button
               key={index}
               variant={action.variant || "default"}
+              size="sm"
               onClick={action.onClick}
-              className={cn(
-                "flex-1 sm:flex-none gap-2",
-                action.variant === "default" &&
-                  "shadow-[0_0_20px_rgba(220,218,203,0.15)]"
-              )}
+              className="gap-2"
             >
-              {Icon && <Icon className="h-4 w-4" strokeWidth={1.5} />}
+              {Icon && <Icon className="size-4" strokeWidth={1.75} />}
               {action.label}
             </Button>
           );
@@ -125,10 +78,3 @@ export function PageHeader({
     </div>
   );
 }
-
-// Default export action
-export const exportAction: ActionButton = {
-  label: "Export",
-  icon: Download,
-  variant: "default",
-};

@@ -5,7 +5,9 @@ import {
   useState,
   useTransition,
 } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'nextjs-toploader/app';
+import { DEFAULT_PAGE_SIZE, type PageSize } from '@/lib/list-pagination';
 import {
   parseUserListSearchParams,
   type UserListParams,
@@ -33,6 +35,7 @@ function getParamsKey(
     providers: readonly string[];
   },
   page: number,
+  pageSize: number,
 ) {
   return JSON.stringify([
     page,
@@ -40,6 +43,7 @@ function getParamsKey(
     filters.roles,
     filters.statuses,
     filters.providers,
+    pageSize,
   ]);
 }
 
@@ -58,12 +62,13 @@ export function useUsersFilters({
   });
   const urlParams = parseUserListSearchParams({
     page: currentSearchParams.get('page') ?? undefined,
+    pageSize: currentSearchParams.get('pageSize') ?? undefined,
     q: currentSearchParams.get('q') ?? undefined,
     role: currentSearchParams.getAll('role'),
     status: currentSearchParams.getAll('status'),
     provider: currentSearchParams.getAll('provider'),
   });
-  const urlParamsKey = getParamsKey(urlParams.q, urlParams, urlParams.page);
+  const urlParamsKey = getParamsKey(urlParams.q, urlParams, urlParams.page, urlParams.pageSize);
   const [previousUrlParamsKey, setPreviousUrlParamsKey] =
     useState(urlParamsKey);
   const [pendingParamsKeys, setPendingParamsKeys] = useState<string[]>([]);
@@ -89,13 +94,21 @@ export function useUsersFilters({
   }
 
   const createUrl = useCallback(
-    (query: string, nextFilters: Filters, page: number) => {
+    (
+      query: string,
+      nextFilters: Filters,
+      page: number,
+      pageSize: PageSize = urlParams.pageSize,
+    ) => {
       const params = new URLSearchParams(currentSearchParams.toString());
-      ['page', 'q', 'role', 'status', 'provider'].forEach((key) =>
+      ['page', 'pageSize', 'q', 'role', 'status', 'provider'].forEach((key) =>
         params.delete(key),
       );
 
       params.set('page', String(page));
+      if (pageSize !== DEFAULT_PAGE_SIZE) {
+        params.set('pageSize', String(pageSize));
+      }
       const normalizedQuery = query.trim().slice(0, SEARCH_MAX_LENGTH);
       if (normalizedQuery) params.set('q', normalizedQuery);
       nextFilters.roles.forEach((role) => params.append('role', role));
@@ -106,20 +119,27 @@ export function useUsersFilters({
 
       return `/dashboard/users?${params.toString()}`;
     },
-    [currentSearchParams],
+    [currentSearchParams, urlParams.pageSize],
   );
 
   const replaceUrl = useCallback(
-    (query: string, nextFilters: Filters, page: number) => {
-      const paramsKey = getParamsKey(query, nextFilters, page);
+    (
+      query: string,
+      nextFilters: Filters,
+      page: number,
+      pageSize: PageSize = urlParams.pageSize,
+    ) => {
+      const paramsKey = getParamsKey(query, nextFilters, page, pageSize);
       if (pendingParamsKeys.includes(paramsKey)) return;
 
       setPendingParamsKeys([...pendingParamsKeys, paramsKey]);
       startTransition(() => {
-        router.replace(createUrl(query, nextFilters, page), { scroll: false });
+        router.replace(createUrl(query, nextFilters, page, pageSize), {
+          scroll: false,
+        });
       });
     },
-    [createUrl, pendingParamsKeys, router],
+    [createUrl, pendingParamsKeys, router, urlParams.pageSize],
   );
 
   useEffect(() => {
@@ -178,6 +198,14 @@ export function useUsersFilters({
     [filters, onParamsChange, replaceUrl, searchQuery],
   );
 
+  const setPageSize = useCallback(
+    (pageSize: PageSize) => {
+      onParamsChange();
+      replaceUrl(searchQuery, filters, 1, pageSize);
+    },
+    [filters, onParamsChange, replaceUrl, searchQuery],
+  );
+
   const getPageHref = useCallback(
     (page: number) => createUrl(searchQuery, filters, page),
     [createUrl, filters, searchQuery],
@@ -192,6 +220,7 @@ export function useUsersFilters({
     removeFilter,
     clearAllFilters,
     goToPage,
+    setPageSize,
     getPageHref,
     isPending,
   };

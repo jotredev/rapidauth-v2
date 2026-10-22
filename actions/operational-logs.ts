@@ -9,7 +9,6 @@ import { prisma } from '@/lib/prisma';
 import { reportError } from '@/lib/report-error';
 import {
   buildOperationalLogsWhere,
-  OPERATIONAL_LOGS_PAGE_SIZE,
   operationalLogListParamsSchema,
   type OperationalLogListParams,
 } from '@/lib/operational-log-query';
@@ -109,8 +108,8 @@ export async function getOperationalLogs(
       prisma.operationalLog.count({ where }),
       prisma.operationalLog.findMany({
         where,
-        skip: (parsedParams.data.page - 1) * OPERATIONAL_LOGS_PAGE_SIZE,
-        take: OPERATIONAL_LOGS_PAGE_SIZE,
+        skip: (parsedParams.data.page - 1) * parsedParams.data.pageSize,
+        take: parsedParams.data.pageSize,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: {
           user: {
@@ -134,7 +133,7 @@ export async function getOperationalLogs(
 
     const filterUser = (filterUserResult as OperationalLogUser | null | undefined) ?? null;
 
-    const totalPages = Math.max(1, Math.ceil(total / OPERATIONAL_LOGS_PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(total / parsedParams.data.pageSize));
 
     const logs: OperationalLogItem[] = logsData.map((log) => ({
       id: log.id,
@@ -154,7 +153,7 @@ export async function getOperationalLogs(
         logs,
         total,
         page: Math.min(parsedParams.data.page, totalPages),
-        pageSize: OPERATIONAL_LOGS_PAGE_SIZE,
+        pageSize: parsedParams.data.pageSize,
         totalPages,
         filterUser,
       },

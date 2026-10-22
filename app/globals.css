@@ -7,9 +7,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-serif);
+  --font-sans: ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, Menlo, monospace;
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-link: var(--link);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,16 +48,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  /* AETHER custom colors */
-  --color-aether-bg: #0c0c0b;
-  --color-aether-surface: #111110;
-  --color-aether-border: #1a1a19;
-  --color-aether-border-hover: #2a2a29;
-  --color-aether-text: #dcdacb;
-  --color-aether-text-muted: #8a8981;
-  --color-aether-success: #34d399;
-  --color-aether-warning: #fbbf24;
-  --color-aether-error: #f43f5e;
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
@@ -78,90 +70,90 @@
   }
 }
 
-/* Base variables */
-:root {
-  --radius: 0.5rem;
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+/* The design allows only two weights (400 and 600); light and medium render as 400. */
+@theme {
+  --font-weight-light: 400;
+  --font-weight-medium: 400;
+  --font-weight-bold: 600;
+  --default-transition-duration: 120ms;
 }
 
-/* AETHER Light Theme */
+/* Light theme */
 :root,
 .light {
-  --background: #f4f4f3;
-  --foreground: #0c0c0b;
-  --card: #ffffff;
-  --card-foreground: #0c0c0b;
-  --popover: #ffffff;
-  --popover-foreground: #0c0c0b;
-  --primary: #0c0c0b;
-  --primary-foreground: #fafaf9;
-  --secondary: #ebebea;
-  --secondary-foreground: #0c0c0b;
-  --muted: #ebebea;
-  --muted-foreground: #737373;
-  --accent: #e5e5e4;
-  --accent-foreground: #0c0c0b;
+  --radius: 0.5rem;
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(240 3.7% 15.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(240 3.7% 15.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(240 3.7% 15.9%);
+  --primary: hsl(240 5.9% 10%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(240 4.8% 95.9%);
+  --secondary-foreground: hsl(240 3.7% 15.9%);
+  --muted: hsl(240 4.8% 95.9%);
+  --muted-foreground: hsl(240 3.8% 46.1%);
+  --accent: hsl(240 4.8% 95.9%);
+  --accent-foreground: hsl(240 3.7% 15.9%);
   --destructive: #dc2626;
-  --border: #e5e5e4;
-  --input: #e5e5e4;
-  --ring: #a8a29e;
-  --chart-1: #10b981;
+  --border: hsl(240 5.9% 90%);
+  --input: hsl(240 5.9% 90%);
+  --ring: hsl(243 75.4% 58.6%);
+  --link: hsl(243 75.4% 58.6%);
+  --success: hsl(142 60% 32%);
+  --warning: hsl(32 85% 38%);
+  --chart-1: hsl(243 75.4% 58.6%);
   --chart-2: #f59e0b;
   --chart-3: #ef4444;
   --chart-4: #8b5cf6;
   --chart-5: #3b82f6;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0c0c0b;
-  --sidebar-primary: #0c0c0b;
-  --sidebar-primary-foreground: #fafaf9;
-  --sidebar-accent: #f4f4f3;
-  --sidebar-accent-foreground: #0c0c0b;
-  --sidebar-border: #e5e5e4;
-  --sidebar-ring: #a8a29e;
-  /* Card specific - no border in light mode */
-  --card-border: transparent;
+  --sidebar: hsl(0 0% 100%);
+  --sidebar-foreground: hsl(240 5.2% 33.9%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 94%);
+  --sidebar-accent-foreground: hsl(240 3.7% 15.9%);
+  --sidebar-border: hsl(240 5.9% 90%);
+  --sidebar-ring: hsl(243 75.4% 58.6%);
 }
 
-/* AETHER Dark Theme */
+/* Dark theme */
 .dark {
-  --background: #0c0c0b;
-  --foreground: #dcdacb;
-  --card: #111110;
-  --card-foreground: #dcdacb;
-  --popover: #111110;
-  --popover-foreground: #dcdacb;
-  --primary: #dcdacb;
-  --primary-foreground: #0c0c0b;
-  --secondary: #1a1a19;
-  --secondary-foreground: #dcdacb;
-  --muted: #1a1a19;
-  --muted-foreground: #8a8981;
-  --accent: #2a2a29;
-  --accent-foreground: #dcdacb;
+  --background: hsl(0 0% 6%);
+  --foreground: hsl(0 0% 88%);
+  --card: hsl(0 0% 6%);
+  --card-foreground: hsl(0 0% 88%);
+  --popover: hsl(0 0% 8%);
+  --popover-foreground: hsl(0 0% 88%);
+  --primary: hsl(0 0% 88%);
+  --primary-foreground: hsl(0 0% 6%);
+  --secondary: hsl(0 0% 13%);
+  --secondary-foreground: hsl(0 0% 88%);
+  --muted: hsl(0 0% 13%);
+  --muted-foreground: hsl(0 0% 54%);
+  --accent: hsl(0 0% 13%);
+  --accent-foreground: hsl(0 0% 88%);
   --destructive: #f43f5e;
-  --border: #1a1a19;
-  --input: #1a1a19;
-  --ring: #8a8981;
-  --chart-1: #34d399;
+  --border: hsl(0 0% 15%);
+  --input: hsl(0 0% 15%);
+  --ring: hsl(246 70% 74%);
+  --link: hsl(246 70% 74%);
+  --success: hsl(142 45% 58%);
+  --warning: hsl(38 80% 62%);
+  --chart-1: hsl(246 70% 74%);
   --chart-2: #fbbf24;
   --chart-3: #f43f5e;
   --chart-4: #a78bfa;
   --chart-5: #60a5fa;
-  --sidebar: #0c0c0b;
-  --sidebar-foreground: #dcdacb;
-  --sidebar-primary: #dcdacb;
-  --sidebar-primary-foreground: #0c0c0b;
-  --sidebar-accent: #111110;
-  --sidebar-accent-foreground: #dcdacb;
-  --sidebar-border: #1a1a19;
-  --sidebar-ring: #8a8981;
+  --sidebar: hsl(0 0% 6%);
+  --sidebar-foreground: hsl(0 0% 78%);
+  --sidebar-primary: hsl(0 0% 88%);
+  --sidebar-primary-foreground: hsl(0 0% 6%);
+  --sidebar-accent: hsl(0 0% 12%);
+  --sidebar-accent-foreground: hsl(0 0% 88%);
+  --sidebar-border: hsl(0 0% 15%);
+  --sidebar-ring: hsl(246 70% 74%);
 }
 
 @layer base {
@@ -173,6 +165,10 @@
   }
   html {
     @apply font-sans;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
   }
 }
 
@@ -186,20 +182,13 @@
   }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-  background: transparent;
+/* Scrollbars are hidden everywhere; content still scrolls. */
+* {
+  scrollbar-width: none;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+*::-webkit-scrollbar {
+  display: none;
 }
 
 /* Hide native search clear button */
