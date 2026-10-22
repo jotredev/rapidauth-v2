@@ -26,6 +26,8 @@ test.describe('environment resolution', () => {
       email: {
         provider: 'mailpit',
         delivery: 'resend',
+        mailpitSmtpAddress: 'localhost:1025',
+        mailpitOnRemoteHost: false,
         from: 'RapidAuth <onboarding@resend.dev>',
         outboxDir: '.e2e-outbox',
       },
@@ -55,6 +57,39 @@ test.describe('environment resolution', () => {
     expect(
       resolveEnv({ EMAIL_DELIVERY: 'outbox', RESEND_API_KEY: 're_123' }).config.email.provider,
     ).toBe('outbox');
+  });
+
+  test('reads the internal Mailpit address and defaults to localhost:1025', () => {
+    expect(resolveEnv({}).config.email.mailpitSmtpAddress).toBe('localhost:1025');
+    expect(resolveEnv({ MAILPIT_SMTP_ADDRESS: '  ' }).config.email.mailpitSmtpAddress).toBe(
+      'localhost:1025',
+    );
+    expect(
+      resolveEnv({ MAILPIT_SMTP_ADDRESS: 'mailpit:1025' }).config.email.mailpitSmtpAddress,
+    ).toBe('mailpit:1025');
+  });
+
+  test('warns when Mailpit is used with a non-local BETTER_AUTH_URL, without blocking', () => {
+    const remote = resolveEnv({ BETTER_AUTH_URL: 'https://app.example.com' });
+    expect(remote.error).toBeNull();
+    expect(remote.config.email.mailpitOnRemoteHost).toBe(true);
+    const summary = formatEnvSummary(remote.config);
+    expect(summary).toContain('WARNING');
+    expect(summary).toContain('will not reach anyone');
+    expect(summary).not.toContain('app.example.com');
+
+    for (const url of ['http://localhost:3000', 'http://127.0.0.1:3100', undefined, 'not a url']) {
+      const { config } = resolveEnv({ BETTER_AUTH_URL: url });
+      expect(config.email.mailpitOnRemoteHost).toBe(false);
+      expect(formatEnvSummary(config)).not.toContain('WARNING');
+    }
+
+    // With a key (Resend) or the test outbox there is nothing to warn about.
+    for (const extra of [{ RESEND_API_KEY: 're_123' }, { EMAIL_DELIVERY: 'outbox' }]) {
+      const { config } = resolveEnv({ BETTER_AUTH_URL: 'https://app.example.com', ...extra });
+      expect(config.email.mailpitOnRemoteHost).toBe(false);
+      expect(formatEnvSummary(config)).not.toContain('WARNING');
+    }
   });
 
   test('resolves the storage driver', () => {
@@ -194,6 +229,8 @@ test.describe('environment resolution', () => {
       provider: 'outbox',
       delivery: 'outbox',
       resendApiKey: ' re_123 ',
+      mailpitSmtpAddress: 'localhost:1025',
+      mailpitOnRemoteHost: false,
       from: 'App <hi@example.com>',
       outboxDir: '/tmp/outbox',
     });

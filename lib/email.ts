@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import nodemailer, { type Transporter } from 'nodemailer';
 import { render } from 'react-email';
 import {
   AccountDeletedEmail,
@@ -29,21 +30,42 @@ export class EmailDeliveryError extends Error {
   }
 }
 
-const { delivery: emailDelivery, from: FROM_EMAIL, outboxDir } = getEnv().config.email;
-if (emailDelivery === 'outbox' && process.env.NODE_ENV === 'production') {
+const { provider: emailProvider, from: FROM_EMAIL, outboxDir } = getEnv().config.email;
+if (emailProvider === 'outbox' && process.env.NODE_ENV === 'production') {
   throw new Error('EMAIL_DELIVERY=outbox is only available outside production.');
 }
 
 let resend: Resend | undefined;
 
 function getResendClient() {
-  const apiKey = getEnv().config.email.resendApiKey?.trim();
-  if (!apiKey) {
-    throw new Error("RESEND_API_KEY is required to send email.");
-  }
-
-  resend ??= new Resend(apiKey);
+  // Only called when the provider is "resend", so the key exists.
+  resend ??= new Resend(getEnv().config.email.resendApiKey?.trim());
   return resend;
+}
+
+let mailpit: Transporter | undefined;
+
+function getMailpitTransport() {
+  if (!mailpit) {
+    const { hostname, port } = new URL(`smtp://${getEnv().config.email.mailpitSmtpAddress}`);
+    mailpit = nodemailer.createTransport({
+      host: hostname,
+      port: Number(port) || 1025,
+      secure: false,
+      ignoreTLS: true,
+      connectionTimeout: 5_000,
+      greetingTimeout: 5_000,
+      socketTimeout: 10_000,
+    });
+  }
+  return mailpit;
+}
+
+/** Nodemailer errors carry a code such as ECONNREFUSED; the log only accepts [a-z0-9_.-]. */
+function smtpErrorCode(error: unknown) {
+  const code = (error as { code?: unknown } | null)?.code;
+  const clean = typeof code === 'string' ? code.toLowerCase() : '';
+  return /^[a-z0-9_.-]{1,64}$/.test(clean) ? clean : 'exception';
 }
 
 async function deliverEmail({
@@ -66,7 +88,7 @@ async function deliverEmail({
   const startTime = performance.now();
 
   try {
-    if (emailDelivery === 'outbox') {
+    if (emailProvider === 'outbox') {
       const localPart = to.split('@')[0] ?? '';
       if (localPart.endsWith('+delivery-fail')) {
         throw new EmailDeliveryError(
@@ -91,6 +113,16 @@ async function deliverEmail({
         JSON.stringify(outboxPayload, null, 2),
         { encoding: 'utf8', mode: 0o600 },
       );
+    } else if (emailProvider === 'mailpit') {
+      try {
+        await getMailpitTransport().sendMail({ from: FROM_EMAIL, to, subject, html });
+      } catch (error) {
+        throw new EmailDeliveryError(
+          'Failed to send email',
+          smtpErrorCode(error),
+          { cause: error },
+        );
+      }
     } else {
       let sendResult;
       try {

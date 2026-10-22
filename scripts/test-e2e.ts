@@ -6,7 +6,9 @@ const project = 'rapidauth-e2e';
 const compose = ['compose', '-p', project];
 const databaseUrl = 'postgresql://rapidauth:rapidauth@127.0.0.1:55432/rapidauth?sslmode=disable';
 const s3Container = `${project}-s3mock-${process.pid}`;
+const mailpitContainer = `${project}-mailpit-${process.pid}`;
 let s3Started = false;
+let mailpitStarted = false;
 
 function run(command: string, args: string[], env: NodeJS.ProcessEnv = process.env, capture = false) {
   const result = spawnSync(command, args, { cwd: process.cwd(), env, encoding: 'utf8', stdio: capture ? 'pipe' : 'inherit' });
@@ -43,6 +45,11 @@ async function main() {
   if (!port) throw new Error('Could not determine S3Mock host port.');
   const endpoint = `http://127.0.0.1:${port}`;
   await waitForS3(endpoint);
+  run('docker', ['run', '-d', '--name', mailpitContainer, '-p', '127.0.0.1::1025', '-p', '127.0.0.1::8025', 'axllent/mailpit:v1.31.6']);
+  mailpitStarted = true;
+  const smtpPort = run('docker', ['port', mailpitContainer, '1025/tcp'], process.env, true).split(':').at(-1);
+  const apiPort = run('docker', ['port', mailpitContainer, '8025/tcp'], process.env, true).split(':').at(-1);
+  if (!smtpPort || !apiPort) throw new Error('Could not determine Mailpit host ports.');
   const env = {
     ...process.env,
     DATABASE_URL: databaseUrl,
@@ -54,6 +61,8 @@ async function main() {
     S3_SECRET_ACCESS_KEY: 's3mock-secret-key',
     S3_PUBLIC_URL: `${endpoint}/rapidauth-avatars`,
     S3_FORCE_PATH_STYLE: 'true',
+    MAILPIT_SMTP_ADDRESS: `127.0.0.1:${smtpPort}`,
+    MAILPIT_API_URL: `http://127.0.0.1:${apiPort}`,
   };
   run('bunx', ['playwright', 'test', ...process.argv.slice(2)], env);
 }
@@ -62,6 +71,7 @@ try {
   await main();
 } finally {
   if (s3Started) spawnSync('docker', ['rm', '-f', s3Container], { stdio: 'inherit' });
+  if (mailpitStarted) spawnSync('docker', ['rm', '-f', mailpitContainer], { stdio: 'inherit' });
   if (process.env.CI !== 'true') {
     spawnSync('docker', [...compose, 'down', '-v'], { stdio: 'inherit' });
   }

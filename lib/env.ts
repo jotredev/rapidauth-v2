@@ -22,6 +22,10 @@ export type ResolvedEnv = {
     /** EMAIL_DELIVERY as lib/email.ts reads it: defaults to "resend". */
     delivery: string;
     resendApiKey?: string;
+    /** Internal (set by docker/app.dev.yaml, not documented): where Mailpit listens, as host:port. */
+    mailpitSmtpAddress: string;
+    /** True when emails go to Mailpit but BETTER_AUTH_URL points to a non-local host. */
+    mailpitOnRemoteHost: boolean;
     from: string;
     outboxDir: string;
   };
@@ -78,6 +82,18 @@ function resolvePair(env: EnvSource, keys: readonly [string, string]) {
 function resolveEmailProvider(env: EnvSource): EmailProvider {
   if (env.EMAIL_DELIVERY === 'outbox') return 'outbox';
   return env.RESEND_API_KEY?.trim() ? 'resend' : 'mailpit';
+}
+
+const LOCAL_HOSTS = ['localhost', '127.0.0.1'];
+
+/** An unset or unparsable BETTER_AUTH_URL is not treated as remote. */
+function isRemoteUrl(value: string | undefined): boolean {
+  if (!value?.trim()) return false;
+  try {
+    return !LOCAL_HOSTS.includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
 }
 
 const REQUIRED_S3_VARIABLES = [
@@ -150,12 +166,15 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
   if (storage.driverError) problems.push(storage.driverError);
   if (storage.driver === 's3' && storage.s3Problem) problems.push(storage.s3Problem);
 
+  const provider = resolveEmailProvider(env);
   const config: ResolvedEnv = {
     database: { docker: env.DOCKER_DATABASE === 'true' },
     email: {
-      provider: resolveEmailProvider(env),
+      provider,
       delivery: env.EMAIL_DELIVERY ?? 'resend',
       resendApiKey: env.RESEND_API_KEY,
+      mailpitSmtpAddress: env.MAILPIT_SMTP_ADDRESS?.trim() || 'localhost:1025',
+      mailpitOnRemoteHost: provider === 'mailpit' && isRemoteUrl(env.BETTER_AUTH_URL),
       from: env.FROM_EMAIL ?? 'RapidAuth <onboarding@resend.dev>',
       outboxDir: env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox',
     },
@@ -196,7 +215,7 @@ const EMAIL_LABELS: Record<EmailProvider, string> = {
 /** Short startup summary. Built only from resolved values: never keys, URLs or DSNs. */
 export function formatEnvSummary(config: ResolvedEnv): string {
   const state = (enabled: boolean) => (enabled ? 'on' : 'off');
-  return [
+  const lines = [
     'Environment:',
     `  Database:  ${config.database.docker ? 'Docker PostgreSQL' : 'external PostgreSQL'}`,
     `  Emails:    ${EMAIL_LABELS[config.email.provider]}`,
@@ -205,7 +224,15 @@ export function formatEnvSummary(config: ResolvedEnv): string {
     `  Google:    ${state(config.google.enabled)}`,
     `  GitHub:    ${state(config.github.enabled)}`,
     `  Sentry:    ${state(config.sentry.enabled)}`,
-  ].join('\n');
+  ];
+  if (config.email.mailpitOnRemoteHost) {
+    lines.push(
+      '',
+      '  WARNING: RESEND_API_KEY is not set, so emails go to Mailpit and will not reach anyone.',
+      '  Set RESEND_API_KEY to send real emails.',
+    );
+  }
+  return lines.join('\n');
 }
 
 let cached: EnvResolution | undefined;
