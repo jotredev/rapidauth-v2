@@ -279,6 +279,38 @@ Estas variables solo las lee `bun run db:seed`; no hacen falta en la app despué
 - **Formato de ejemplo:** `github_pat_reemplazar_con_tu_token`
 - **Secreta:** Sí. El selector la lee de `.env.local`; la app en ejecución no la necesita.
 
+## Comprobación y resumen al arrancar
+
+Cuando el servidor arranca (`bun dev` o `bun run start`), RapidAuth lee estas variables una vez e imprime un resumen corto de lo que está activo. Solo muestra estados, nunca claves, URLs ni DSN:
+
+```text
+Environment:
+  Database:  Docker PostgreSQL
+  Emails:    Resend
+  Files:     local disk
+  Turnstile: on
+  Google:    off
+  GitHub:    off
+  Sentry:    off
+```
+
+Algunas funciones se activan con una pareja de variables. El servidor comprueba estas parejas:
+
+- Google: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+- GitHub: `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET`.
+- Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`.
+- Almacenamiento S3: con `STORAGE_DRIVER=s3`, todas las variables `S3_*` que requiere (consulta [Almacenamiento de archivos](#almacenamiento-de-archivos)).
+
+Si no defines ninguna de las dos variables de una pareja de Google, GitHub o Turnstile, la función queda desactivada y no hay error. Si defines solo una, el servidor imprime un único error que lista todo lo que falta y se detiene:
+
+```text
+Incomplete environment configuration:
+- Google: missing GOOGLE_CLIENT_SECRET.
+- GitHub: missing GITHUB_CLIENT_ID.
+```
+
+Un `STORAGE_DRIVER` inválido o una configuración S3 incompleta se reportan en ese mismo error.
+
 ## Valores públicos y momento de compilación
 
 Todos los valores `NEXT_PUBLIC_*` son públicos y se compilan dentro del bundle del cliente. Configura los valores deseados antes de compilar; cambiar uno requiere ejecutar de nuevo `next build` y desplegar. Los builds de producción requieren claves reales de sitio y secret de Turnstile.

@@ -279,6 +279,38 @@ These variables are read only by `bun run db:seed`; they are not needed by the a
 - **Example format:** `github_pat_replace_with_your_token`
 - **Secret:** Yes. The theme selector reads it from `.env.local`; it is not needed by the running app.
 
+## Startup check and summary
+
+When the server starts (`bun dev` or `bun run start`), RapidAuth reads these variables once and prints a short summary of what is active. Only states are shown, never keys, URLs, or DSNs:
+
+```text
+Environment:
+  Database:  Docker PostgreSQL
+  Emails:    Resend
+  Files:     local disk
+  Turnstile: on
+  Google:    off
+  GitHub:    off
+  Sentry:    off
+```
+
+Some features are enabled by a pair of variables. The server checks these pairs:
+
+- Google: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- GitHub: `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+- Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
+- S3 storage: when `STORAGE_DRIVER=s3`, all the `S3_*` variables it requires (see [File storage](#file-storage)).
+
+If you set neither variable of a Google, GitHub, or Turnstile pair, the feature is simply off and there is no error. If you set only one, the server prints a single error that lists everything missing and stops:
+
+```text
+Incomplete environment configuration:
+- Google: missing GOOGLE_CLIENT_SECRET.
+- GitHub: missing GITHUB_CLIENT_ID.
+```
+
+An invalid `STORAGE_DRIVER` or incomplete S3 settings are reported in the same error.
+
 ## Public values and build timing
 
 Every `NEXT_PUBLIC_*` value is public and compiled into the client bundle. Set the intended values before building; changing one requires a new `next build` and deployment. Turnstile production builds require real site and secret keys.
