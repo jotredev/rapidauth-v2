@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const project = 'rapidauth-e2e';
-const compose = ['compose', '-p', project, '-f', 'docker/compose.yaml'];
+const compose = ['compose', '-p', project];
 const databaseUrl = 'postgresql://rapidauth:rapidauth@127.0.0.1:55432/rapidauth?sslmode=disable';
 const s3Container = `${project}-s3mock-${process.pid}`;
 let s3Started = false;

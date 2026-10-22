@@ -1,23 +1,4 @@
-name: rapidauth
-
 services:
-  db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: rapidauth
-      POSTGRES_PASSWORD: rapidauth
-      POSTGRES_DB: rapidauth
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rapidauth -d rapidauth"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   app:
     build:
       context: ..
@@ -44,6 +25,5 @@ services:
       - app_next:/app/.next
 
 volumes:
-  postgres_data:
   app_node_modules:
   app_next:

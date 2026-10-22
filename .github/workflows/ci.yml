@@ -226,11 +226,11 @@ jobs:
           sed -i 's#^SUPPORT_EMAIL=.*#SUPPORT_EMAIL="support@example.invalid"#' .env
           sed -i 's#^SEED_ADMIN_PASSWORD=.*#SEED_ADMIN_PASSWORD="ci-admin-password"#' .env
       - name: Validate Compose configuration
-        run: docker compose -p rapidauth-ci -f docker/compose.yaml config --quiet
+        run: docker compose -p rapidauth-ci config --quiet
       - name: Start development stack and smoke test
         shell: bash
         run: |
-          docker compose -p rapidauth-ci -f docker/compose.yaml up -d --build
+          docker compose -p rapidauth-ci up -d --build
           for attempt in $(seq 1 120); do
             : "$attempt"
             status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3000/auth/login || true)"
@@ -241,10 +241,10 @@ jobs:
           done
           if [ "${status:-}" != "200" ]; then
             echo "The development app did not return HTTP 200 from /auth/login."
-            docker compose -p rapidauth-ci -f docker/compose.yaml logs app db
+            docker compose -p rapidauth-ci logs app db
             exit 1
           fi
-          docker compose -p rapidauth-ci -f docker/compose.yaml logs app > /tmp/rapidauth-app.log
+          docker compose -p rapidauth-ci logs app > /tmp/rapidauth-app.log
           grep -qF "Created admin user:" /tmp/rapidauth-app.log
           echo "Admin creation log found."
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -310,9 +310,9 @@ jobs:
         if: failure()
         run: |
           docker logs rapidauth-ci-production 2>&1 || true
-          docker compose -p rapidauth-ci -f docker/compose.yaml logs app db 2>&1 || true
+          docker compose -p rapidauth-ci logs app db 2>&1 || true
       - name: Clean up Docker resources
         if: always()
         run: |
           docker rm -f rapidauth-ci-production 2>/dev/null || true
-          docker compose -p rapidauth-ci -f docker/compose.yaml down -v --remove-orphans 2>/dev/null || true
+          docker compose -p rapidauth-ci down -v --remove-orphans 2>/dev/null || true

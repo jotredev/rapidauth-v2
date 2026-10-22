@@ -1980,8 +1980,8 @@ async function runSetup() {
         ? [
             'Local PostgreSQL is running in Docker.',
             'It starts with Docker unless you stopped it on purpose.',
-            'Stop it: docker compose -f docker/compose.yaml stop db',
-            'Start it: docker compose -f docker/compose.yaml up -d db',
+            'Stop it: docker compose stop db',
+            'Start it: docker compose up -d db',
             '',
           ]
         : []),
