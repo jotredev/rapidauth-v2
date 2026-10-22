@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { siteConfig } from '@/config/site';
+import { getEnv } from '@/lib/env';
 import { getPublicSupportEmail, SUPPORT_EMAIL_NOT_CONFIGURED } from '@/lib/support-email';
 
 export const metadata: Metadata = {
@@ -7,9 +9,12 @@ export const metadata: Metadata = {
   description: `How ${siteConfig.appName} collects, uses, and protects personal information.`,
 };
 
-export default function PrivacyPage() {
-  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_ENABLED === 'true';
-  const githubEnabled = process.env.NEXT_PUBLIC_GITHUB_ENABLED === 'true';
+export default async function PrivacyPage() {
+  // Read Google/GitHub credentials on each request, not at build time.
+  await connection();
+  const { google, github } = getEnv().config;
+  const googleEnabled = google.enabled;
+  const githubEnabled = github.enabled;
   const supportEmail = getPublicSupportEmail();
   const supportLink = supportEmail ? (
     <a href={`mailto:${supportEmail}`}>{supportEmail}</a>

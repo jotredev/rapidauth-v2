@@ -35,11 +35,14 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 
-const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_ENABLED === 'true';
-const githubEnabled = process.env.NEXT_PUBLIC_GITHUB_ENABLED === 'true';
-const hasOAuth = googleEnabled || githubEnabled;
-
-export function RegisterForm() {
+export function RegisterForm({
+  googleEnabled = false,
+  githubEnabled = false,
+}: {
+  googleEnabled?: boolean;
+  githubEnabled?: boolean;
+}) {
+  const hasOAuth = googleEnabled || githubEnabled;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = React.useState(false);

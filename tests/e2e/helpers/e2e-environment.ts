@@ -36,8 +36,6 @@ export function createE2EEnvironment(databaseUrl: string): NodeJS.ProcessEnv {
     GOOGLE_CLIENT_SECRET: 'e2e-google-client-secret',
     GITHUB_CLIENT_ID: 'e2e-github-client-id',
     GITHUB_CLIENT_SECRET: 'e2e-github-client-secret',
-    NEXT_PUBLIC_GOOGLE_ENABLED: 'true',
-    NEXT_PUBLIC_GITHUB_ENABLED: 'true',
     RAPIDAUTH_E2E: 'true',
   };
 }
