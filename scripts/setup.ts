@@ -370,10 +370,10 @@ async function askTurnstileConfig(
   existingEnv: Record<string, string>,
 ): Promise<{ siteKey: string; secretKey: string }> {
   printBox(
-    'Cloudflare Turnstile is optional, but recommended in production',
+    'Cloudflare Turnstile (optional, recommended)',
     [
-      'It turns on only when both keys are set; otherwise it stays off.',
-      'Set both on the server where you deploy; restart to change them.',
+      'Turns on only when both keys are set.',
+      'Set both on your server; restart to change them.',
       'Guide (English): docs/en/02-turnstile.md',
       'Spanish guide: docs/es/02-turnstile.md',
     ],
