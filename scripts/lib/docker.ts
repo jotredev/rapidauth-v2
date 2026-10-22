@@ -102,5 +102,8 @@ export function countDockerDatabaseTables(): number {
     ],
     { encoding: 'utf8', timeout: 15_000 },
   ).trim();
+  if (!/^\d+$/.test(output)) {
+    throw new Error(`Could not count the tables in the local database: psql returned "${output}".`);
+  }
   return Number.parseInt(output, 10);
 }

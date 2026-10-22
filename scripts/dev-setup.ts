@@ -59,16 +59,21 @@ function runDockerStep(what: string, step: () => Promise<void> | void): Promise<
 }
 
 /** Creates the tables with the current mechanism (prisma db push) when the local database is empty. */
-function ensureTables(): void {
+function ensureTables(databaseUrl: string): void {
   if (countDockerDatabaseTables() > 0) return;
   process.stdout.write('The local database is empty. Creating the tables with prisma db push...\n');
-  execFileSync('bunx', ['prisma', 'db', 'push'], { stdio: 'inherit' });
+  // Pass the URL that was checked as the Docker database: prisma.config.ts never overrides process.env.
+  execFileSync('bunx', ['prisma', 'db', 'push'], {
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
 }
 
 async function main(): Promise<void> {
   if (!existsSync(envPath)) createLocalEnv();
 
-  const env = parse(readFileSync(envPath));
+  // Effective environment: variables already exported in the terminal win over .env, as in Next.js and Prisma.
+  const env = { ...parse(readFileSync(envPath)), ...process.env };
   const useDockerDatabase = isDockerDatabaseUrl(env.DATABASE_URL, env.DB_PORT);
   const useMailpit = !env.RESEND_API_KEY?.trim();
 
@@ -90,7 +95,7 @@ async function main(): Promise<void> {
       'DATABASE_URL points to the local PostgreSQL in Docker',
       async () => {
         await ensureDockerDatabase(env.DB_PORT);
-        ensureTables();
+        ensureTables(env.DATABASE_URL as string);
       },
     );
     if (!started) return;
@@ -104,7 +109,7 @@ async function main(): Promise<void> {
     if (!started) return;
   }
 
-  process.stdout.write(`\n${formatEnvSummary(resolveEnv({ ...env, ...process.env }).config)}\n`);
+  process.stdout.write(`\n${formatEnvSummary(resolveEnv(env).config)}\n`);
   process.stdout.write('For production, run bun run init:setup\n\n');
 }
 
