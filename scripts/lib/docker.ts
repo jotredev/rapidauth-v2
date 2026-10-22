@@ -39,24 +39,31 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-export async function ensureDockerDatabase(port?: string): Promise<void> {
-  const environment = { ...process.env, ...(port ? { DB_PORT: port } : {}) };
+export type DockerService = 'db' | 'mailpit';
+
+/** Starts one Compose service in the background and waits until its healthcheck passes. */
+export async function ensureDockerService(
+  service: DockerService,
+  label: string,
+  extraEnvironment: Record<string, string> = {},
+): Promise<void> {
+  const environment = { ...process.env, ...extraEnvironment };
   const output = execFileSync(
     'docker',
-    [...DOCKER_COMPOSE_ARGS, 'up', '-d', 'db'],
+    [...DOCKER_COMPOSE_ARGS, 'up', '-d', service],
     { encoding: 'utf8', timeout: 60_000, env: environment },
   ).trim();
   if (output) process.stdout.write(`${output}\n`);
 
   const containerId = execFileSync(
     'docker',
-    [...DOCKER_COMPOSE_ARGS, 'ps', '-q', 'db'],
+    [...DOCKER_COMPOSE_ARGS, 'ps', '-q', service],
     { encoding: 'utf8', timeout: 10_000, env: environment },
   ).trim();
-  if (!containerId) throw new Error('Docker Compose did not return a database container ID.');
+  if (!containerId) throw new Error(`Docker Compose did not return a ${label} container ID.`);
 
   const deadline = Date.now() + 60_000;
-  process.stdout.write('Waiting up to 60 seconds for PostgreSQL to become healthy...\n');
+  process.stdout.write(`Waiting up to 60 seconds for ${label} to become healthy...\n`);
   while (Date.now() < deadline) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) break;
@@ -67,15 +74,33 @@ export async function ensureDockerDatabase(port?: string): Promise<void> {
     ).trim();
 
     if (health === 'healthy') {
-      process.stdout.write('Local PostgreSQL is healthy.\n');
+      process.stdout.write(`${label} is healthy.\n`);
       return;
     }
     if (health === 'unhealthy') {
-      throw new Error('The local PostgreSQL container became unhealthy. Check it with docker compose logs db.');
+      throw new Error(`The ${label} container became unhealthy. Check it with docker compose logs ${service}.`);
     }
 
     await wait(1_000);
   }
 
-  throw new Error('Timed out after 60 seconds waiting for the local PostgreSQL container to become healthy.');
+  throw new Error(`Timed out after 60 seconds waiting for the ${label} container to become healthy.`);
+}
+
+export async function ensureDockerDatabase(port?: string): Promise<void> {
+  await ensureDockerService('db', 'Local PostgreSQL', port ? { DB_PORT: port } : {});
+}
+
+/** Counts the tables in the public schema of the local Docker database. */
+export function countDockerDatabaseTables(): number {
+  const output = execFileSync(
+    'docker',
+    [
+      ...DOCKER_COMPOSE_ARGS, 'exec', '-T', 'db',
+      'psql', '-U', 'rapidauth', '-d', 'rapidauth', '-tA',
+      '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'",
+    ],
+    { encoding: 'utf8', timeout: 15_000 },
+  ).trim();
+  return Number.parseInt(output, 10);
 }

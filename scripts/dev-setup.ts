@@ -1,12 +1,15 @@
+import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'dotenv';
-import { isDockerDatabaseUrl } from '../lib/env';
+import { formatEnvSummary, isDockerDatabaseUrl, resolveEnv } from '../lib/env';
 import {
   checkDockerPrerequisites,
   commandErrorOutput,
+  countDockerDatabaseTables,
   ensureDockerDatabase,
+  ensureDockerService,
 } from './lib/docker';
 
 const root = process.cwd();
@@ -33,29 +36,76 @@ function createLocalEnv(): void {
   process.stdout.write('Created .env with local development values (local PostgreSQL in Docker).\n');
 }
 
+function printDockerError(what: string, error: unknown): void {
+  process.stderr.write(
+    [
+      `${what}, but Docker is not running or it could not start.`,
+      'Open Docker Desktop, OrbStack, or Colima, start the Docker engine, then run `bun dev` again.',
+      `Reason: ${commandErrorOutput(error)}`,
+      'Guide: docs/en/03-docker.md (Spanish: docs/es/03-docker.md)',
+      '',
+    ].join('\n'),
+  );
+  process.exitCode = 1;
+}
+
+function runDockerStep(what: string, step: () => Promise<void> | void): Promise<boolean> {
+  return Promise.resolve()
+    .then(step)
+    .then(() => true, (error: unknown) => {
+      printDockerError(what, error);
+      return false;
+    });
+}
+
+/** Creates the tables with the current mechanism (prisma db push) when the local database is empty. */
+function ensureTables(): void {
+  if (countDockerDatabaseTables() > 0) return;
+  process.stdout.write('The local database is empty. Creating the tables with prisma db push...\n');
+  execFileSync('bunx', ['prisma', 'db', 'push'], { stdio: 'inherit' });
+}
+
 async function main(): Promise<void> {
   if (!existsSync(envPath)) createLocalEnv();
 
   const env = parse(readFileSync(envPath));
-  if (!isDockerDatabaseUrl(env.DATABASE_URL, env.DB_PORT)) return;
+  const useDockerDatabase = isDockerDatabaseUrl(env.DATABASE_URL, env.DB_PORT);
+  const useMailpit = !env.RESEND_API_KEY?.trim();
 
-  try {
+  if (useDockerDatabase || useMailpit) {
     const prerequisiteError = checkDockerPrerequisites();
-    if (prerequisiteError) throw new Error(prerequisiteError);
-    await ensureDockerDatabase(env.DB_PORT);
-  } catch (error) {
-    const reason = commandErrorOutput(error);
-    process.stderr.write(
-      [
-        'DATABASE_URL points to the local PostgreSQL in Docker, but Docker is not running or the database could not start.',
-        'Open Docker Desktop, OrbStack, or Colima, start the Docker engine, then run `bun dev` again.',
-        `Reason: ${reason}`,
-        'Guide: docs/en/03-docker.md (Spanish: docs/es/03-docker.md)',
-        '',
-      ].join('\n'),
-    );
-    process.exitCode = 1;
+    if (prerequisiteError) {
+      printDockerError(
+        useDockerDatabase
+          ? 'DATABASE_URL points to the local PostgreSQL in Docker'
+          : 'RESEND_API_KEY is empty, so emails go to Mailpit in Docker',
+        new Error(prerequisiteError),
+      );
+      return;
+    }
   }
+
+  if (useDockerDatabase) {
+    const started = await runDockerStep(
+      'DATABASE_URL points to the local PostgreSQL in Docker',
+      async () => {
+        await ensureDockerDatabase(env.DB_PORT);
+        ensureTables();
+      },
+    );
+    if (!started) return;
+  }
+
+  if (useMailpit) {
+    const started = await runDockerStep(
+      'RESEND_API_KEY is empty, so emails go to Mailpit in Docker',
+      () => ensureDockerService('mailpit', 'Mailpit'),
+    );
+    if (!started) return;
+  }
+
+  process.stdout.write(`\n${formatEnvSummary(resolveEnv({ ...env, ...process.env }).config)}\n`);
+  process.stdout.write('For production, run bun run init:setup\n\n');
 }
 
 void main();
