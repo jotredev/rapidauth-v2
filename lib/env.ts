@@ -1,9 +1,15 @@
 import { getSentryRuntimeConfig } from '@/lib/sentry-config';
-import {
-  getS3StorageConfigError,
-  getStorageDriver,
-  type StorageDriver,
-} from '@/lib/storage/config';
+export type StorageDriver = 'local' | 's3';
+
+export interface S3StorageConfig {
+  endpoint?: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  publicUrl: string;
+  forcePathStyle: boolean;
+}
 
 export type EnvSource = Record<string, string | undefined>;
 
@@ -11,11 +17,26 @@ export type EmailProvider = 'resend' | 'mailpit' | 'outbox';
 
 export type ResolvedEnv = {
   database: { docker: boolean };
-  email: { provider: EmailProvider };
-  storage: { driver: StorageDriver };
-  turnstile: { enabled: boolean };
-  google: { enabled: boolean };
-  github: { enabled: boolean };
+  email: {
+    provider: EmailProvider;
+    /** EMAIL_DELIVERY as lib/email.ts reads it: defaults to "resend". */
+    delivery: string;
+    resendApiKey?: string;
+    from: string;
+    outboxDir: string;
+  };
+  storage: {
+    driver: StorageDriver;
+    /** Set when STORAGE_DRIVER is not "local" or "s3". */
+    driverError: string | null;
+    /** S3 settings when they are complete and valid, whatever the driver. */
+    s3: S3StorageConfig | null;
+    /** Why `s3` is null (or invalid), whatever the driver. */
+    s3Problem: string | null;
+  };
+  turnstile: { enabled: boolean; siteKey?: string; secretKey?: string };
+  google: { enabled: boolean; clientId?: string; clientSecret?: string };
+  github: { enabled: boolean; clientId?: string; clientSecret?: string };
   sentry: { enabled: boolean };
 };
 
@@ -55,8 +76,62 @@ function resolvePair(env: EnvSource, keys: readonly [string, string]) {
 }
 
 function resolveEmailProvider(env: EnvSource): EmailProvider {
-  if (env.EMAIL_DELIVERY?.trim().toLowerCase() === 'outbox') return 'outbox';
+  if (env.EMAIL_DELIVERY === 'outbox') return 'outbox';
   return env.RESEND_API_KEY?.trim() ? 'resend' : 'mailpit';
+}
+
+const REQUIRED_S3_VARIABLES = [
+  'S3_REGION',
+  'S3_BUCKET',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'S3_PUBLIC_URL',
+] as const;
+
+function resolveS3(
+  env: EnvSource,
+): { config: S3StorageConfig | null; problem: string | null } {
+  const missing = REQUIRED_S3_VARIABLES.filter((key) => !env[key]?.trim());
+  if (missing.length) {
+    return {
+      config: null,
+      problem: `STORAGE_DRIVER=s3 requires ${missing.join(', ')}. See docs/en/05-file-storage.md.`,
+    };
+  }
+  const pathStyle = env.S3_FORCE_PATH_STYLE?.trim().toLowerCase();
+  if (pathStyle && pathStyle !== 'true' && pathStyle !== 'false') {
+    return { config: null, problem: 'S3_FORCE_PATH_STYLE must be "true" or "false" when set.' };
+  }
+  try {
+    const publicUrl = new URL(env.S3_PUBLIC_URL!);
+    if (!['http:', 'https:'].includes(publicUrl.protocol)) throw new Error();
+  } catch {
+    return { config: null, problem: 'S3_PUBLIC_URL must be a valid public HTTP or HTTPS URL.' };
+  }
+  return {
+    problem: null,
+    config: {
+      endpoint: env.S3_ENDPOINT?.trim() || undefined,
+      region: env.S3_REGION!.trim(),
+      bucket: env.S3_BUCKET!.trim(),
+      accessKeyId: env.S3_ACCESS_KEY_ID!.trim(),
+      secretAccessKey: env.S3_SECRET_ACCESS_KEY!.trim(),
+      publicUrl: env.S3_PUBLIC_URL!.trim().replace(/\/+$/, ''),
+      forcePathStyle: pathStyle === 'true',
+    },
+  };
+}
+
+function resolveStorage(env: EnvSource): ResolvedEnv['storage'] {
+  const requested = env.STORAGE_DRIVER?.trim().toLowerCase() || 'local';
+  const driver = requested === 'local' || requested === 's3' ? requested : undefined;
+  const s3 = resolveS3(env);
+  return {
+    driver: driver ?? 'local',
+    driverError: driver ? null : `Invalid STORAGE_DRIVER "${requested}". Use "local" or "s3".`,
+    s3: s3.config,
+    s3Problem: s3.problem,
+  };
 }
 
 export function resolveEnv(env: EnvSource = process.env): EnvResolution {
@@ -71,22 +146,35 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
     }
   }
 
-  let driver: StorageDriver = 'local';
-  try {
-    driver = getStorageDriver(env as NodeJS.ProcessEnv);
-  } catch (error) {
-    problems.push(error instanceof Error ? error.message : String(error));
-  }
-  const s3Error = getS3StorageConfigError(env as NodeJS.ProcessEnv);
-  if (s3Error) problems.push(s3Error);
+  const storage = resolveStorage(env);
+  if (storage.driverError) problems.push(storage.driverError);
+  if (storage.driver === 's3' && storage.s3Problem) problems.push(storage.s3Problem);
 
   const config: ResolvedEnv = {
     database: { docker: env.DOCKER_DATABASE === 'true' },
-    email: { provider: resolveEmailProvider(env) },
-    storage: { driver },
-    turnstile: { enabled: enabled.Turnstile },
-    google: { enabled: enabled.Google },
-    github: { enabled: enabled.GitHub },
+    email: {
+      provider: resolveEmailProvider(env),
+      delivery: env.EMAIL_DELIVERY ?? 'resend',
+      resendApiKey: env.RESEND_API_KEY,
+      from: env.FROM_EMAIL ?? 'RapidAuth <onboarding@resend.dev>',
+      outboxDir: env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox',
+    },
+    storage,
+    turnstile: {
+      enabled: enabled.Turnstile,
+      siteKey: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+      secretKey: env.TURNSTILE_SECRET_KEY,
+    },
+    google: {
+      enabled: enabled.Google,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+    },
+    github: {
+      enabled: enabled.GitHub,
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
+    },
     sentry: { enabled: getSentryRuntimeConfig(env).enabled },
   };
 

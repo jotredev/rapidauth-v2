@@ -1,3 +1,4 @@
+import { getEnv } from '@/lib/env';
 import { getClientIp } from '@/lib/rate-limit';
 import {
   getTurnstileConfigError,
@@ -5,8 +6,7 @@ import {
   isTurnstileTestSiteKey,
 } from '@/lib/turnstile-config';
 
-const secretKey = process.env.TURNSTILE_SECRET_KEY;
-const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const { secretKey, siteKey } = getEnv().config.turnstile;
 const isEnabled = Boolean(secretKey && siteKey);
 
 const isTestKey = Boolean(
@@ -20,7 +20,10 @@ if (Boolean(secretKey) !== Boolean(siteKey)) {
 }
 
 if (process.env.NODE_ENV === 'production') {
-  const configError = getTurnstileConfigError(process.env);
+  const configError = getTurnstileConfigError({
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: siteKey,
+    TURNSTILE_SECRET_KEY: secretKey,
+  });
   if (configError) throw new Error(configError);
 } else if (!isEnabled) {
   console.warn(

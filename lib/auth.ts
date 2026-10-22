@@ -233,7 +233,7 @@ export const auth = betterAuth({
       },
     },
   },
-  socialProviders: createSocialProviders(process.env),
+  socialProviders: createSocialProviders(),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

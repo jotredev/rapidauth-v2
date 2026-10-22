@@ -7,6 +7,7 @@ import {
   SecurityNoticeEmail,
   VerificationCodeEmail,
 } from '@/emails';
+import { getEnv } from '@/lib/env';
 import { siteConfig } from '@/config/site';
 import { getPublicSupportEmail, SUPPORT_EMAIL_NOT_CONFIGURED } from '@/lib/support-email';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -28,7 +29,7 @@ export class EmailDeliveryError extends Error {
   }
 }
 
-const emailDelivery = process.env.EMAIL_DELIVERY ?? 'resend';
+const { delivery: emailDelivery, from: FROM_EMAIL, outboxDir } = getEnv().config.email;
 if (emailDelivery === 'outbox' && process.env.NODE_ENV === 'production') {
   throw new Error('EMAIL_DELIVERY=outbox is only available outside production.');
 }
@@ -36,7 +37,7 @@ if (emailDelivery === 'outbox' && process.env.NODE_ENV === 'production') {
 let resend: Resend | undefined;
 
 function getResendClient() {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const apiKey = getEnv().config.email.resendApiKey?.trim();
   if (!apiKey) {
     throw new Error("RESEND_API_KEY is required to send email.");
   }
@@ -44,9 +45,6 @@ function getResendClient() {
   resend ??= new Resend(apiKey);
   return resend;
 }
-
-const FROM_EMAIL =
-  process.env.FROM_EMAIL ?? 'RapidAuth <onboarding@resend.dev>';
 
 async function deliverEmail({
   to,
@@ -77,7 +75,7 @@ async function deliverEmail({
         );
       }
 
-      const directory = process.env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox';
+      const directory = outboxDir;
       await mkdir(directory, { recursive: true });
       const filename = `${Date.now()}-${randomUUID()}.json`;
       const outboxPayload: Record<string, unknown> = {

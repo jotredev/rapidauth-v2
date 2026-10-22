@@ -23,8 +23,18 @@ test.describe('environment resolution', () => {
     expect(problems).toEqual([]);
     expect(config).toEqual({
       database: { docker: false },
-      email: { provider: 'mailpit' },
-      storage: { driver: 'local' },
+      email: {
+        provider: 'mailpit',
+        delivery: 'resend',
+        from: 'RapidAuth <onboarding@resend.dev>',
+        outboxDir: '.e2e-outbox',
+      },
+      storage: {
+        driver: 'local',
+        driverError: null,
+        s3: null,
+        s3Problem: expect.stringContaining('S3_REGION'),
+      },
       turnstile: { enabled: false },
       google: { enabled: false },
       github: { enabled: false },
@@ -162,5 +172,55 @@ test.describe('environment resolution', () => {
     expect(summary).not.toContain('sentry.io');
     expect(formatEnvSummary(resolveEnv({}).config)).toContain('Emails:    Mailpit');
     expect(formatEnvSummary(resolveEnv(s3).config)).toContain('Files:     S3');
+  });
+
+  test('exposes the resolved values the modules read', () => {
+    const { config } = resolveEnv({
+      ...google,
+      ...github,
+      ...turnstile,
+      ...s3,
+      RESEND_API_KEY: ' re_123 ',
+      FROM_EMAIL: 'App <hi@example.com>',
+      EMAIL_DELIVERY: 'outbox',
+      EMAIL_OUTBOX_DIR: '/tmp/outbox',
+      S3_FORCE_PATH_STYLE: 'true',
+      S3_ENDPOINT: ' http://127.0.0.1:9090 ',
+    });
+    expect(config.google).toEqual({ enabled: true, clientId: 'id', clientSecret: 'secret' });
+    expect(config.github).toEqual({ enabled: true, clientId: 'id', clientSecret: 'secret' });
+    expect(config.turnstile).toEqual({ enabled: true, siteKey: 'site', secretKey: 'secret' });
+    expect(config.email).toEqual({
+      provider: 'outbox',
+      delivery: 'outbox',
+      resendApiKey: ' re_123 ',
+      from: 'App <hi@example.com>',
+      outboxDir: '/tmp/outbox',
+    });
+    expect(config.storage.s3).toEqual({
+      endpoint: 'http://127.0.0.1:9090',
+      region: 'auto',
+      bucket: 'bucket',
+      accessKeyId: 'key',
+      secretAccessKey: 'secret',
+      publicUrl: 'https://cdn.example.com',
+      forcePathStyle: true,
+    });
+  });
+
+  test('the summary never includes any resolved secret value', () => {
+    const { config } = resolveEnv({
+      ...google,
+      ...turnstile,
+      ...s3,
+      RESEND_API_KEY: 're_topsecret',
+      GOOGLE_CLIENT_SECRET: 'google-topsecret',
+      TURNSTILE_SECRET_KEY: 'turnstile-topsecret',
+      S3_SECRET_ACCESS_KEY: 's3-topsecret',
+    });
+    const summary = formatEnvSummary(config);
+    for (const value of ['topsecret', 'cdn.example.com', 'bucket', 'site']) {
+      expect(summary).not.toContain(value);
+    }
   });
 });
