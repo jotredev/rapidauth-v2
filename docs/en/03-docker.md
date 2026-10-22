@@ -41,7 +41,7 @@ In Windows PowerShell, use `Copy-Item .env.example .env`. Open `.env` in a text 
 - `FROM_EMAIL`: a sender accepted by Resend. Verify its domain in Resend to deliver real email.
 - `BETTER_AUTH_SECRET`: replace the example with a unique secret. On macOS or Linux, generate one with `openssl rand -hex 32`.
 
-Compose sets `DATABASE_URL` and `BETTER_AUTH_URL` for the app. OAuth values are optional. Local development can use empty Turnstile keys or Cloudflare test keys; see [Cloudflare Turnstile](02-turnstile.md). Compose reports an error if `.env` is missing.
+Compose sets `DATABASE_URL` and `BETTER_AUTH_URL` for the app. OAuth values and Turnstile keys are optional: leave them empty, or use Cloudflare test keys for Turnstile; see [Cloudflare Turnstile](02-turnstile.md). Compose reports an error if `.env` is missing.
 
 ## 3. Start RapidAuth
 
@@ -202,7 +202,7 @@ The repository pins Bun to **1.4.2** in `package.json`. Themes never include or 
 
 Template maintainers should run `bun run theme:sync-classic` after changing auth, landing, layout, styles, or shared UI files. Use `bun run theme:sync-classic --check` to list differences without writing; CI runs this check.
 
-GitHub Actions checks lint, types, Classic sync, production compilation, rejection of missing/test Turnstile keys, high/critical dependency advisories, and development/production Docker behavior including build-secret exclusion. Run `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check`, and `bun audit --audit-level=high` locally; this guide covers the Docker checks. The local pre-commit hook may set `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` for its compile check only. Never use this bypass for production, hosting, or CI production builds.
+GitHub Actions checks lint, types, Classic sync, production compilation (which must pass without any Turnstile key), the support email check, high/critical dependency advisories, and development/production Docker behavior including exclusion of the Turnstile secret from the image. Run `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check`, and `bun audit --audit-level=high` locally; this guide covers the Docker checks.
 
 ## Production with Docker
 
@@ -210,28 +210,26 @@ The production image is separate from the development Compose stack. It does not
 
 For `STORAGE_DRIVER=local`, mount a persistent volume at `/app/storage` so uploaded files survive container replacement. For example, add `-v rapidauth_storage:/app/storage` to `docker run`, or add a named volume to the production Compose service. The image creates `/app/storage` writable by its `nextjs` user. For S3, no file volume is needed. See [File storage](05-file-storage.md).
 
-Every production build needs real Turnstile keys. The public site key is passed as a build argument. The secret key is mounted with BuildKit and must also be provided at runtime. The build uses dummy `DATABASE_URL`, `BETTER_AUTH_URL`, and `BETTER_AUTH_SECRET` values only for module loading. It does not connect to a database, and the dummy values are not saved in the final image.
+The build needs no Turnstile or OAuth keys, and the image contains none. Provide `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` (recommended in production), and any `GOOGLE_*` / `GITHUB_*` values, only when you start the container; the server reads them at startup, so changing them needs a container restart, not a new image. The build uses dummy `DATABASE_URL`, `BETTER_AUTH_URL`, and `BETTER_AUTH_SECRET` values only for module loading. It does not connect to a database, and the dummy values are not saved in the final image.
 
 Sentry remains optional. `NEXT_PUBLIC_SENTRY_DSN` must be a build argument when browser reporting is enabled, and must also be present at runtime for server reporting. Source map uploads additionally use the non-secret `SENTRY_ORG` and `SENTRY_PROJECT` build arguments. Mount `SENTRY_AUTH_TOKEN` only as the optional BuildKit secret `sentry_auth_token`; never pass that token as `ARG` or `ENV`. If any source map value is missing, the upload is silently skipped and the build continues.
 
-Set the Turnstile variables in your shell, then build from the project root:
+Build from the project root:
 
 ```sh
 docker build \
-  --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY="$NEXT_PUBLIC_TURNSTILE_SITE_KEY" \
   --build-arg NEXT_PUBLIC_SENTRY_DSN="$NEXT_PUBLIC_SENTRY_DSN" \
   --build-arg SENTRY_ORG="$SENTRY_ORG" \
   --build-arg SENTRY_PROJECT="$SENTRY_PROJECT" \
-  --secret id=turnstile_secret_key,env=TURNSTILE_SECRET_KEY \
   --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
   -t rapidauth .
 ```
 
 Omit the four Sentry lines when Sentry is disabled. When error reporting is enabled without source maps, pass only `NEXT_PUBLIC_SENTRY_DSN` and omit the organization, project, and token lines.
 
-For PowerShell, set `$env:NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `$env:TURNSTILE_SECRET_KEY`, then run the equivalent one-line `docker build` command with `--build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY=$env:NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `--secret id=turnstile_secret_key,env=TURNSTILE_SECRET_KEY`. If Sentry is enabled, set `$env:NEXT_PUBLIC_SENTRY_DSN` and the optional source map variables, then add their matching `--build-arg` options plus `--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN`.
+For PowerShell, run the same command on one line. If Sentry is enabled, set `$env:NEXT_PUBLIC_SENTRY_DSN` and the optional source map variables, then add their matching `--build-arg` options plus `--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN`.
 
-Create a protected runtime file such as `.env.production` with your real production `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `RESEND_API_KEY`, `FROM_EMAIL`, and `TURNSTILE_SECRET_KEY`. If Sentry is enabled, also include `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_TRACES_SAMPLE_RATE`; the auth token is not needed at runtime. Then start the image:
+Create a protected runtime file such as `.env.production` with your real production `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `RESEND_API_KEY`, and `FROM_EMAIL`. To turn Turnstile on (recommended in production) also add `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`; add the Google or GitHub client ID and secret pairs for social sign-in. If Sentry is enabled, also include `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_TRACES_SAMPLE_RATE`; the auth token is not needed at runtime. Then start the image:
 
 ```sh
 docker run --env-file .env.production -p 3000:3000 rapidauth

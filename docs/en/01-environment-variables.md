@@ -102,21 +102,23 @@ This reference covers every variable read by the application and setup scripts. 
 
 ## Turnstile
 
-### `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+Turnstile is optional. It turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it is off and nothing fails. Turning it on in production is recommended: set both variables on the server where you deploy (Vercel, Docker on a VPS, or any other host). The server reads them when it starts, so changing them needs a restart, not a rebuild.
 
-- **Purpose:** Public key rendered by the browser widget.
-- **Required:** Optional for `next dev`; a real key is required for every `next build`, including production, staging, previews, and CI.
+### `TURNSTILE_SITE_KEY`
+
+- **Purpose:** Public key rendered by the browser widget. The server reads it and passes it to the page.
+- **Required:** No. Set it together with `TURNSTILE_SECRET_KEY`; setting only one stops the server with an error.
 - **Where to get it:** Create a Cloudflare Turnstile widget. See [Cloudflare Turnstile](02-turnstile.md).
 - **Example format:** `your-real-turnstile-site-key`
-- **Secret:** No. `NEXT_PUBLIC_*` values are embedded in the client bundle at compile time; changing this key requires a new build.
+- **Secret:** No. It is sent to the browser, but it is a normal runtime variable (not `NEXT_PUBLIC_*`), so it is not compiled into the build.
 
 ### `TURNSTILE_SECRET_KEY`
 
 - **Purpose:** Validates Turnstile tokens on the server.
-- **Required:** Optional for `next dev`; a real key is required for every `next build` and by the running production server.
+- **Required:** No. Set it together with `TURNSTILE_SITE_KEY`.
 - **Where to get it:** Copy the Secret Key belonging to the same Cloudflare Turnstile widget as the site key.
 - **Example format:** `your-real-turnstile-secret-key`
-- **Secret:** Yes. Keep it server-side. Docker builds must mount it with BuildKit; also provide it to the running container.
+- **Secret:** Yes. Keep it server-side and provide it to the running server or container, never to the build.
 
 ## Error monitoring (Sentry)
 
@@ -145,6 +147,8 @@ All Sentry variables are optional. With an empty or invalid `NEXT_PUBLIC_SENTRY_
 - **Secret:** No.
 
 ## OAuth
+
+Each provider is optional and turns on, together with its sign-in button, only when both its client ID and client secret are set. The server reads them when it starts, so changing them needs a restart, not a rebuild.
 
 For either provider, add its callback URL to the provider's OAuth application: `<BETTER_AUTH_URL>/api/auth/callback/google` or `<BETTER_AUTH_URL>/api/auth/callback/github`. For example, the local Google callback is `http://localhost:3000/api/auth/callback/google`.
 
@@ -179,22 +183,6 @@ For either provider, add its callback URL to the provider's OAuth application: `
 - **Where to get it:** GitHub OAuth App settings, with the client ID.
 - **Example format:** `replace-with-github-client-secret`
 - **Secret:** Yes. Keep it server-side.
-
-### `NEXT_PUBLIC_GOOGLE_ENABLED`
-
-- **Purpose:** Controls whether the Google sign-in button appears.
-- **Required:** Optional; set to `true` when Google sign-in is configured, otherwise `false`.
-- **Where to get it:** Set it yourself in `.env`.
-- **Example format:** `false`
-- **Secret:** No. This `NEXT_PUBLIC_*` flag is embedded at compile time. Set it to `true` only with matching Google credentials.
-
-### `NEXT_PUBLIC_GITHUB_ENABLED`
-
-- **Purpose:** Controls whether the GitHub sign-in button appears.
-- **Required:** Optional; set to `true` when GitHub sign-in is configured, otherwise `false`.
-- **Where to get it:** Set it yourself in `.env`.
-- **Example format:** `false`
-- **Secret:** No. This `NEXT_PUBLIC_*` flag is embedded at compile time. Set it to `true` only with matching GitHub credentials.
 
 ## File storage
 
@@ -298,7 +286,7 @@ Some features are enabled by a pair of variables. The server checks these pairs:
 
 - Google: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 - GitHub: `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
-- Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
+- Turnstile: `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
 - S3 storage: when `STORAGE_DRIVER=s3`, all the `S3_*` variables it requires (see [File storage](#file-storage)).
 
 If you set neither variable of a Google, GitHub, or Turnstile pair, the feature is simply off and there is no error. If you set only one, the server prints a single error that lists everything missing and stops:
@@ -313,7 +301,7 @@ An invalid `STORAGE_DRIVER` or incomplete S3 settings are reported in the same e
 
 ## Public values and build timing
 
-Every `NEXT_PUBLIC_*` value is public and compiled into the client bundle. Set the intended values before building; changing one requires a new `next build` and deployment. Turnstile production builds require real site and secret keys.
+Google, GitHub, and Turnstile settings are read when the server starts: change them and restart, with no rebuild. The remaining `NEXT_PUBLIC_*` values (such as the Sentry DSN) are public and compiled into the client bundle; changing one of those requires a new `next build` and deployment.
 
 ---
 

@@ -1,6 +1,6 @@
 # Cloudflare Turnstile
 
-RapidAuth requiere claves reales de Cloudflare Turnstile en producción. En desarrollo puedes usar las claves de prueba de abajo. El build de producción falla si falta alguna clave o si hay una clave de prueba configurada.
+Cloudflare Turnstile es opcional en RapidAuth. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. En desarrollo puedes usar las claves de prueba de abajo. El build de producción nunca necesita las claves.
 
 ## Crear un widget
 
@@ -14,27 +14,25 @@ RapidAuth requiere claves reales de Cloudflare Turnstile en producción. En desa
 Configura las claves en tu entorno:
 
 ```env
-NEXT_PUBLIC_TURNSTILE_SITE_KEY="tu-site-key"
+TURNSTILE_SITE_KEY="tu-site-key"
 TURNSTILE_SECRET_KEY="tu-secret-key"
 ```
 
-La site key es pública y se incrusta en el código del cliente al compilar. La secret key debe permanecer solo en el servidor.
+La site key es pública: el servidor la lee y se la pasa a la página. La secret key debe permanecer solo en el servidor. Ambas son variables normales de ejecución, que se leen al arrancar el servidor; para cambiarlas, reinicia el servidor. No hace falta reconstruir.
 
 ## Despliegue en producción
 
-Todo entorno que ejecute `next build` necesita ambas claves reales disponibles durante la compilación: producción, staging, vistas previas y pipelines de CI. El build falla si falta una clave o si alguna es de prueba de Cloudflare. Configúralas en el hosting o en los secretos de CI antes de iniciar la compilación.
+Define `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` en el servidor donde despliegas, como variables de entorno de ejecución normales. Vercel, Netlify, Railway, Render, Coolify y Docker en un VPS son solo ejemplos; lo mismo aplica a cualquier otro host. El build, incluidos staging, vistas previas y CI, no las necesita.
 
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY` se incrusta en el bundle del cliente durante la compilación. Cambiarla requiere compilar de nuevo. Esto aplica a plataformas como Vercel, Netlify, Railway, Render y Coolify, además de imágenes Docker para un VPS.
+Con Docker, pasa ambas variables solo al iniciar el contenedor (por ejemplo con `--env-file`). Nada de Turnstile entra en `docker build`. Sigue la [guía de Docker](03-docker.md#produccion-con-docker) para ver los comandos.
 
-Con Docker, pasa la clave pública como argumento de build y monta `TURNSTILE_SECRET_KEY` como secreto de BuildKit. El contenedor también necesita la clave secreta al ejecutarse. Sigue la [guía de Docker](03-docker.md#produccion-con-docker) para ver el Dockerfile y los comandos completos. Consulta la [documentación de secretos de build de Docker](https://docs.docker.com/build/building/secrets/).
-
-Por ejemplo, en Vercel agrega ambas variables en **Project Settings → Environment Variables** para cada entorno que compile la app, incluidas las vistas previas si se usan. En CI, proporciona la clave pública como variable de build y la clave secreta como secreto protegido para el paso de compilación.
+Por ejemplo, en Vercel agrega ambas variables en **Project Settings → Environment Variables** para cada entorno que deba usar Turnstile, y vuelve a desplegar o reinicia para que surtan efecto. En CI solo las necesitas si una prueba inicia la app con Turnstile activo.
 
 El asistente `bun run init:setup` también pide las claves de Turnstile y puede guardar claves reales o de prueba para uso local en `.env`.
 
 ## Claves de prueba de Cloudflare
 
-Las claves de prueba son solo para desarrollo local. No las uses en producción: el build de producción las rechaza.
+Las claves de prueba son solo para desarrollo local. No las uses en producción: el servidor solo registra un aviso si lo haces, así que no te protegerían.
 
 | Site key | Secret key | Resultado |
 | --- | --- | --- |
@@ -60,11 +58,11 @@ Confirma que la Site Key y la Secret Key pertenezcan al mismo widget y que el ho
 
 ### La app no arranca
 
-En producción, la app se detiene si solo configuraste una de las claves de Turnstile o si usas claves de prueba. Configura ambas claves reales en el entorno del hosting y reinicia o vuelve a desplegar.
+La app se detiene si solo configuraste una de las dos claves de Turnstile. Define ambas (o ninguna) en el entorno del servidor y reinicia. En producción, define ambas claves reales; las claves de prueba solo generan un aviso en el log.
 
-### El build de producción falla por Turnstile
+### Turnstile está apagado y quiero activarlo
 
-Configura `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` en el proveedor de hosting antes de compilar. Sustituye las claves de prueba por las claves reales del widget y comienza un despliegue nuevo. Consulta [Crear un widget](#crear-un-widget).
+Revisa el resumen de arranque: muestra `Turnstile: off` salvo que `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` estén definidas en el entorno del servidor en ejecución (no solo durante el build). Define ambas y reinicia.
 
 ---
 

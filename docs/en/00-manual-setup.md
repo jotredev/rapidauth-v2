@@ -8,7 +8,7 @@ This guide installs and configures RapidAuth without running `bun run init:setup
 - If you use Node.js directly for the Next.js runtime, use version 20.9 or newer.
 - Have access to a PostgreSQL database, such as Neon or another PostgreSQL provider.
 - Create a [Resend](https://resend.com/) account for email delivery.
-- For production builds, create a free Cloudflare account and real Turnstile keys. See [Cloudflare Turnstile](02-turnstile.md).
+- Optional but recommended for production: create a free Cloudflare account and real Turnstile keys. See [Cloudflare Turnstile](02-turnstile.md).
 - OAuth credentials are optional. Create Google and/or GitHub OAuth applications only if you want social sign-in.
 - Sentry error monitoring is optional. The app makes no Sentry requests without a valid DSN; see [Error monitoring](06-error-monitoring.md) if you want to enable it.
 
@@ -71,11 +71,13 @@ For each provider you want to enable, set its client ID and secret in `.env` and
 
 For local development, for example, the Google callback is `http://localhost:3000/api/auth/callback/google`.
 
+Each provider, and its button, turns on only when both its client ID and client secret are set. The server reads them when it starts, so restart it to change them; no rebuild is needed.
+
 Google and GitHub sign-in only opens existing accounts. New users must start from the registration page and accept the Terms of Service and Privacy Policy before continuing to the provider.
 
 ## 6. Configure Turnstile
 
-For `next dev`, Turnstile may be left empty or configured with Cloudflare test keys. Every `next build` requires both real keys at build time, even for staging, previews, or CI. Follow the [Turnstile guide](02-turnstile.md) to create a widget, set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`, and authorize the hostnames where the app will be served.
+Turnstile is optional. It turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it stays off and nothing fails. We recommend always turning it on in production by setting both variables on the server where you deploy. For `next dev` you can use Cloudflare test keys. The production build does not need the keys: the server reads them when it starts, so changing them only needs a restart. Follow the [Turnstile guide](02-turnstile.md) to create a widget and authorize the hostnames where the app will be served.
 
 ## 7. Push the schema and seed the admin
 
@@ -108,8 +110,6 @@ Themes never include or replace the dashboard. A v2 `theme.json` must declare a 
 
 Template maintainers should run `bun run theme:sync-classic` after changing auth, landing, layout, styles, or shared UI files. Use `bun run theme:sync-classic --check` to list differences without writing; CI runs this check.
 
-The local pre-commit hook sets `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` for its compile check only. This bypass is never for production or hosting builds; those builds must validate real Turnstile keys.
-
 ## Switch databases (Neon ↔ Docker)
 
 Run `bun run db:switch` and choose an external PostgreSQL database or the local Docker database. The wizard saves the previous URL as a comment in `.env`, then runs `prisma db push` and the seed against the new database. Database records are not copied between the two databases.
@@ -125,15 +125,15 @@ Use `sslmode=disable` only with the local Docker database. Never use it for prod
 
 ## CI and Bun version
 
-Use Bun **1.4.2**, the version pinned by `package.json`. GitHub Actions has quality, production build, Turnstile guard, dependency audit, and Docker jobs. Run `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check`, and `bun audit --audit-level=high` locally. The Docker guide shows how to reproduce its stack checks. To check Turnstile rejection without connecting to a real database, use dummy database/auth values:
+Use Bun **1.4.2**, the version pinned by `package.json`. GitHub Actions has quality, production build, build guard, dependency audit, and Docker jobs. Run `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check`, and `bun audit --audit-level=high` locally. The Docker guide shows how to reproduce its stack checks. To check the production build without connecting to a real database, use dummy database/auth values:
 
 ```sh
 BUILD_ENV='DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build?sslmode=disable BETTER_AUTH_URL=http://localhost:3000 BETTER_AUTH_SECRET=0000000000000000000000000000000000000000000000000000000000000000 NEXT_TELEMETRY_DISABLED=1'
-env NEXT_PUBLIC_TURNSTILE_SITE_KEY= TURNSTILE_SECRET_KEY= $BUILD_ENV bun run build # expected to fail without Turnstile keys
-env $BUILD_ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA TURNSTILE_SECRET_KEY=1x0000000000000000000000AA bun run build # expected to fail with test keys
+env $BUILD_ENV SUPPORT_EMAIL=support@example.invalid bun run build # expected to compile without any Turnstile key
+env $BUILD_ENV SUPPORT_EMAIL= bun run build # expected to fail: SUPPORT_EMAIL is required
 ```
 
-Production builds always need real Turnstile keys. The pre-commit bypass is never used in CI or production.
+The production build does not need Turnstile keys.
 
 ## Account deletion
 
@@ -156,9 +156,9 @@ Open [http://localhost:3000](http://localhost:3000), go to the sign-in page, and
 - Review and personalize the public Terms of Service (`/terms`) and Privacy Policy (`/privacy`) before launch. Set `legalEntityName`, `governingLaw`, `lastUpdated`, and `termsVersion` in `config/site.ts`, and set `SUPPORT_EMAIL` in your environment (see [Environment variables](01-environment-variables.md)), then edit the page copy in `app/(legal)/terms/page.tsx` and `app/(legal)/privacy/page.tsx` to match your service. Increase `termsVersion` whenever users must accept a revised version. These documents are templates, not legal advice; have a qualified lawyer review them.
 - Set a unique `BETTER_AUTH_SECRET`, the correct public `BETTER_AUTH_URL`, and a production `DATABASE_URL` in the target environment.
 - Set `RESEND_API_KEY` and a verified `FROM_EMAIL` sender.
-- Provide real Turnstile keys to every build, including staging, previews, and CI. For Docker, mount `TURNSTILE_SECRET_KEY` with BuildKit during the build and provide it again at runtime; pass the public site key as a build argument. See [Cloudflare Turnstile](02-turnstile.md).
+- Recommended: turn Turnstile on in production by setting `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` as normal runtime variables on the server where you deploy (Vercel, Docker on a VPS, or any other host). The build does not need them; restart to apply changes. See [Cloudflare Turnstile](02-turnstile.md).
 - Add every serving hostname, or a parent hostname that covers its subdomains, to the Turnstile widget.
-- Set OAuth callback URLs to the deployed `BETTER_AUTH_URL` if social sign-in is enabled.
+- Set OAuth callback URLs to the deployed `BETTER_AUTH_URL` if social sign-in is enabled. Set the provider's client ID and secret as runtime variables; the buttons follow them after a restart.
 - Choose avatar storage for production: set `STORAGE_DRIVER=s3` and configure its bucket, keys, and public URL, or use Local only when the server has persistent writable disk. See [File storage](05-file-storage.md).
 - Use a deliberate admin email and secure seed password, or save the one-time generated password and change it after the first login.
 - Keep `.env`, `.env.local`, and all secret values out of version control and image build arguments.

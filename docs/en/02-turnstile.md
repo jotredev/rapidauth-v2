@@ -1,6 +1,6 @@
 # Cloudflare Turnstile
 
-RapidAuth requires real Cloudflare Turnstile keys in production. Development can use the test keys below. The production build fails if either key is missing or a test key is configured.
+Cloudflare Turnstile is optional in RapidAuth. It turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it stays off and nothing fails. We recommend always turning it on in production, by setting both variables on the server where you deploy. Development can use the test keys below. The production build never needs the keys.
 
 ## Create a widget
 
@@ -14,27 +14,25 @@ RapidAuth requires real Cloudflare Turnstile keys in production. Development can
 Set the keys in your environment:
 
 ```env
-NEXT_PUBLIC_TURNSTILE_SITE_KEY="your-site-key"
+TURNSTILE_SITE_KEY="your-site-key"
 TURNSTILE_SECRET_KEY="your-secret-key"
 ```
 
-The site key is public and is embedded into the client bundle at compile time. The secret key must stay server-side.
+The site key is public: the server reads it and passes it to the page. The secret key must stay server-side. Both are normal runtime variables, read when the server starts; to change them, restart the server. No rebuild is needed.
 
 ## Production deployment
 
-Every environment that runs `next build` needs both real keys available while compiling: production, staging, preview deployments, and CI pipelines. The build fails if either key is missing or if either is a Cloudflare test key. Configure the keys in your hosting provider or CI secret store before the build starts.
+Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` on the server where you deploy, as ordinary runtime environment variables. Vercel, Netlify, Railway, Render, Coolify, and Docker on a VPS are only examples; the same applies to any other host. The build, including staging, previews, and CI, does not need them.
 
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY` is embedded in the client bundle during compilation. Changing it requires a new build. This applies to hosting platforms such as Vercel, Netlify, Railway, Render, and Coolify, as well as to Docker images built for a VPS.
+For Docker, pass both variables only when you start the container (for example with `--env-file`). Nothing Turnstile-related goes into `docker build`. Follow the [Docker guide](03-docker.md#production-with-docker) for the commands.
 
-For Docker, pass the public key as a build argument and mount `TURNSTILE_SECRET_KEY` as a BuildKit secret. The running container also needs the secret at runtime. Follow the [Docker guide](03-docker.md#production-with-docker) for the complete Dockerfile and commands. See [Docker's Build secrets documentation](https://docs.docker.com/build/building/secrets/).
-
-For example, in Vercel add both variables under **Project Settings → Environment Variables** for every environment that builds the app, including Preview when used. In CI, provide the public key as a build variable and the secret key as a protected CI secret to the build step.
+For example, in Vercel add both variables under **Project Settings → Environment Variables** for each environment that should run Turnstile, then redeploy or restart so they take effect. In CI, you only need them if a test starts the app with Turnstile on.
 
 The `bun run init:setup` wizard also asks for Turnstile keys and can save real or local test keys in `.env`.
 
 ## Cloudflare test keys
 
-Test keys are for local development only. Do not use them in production; production builds reject them.
+Test keys are for local development only. Do not use them in production; the server only logs a warning if you do, so they would not protect you.
 
 | Site key | Secret key | Result |
 | --- | --- | --- |
@@ -60,11 +58,11 @@ Confirm that the Site Key and Secret Key belong to the same widget and that the 
 
 ### The app will not start
 
-In production, the app stops if only one Turnstile key is configured or if test keys are used. Set both real keys in the hosting environment and restart or redeploy.
+The app stops if only one of the two Turnstile keys is set. Set both (or neither) in the server environment and restart. In production, set both real keys; test keys only produce a warning in the log.
 
-### The production build fails because of Turnstile
+### Turnstile is off and I want it on
 
-Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in the hosting provider before building. Replace test keys with real widget keys, then start a fresh deployment. See [Create a widget](#create-a-widget) above.
+Check the startup summary: it prints `Turnstile: off` unless both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set in the environment of the running server (not only at build time). Set both and restart.
 
 ---
 

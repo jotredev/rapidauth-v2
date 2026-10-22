@@ -370,9 +370,10 @@ async function askTurnstileConfig(
   existingEnv: Record<string, string>,
 ): Promise<{ siteKey: string; secretKey: string }> {
   printBox(
-    'Cloudflare Turnstile is required in production',
+    'Cloudflare Turnstile is optional, but recommended in production',
     [
-      'Production builds fail without real Turnstile keys.',
+      'It turns on only when both keys are set; otherwise it stays off.',
+      'Set both on the server where you deploy; restart to change them.',
       'Guide (English): docs/en/02-turnstile.md',
       'Spanish guide: docs/es/02-turnstile.md',
     ],
@@ -380,21 +381,29 @@ async function askTurnstileConfig(
   );
 
   const hasExistingKeys = Boolean(
-    existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY && existingEnv.TURNSTILE_SECRET_KEY,
+    existingEnv.TURNSTILE_SITE_KEY && existingEnv.TURNSTILE_SECRET_KEY,
   );
   println('  Choose your Cloudflare Turnstile keys:');
   println('  [1] Use my Cloudflare keys');
   println('  [2] Use Cloudflare test keys (local development only)');
   if (hasExistingKeys) println('  [3] Keep existing keys');
+  println('  [0] Skip for now (Turnstile stays off)');
 
   let choice = '';
-  while (!['1', '2', ...(hasExistingKeys ? ['3'] : [])].includes(choice)) {
+  while (!['0', '1', '2', ...(hasExistingKeys ? ['3'] : [])].includes(choice)) {
     choice = await question('  Select an option: ');
+  }
+
+  if (choice === '0') {
+    println(
+      `  ${colors.yellow}${icons.warning} Turnstile is off. Turn it on in production by setting TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY on your server (docs/en/02-turnstile.md).${colors.reset}`,
+    );
+    return { siteKey: '', secretKey: '' };
   }
 
   if (choice === '2') {
     println(
-      `  ${colors.yellow}${icons.warning} Test keys only work locally. Production builds fail with them. Create a widget using the guide before deploying.${colors.reset}`,
+      `  ${colors.yellow}${icons.warning} Test keys only work locally. Create a widget using the guide before deploying.${colors.reset}`,
     );
     return {
       siteKey: '1x00000000000000000000AA',
@@ -405,7 +414,7 @@ async function askTurnstileConfig(
   let siteKey: string;
   let secretKey: string;
   if (choice === '3') {
-    siteKey = existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    siteKey = existingEnv.TURNSTILE_SITE_KEY;
     secretKey = existingEnv.TURNSTILE_SECRET_KEY;
     println(`  ${colors.green}${icons.success} Keeping existing Cloudflare keys${colors.reset}`);
   } else {
@@ -413,14 +422,14 @@ async function askTurnstileConfig(
       /\s/.test(value) ? 'Keys cannot contain spaces' : true;
     siteKey = await askVariable(
       {
-        key: 'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+        key: 'TURNSTILE_SITE_KEY',
         description: 'Cloudflare Turnstile site key',
         placeholder: '0x4AAAA...',
         required: true,
         category: 'captcha',
         validate: noWhitespace,
       },
-      existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+      existingEnv.TURNSTILE_SITE_KEY,
     );
 
     while (true) {
@@ -442,7 +451,7 @@ async function askTurnstileConfig(
         isTurnstileTestSecretKey(secretKey)
       ) {
         println(
-          `  ${colors.yellow}${icons.warning} These are Cloudflare test keys. They only work locally; production builds fail with them. Create a widget using the guide before deploying.${colors.reset}`,
+          `  ${colors.yellow}${icons.warning} These are Cloudflare test keys. They only work locally. Create a widget using the guide before deploying.${colors.reset}`,
         );
       }
 
@@ -1208,11 +1217,11 @@ const ENV_SECTION_KEYS: Record<string, string[]> = {
   auth: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
   email: ['EMAIL_DELIVERY', 'RESEND_API_KEY', 'FROM_EMAIL'],
   support: ['SUPPORT_EMAIL'],
-  captcha: ['NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
+  captcha: ['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
   monitoring: ['NEXT_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'SENTRY_TRACES_SAMPLE_RATE'],
   cleanup: ['CRON_SECRET'],
   proxy: ['TRUSTED_PROXY'],
-  oauth: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'NEXT_PUBLIC_GOOGLE_ENABLED', 'NEXT_PUBLIC_GITHUB_ENABLED'],
+  oauth: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
   storage: ['STORAGE_DRIVER', 'S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_PUBLIC_URL', 'S3_FORCE_PATH_STYLE'],
 };
 
@@ -1282,8 +1291,8 @@ function updateEnvSections(
     if (section === 'database' && envVars.DOCKER_DATABASE === 'true' && !updated.includes(dockerDatabaseComment)) {
       comments.push(dockerDatabaseComment);
     }
-    if (section === 'captcha' && (isTurnstileTestSiteKey(envVars.NEXT_PUBLIC_TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(envVars.TURNSTILE_SECRET_KEY)) && !updated.some((line) => line.startsWith('# Test keys: local development only.'))) {
-      comments.push('# Test keys: local development only. Production builds fail until you set real keys (docs/en/02-turnstile.md)');
+    if (section === 'captcha' && (isTurnstileTestSiteKey(envVars.TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(envVars.TURNSTILE_SECRET_KEY)) && !updated.some((line) => line.startsWith('# Test keys: local development only.'))) {
+      comments.push('# Test keys: local development only. Set real keys before deploying (docs/en/02-turnstile.md)');
     }
     const appendLines = [...comments, ...missing.map((key) => {
       insertedKeys.add(key);
@@ -1830,7 +1839,7 @@ async function runSetup() {
       newEnv.SUPPORT_EMAIL = await askSupportEmail(existingEnv.SUPPORT_EMAIL);
     } else if (category.key === 'captcha') {
       const turnstile = await askTurnstileConfig(existingEnv);
-      newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = turnstile.siteKey;
+      newEnv.TURNSTILE_SITE_KEY = turnstile.siteKey;
       newEnv.TURNSTILE_SECRET_KEY = turnstile.secretKey;
     } else if (category.key === 'oauth') {
       // Dynamic provider selection
@@ -1841,10 +1850,6 @@ async function runSetup() {
         const creds = await askProviderCredentials(provider, existingEnv);
         Object.assign(newEnv, creds);
       }
-
-      // Write NEXT_PUBLIC flags for the frontend
-      newEnv['NEXT_PUBLIC_GOOGLE_ENABLED'] = selectedProviders.has('google') ? 'true' : 'false';
-      newEnv['NEXT_PUBLIC_GITHUB_ENABLED'] = selectedProviders.has('github') ? 'true' : 'false';
     } else if (category.key === 'storage') {
       Object.assign(newEnv, await askStorageConfig(existingEnv));
     } else if (category.key === 'monitoring') {
@@ -1968,14 +1973,21 @@ async function runSetup() {
       '',
       ...(databaseSelected ? ['The admin password was shown once during the database step.', 'Save it and change it after your first login.', 'If the admin already existed, its password was kept.'] : []),
       '',
-      ...(isTurnstileTestSiteKey(newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
-      isTurnstileTestSecretKey(newEnv.TURNSTILE_SECRET_KEY)
+      ...(!newEnv.TURNSTILE_SITE_KEY || !newEnv.TURNSTILE_SECRET_KEY
         ? [
-            'Before deploying: create a Turnstile widget',
-            'and set real keys in your hosting.',
+            'Turnstile is off. Turning it on in production is',
+            'recommended: set TURNSTILE_SITE_KEY and',
+            'TURNSTILE_SECRET_KEY on your server.',
             '',
           ]
-        : []),
+        : isTurnstileTestSiteKey(newEnv.TURNSTILE_SITE_KEY) ||
+            isTurnstileTestSecretKey(newEnv.TURNSTILE_SECRET_KEY)
+          ? [
+              'Before deploying: create a Turnstile widget',
+              'and set real keys on your server.',
+              '',
+            ]
+          : []),
       ...(databaseRunsInDocker
         ? [
             'Local PostgreSQL is running in Docker.',

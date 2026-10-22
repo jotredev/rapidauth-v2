@@ -8,7 +8,7 @@ Esta guía instala y configura RapidAuth sin ejecutar `bun run init:setup`. Sigu
 - Si ejecutas Next.js directamente con Node.js, usa la versión 20.9 o posterior.
 - Ten acceso a una base de datos PostgreSQL, como Neon u otro proveedor de PostgreSQL.
 - Crea una cuenta en [Resend](https://resend.com/) para enviar correo.
-- Para compilar en producción, crea una cuenta gratis en Cloudflare y obtén claves reales de Turnstile. Consulta [Cloudflare Turnstile](02-turnstile.md).
+- Opcional pero recomendado en producción: crea una cuenta gratis en Cloudflare y obtén claves reales de Turnstile. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - OAuth es opcional. Crea aplicaciones OAuth de Google o GitHub solo si quieres habilitar el inicio de sesión social.
 - El monitoreo de errores con Sentry es opcional. La app no hace peticiones a Sentry sin un DSN válido; consulta [Monitoreo de errores](06-error-monitoring.md) si quieres activarlo.
 
@@ -71,11 +71,13 @@ Para cada proveedor que quieras habilitar, configura su client ID y secret en `.
 
 Por ejemplo, en desarrollo local el callback de Google es `http://localhost:3000/api/auth/callback/google`.
 
+Cada proveedor, y su botón, se activa solo cuando están definidos su client ID y su client secret. El servidor los lee al arrancar, así que para cambiarlos basta con reiniciarlo; no hace falta reconstruir.
+
 El inicio de sesión con Google y GitHub solo abre cuentas existentes. Las personas nuevas deben comenzar en la página de registro y aceptar los Términos de servicio y la Política de privacidad antes de continuar con el proveedor.
 
 ## 6. Configura Turnstile
 
-Para `next dev`, puedes dejar Turnstile vacío o configurar claves de prueba de Cloudflare. Cada `next build` requiere ambas claves reales durante la compilación, incluso para staging, vistas previas o CI. Sigue la [guía de Turnstile](02-turnstile.md) para crear un widget, configurar `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`, y autorizar los hostnames desde los que se servirá la app.
+Turnstile es opcional. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. Para `next dev` puedes usar claves de prueba de Cloudflare. El build de producción no necesita las claves: el servidor las lee al arrancar, así que para cambiarlas solo hace falta reiniciar. Sigue la [guía de Turnstile](02-turnstile.md) para crear un widget y autorizar los hostnames desde los que se servirá la app.
 
 ## 7. Sincroniza el esquema y crea el admin
 
@@ -108,8 +110,6 @@ Los temas nunca incluyen ni reemplazan el dashboard. Un `theme.json` v2 debe dec
 
 Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` después de cambiar auth, landing, layout, estilos o UI compartida. Usa `bun run theme:sync-classic --check` para ver diferencias sin escribir; CI también lo comprueba.
 
-El hook local de pre-commit usa `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` solo para comprobar que compila. Este bypass nunca se usa en producción ni en builds del hosting; esos builds deben validar claves reales de Turnstile.
-
 ## Cambiar de base de datos (Neon ↔ Docker)
 
 Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma db push` y el seed contra la base nueva. Los datos no se copian entre bases.
@@ -125,15 +125,15 @@ Usa `sslmode=disable` solo con la base local de Docker. Nunca lo uses en producc
 
 ## CI y versión de Bun
 
-Usa Bun **1.4.2**, la versión fijada en `package.json`. GitHub Actions tiene jobs de calidad, build de producción, guarda de Turnstile, auditoría y Docker. Ejecuta localmente `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check` y `bun audit --audit-level=high`. La guía de Docker explica cómo repetir las pruebas del stack. Para comprobar que se rechazan claves Turnstile, usa valores ficticios para la base y Better Auth; el build no se conecta a la base:
+Usa Bun **1.4.2**, la versión fijada en `package.json`. GitHub Actions tiene jobs de calidad, build de producción, guarda del build, auditoría y Docker. Ejecuta localmente `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check` y `bun audit --audit-level=high`. La guía de Docker explica cómo repetir las pruebas del stack. Para comprobar el build de producción, usa valores ficticios para la base y Better Auth; el build no se conecta a la base:
 
 ```sh
 BUILD_ENV='DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build?sslmode=disable BETTER_AUTH_URL=http://localhost:3000 BETTER_AUTH_SECRET=0000000000000000000000000000000000000000000000000000000000000000 NEXT_TELEMETRY_DISABLED=1'
-env NEXT_PUBLIC_TURNSTILE_SITE_KEY= TURNSTILE_SECRET_KEY= $BUILD_ENV bun run build # debe fallar si faltan las claves Turnstile
-env $BUILD_ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA TURNSTILE_SECRET_KEY=1x0000000000000000000000AA bun run build # debe fallar con claves de prueba
+env $BUILD_ENV SUPPORT_EMAIL=support@example.invalid bun run build # debe compilar sin ninguna clave de Turnstile
+env $BUILD_ENV SUPPORT_EMAIL= bun run build # debe fallar: SUPPORT_EMAIL es obligatorio
 ```
 
-Los builds de producción siempre necesitan claves reales de Turnstile. El bypass de pre-commit nunca se usa en CI ni producción.
+El build de producción no necesita claves de Turnstile.
 
 ## Eliminación de cuenta
 
@@ -156,9 +156,9 @@ Abre [http://localhost:3000](http://localhost:3000), entra a la página de inici
 - Revisa y personaliza los Términos de servicio (`/terms`) y la Política de privacidad (`/privacy`) antes de publicar. Configura `legalEntityName`, `governingLaw`, `lastUpdated` y `termsVersion` en `config/site.ts`, y configura `SUPPORT_EMAIL` en tu entorno (consulta [Variables de entorno](01-environment-variables.md)); después adapta el texto de `app/(legal)/terms/page.tsx` y `app/(legal)/privacy/page.tsx` a tu servicio. Aumenta `termsVersion` cuando debas pedir que se acepte una versión revisada. Estos documentos son plantillas, no asesoría legal; pide a un abogado que los revise.
 - Configura un `BETTER_AUTH_SECRET` único, el `BETTER_AUTH_URL` público correcto y un `DATABASE_URL` de producción.
 - Configura `RESEND_API_KEY` y un remitente `FROM_EMAIL` con dominio verificado.
-- Proporciona claves reales de Turnstile a cada compilación, incluidas staging, vistas previas y CI. Con Docker, monta `TURNSTILE_SECRET_KEY` con BuildKit durante el build y vuelve a proporcionarla en runtime; pasa la site key pública como argumento de build. Consulta [Cloudflare Turnstile](02-turnstile.md).
+- Recomendado: activa Turnstile en producción poniendo `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` como variables normales de ejecución en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El build no las necesita; reinicia para aplicar cambios. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - Agrega todos los hostnames desde donde se sirve la app, o un hostname padre que cubra sus subdominios, al widget de Turnstile.
-- Si habilitaste OAuth, configura las URLs de callback con el `BETTER_AUTH_URL` publicado.
+- Si habilitaste OAuth, configura las URLs de callback con el `BETTER_AUTH_URL` publicado. Define el client ID y el secret del proveedor como variables de ejecución; los botones las siguen tras un reinicio.
 - Elige el almacenamiento de avatares para producción: configura `STORAGE_DRIVER=s3` con el bucket, las llaves y la URL pública, o usa Local solo si el servidor tiene disco persistente y escribible. Consulta [Almacenamiento de archivos](05-file-storage.md).
 - Elige un email de admin y contraseña segura, o guarda la contraseña generada que solo se muestra una vez y cámbiala tras iniciar sesión.
 - Mantén `.env`, `.env.local` y todos los secretos fuera del control de versiones y de los argumentos de build de imágenes.

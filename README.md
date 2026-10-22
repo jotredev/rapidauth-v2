@@ -102,20 +102,17 @@ Themes can change authentication pages, the landing page, shared UI, layout, and
 
 When you change the template's auth, landing, layout, style, or shared UI files, update Classic with `bun run theme:sync-classic`. Run `bun run theme:sync-classic --check` to see whether Classic is in sync; CI runs this check too.
 
-The local pre-commit hook sets `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` only for its compile check. This bypass is never for production, CI production builds, or hosting builds; those builds must validate real Turnstile keys.
-
 ### CI
 
-The [GitHub Actions workflow](.github/workflows/ci.yml) has separate quality, production build, Turnstile guard, dependency audit, and Docker jobs. Reproduce quality locally with `bun run lint`, `bun run typecheck`, and `bun run theme:sync-classic --check`; run the audit with `bun audit --audit-level=high`. To exercise the build guard safely, use dummy database/auth values (the build does not connect to the database):
+The [GitHub Actions workflow](.github/workflows/ci.yml) has separate quality, production build, build guard, dependency audit, and Docker jobs. Reproduce quality locally with `bun run lint`, `bun run typecheck`, and `bun run theme:sync-classic --check`; run the audit with `bun audit --audit-level=high`. To exercise the build guard safely, use dummy database/auth values (the build does not connect to the database):
 
 ```sh
 BUILD_ENV='DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build?sslmode=disable BETTER_AUTH_URL=http://localhost:3000 BETTER_AUTH_SECRET=0000000000000000000000000000000000000000000000000000000000000000 NEXT_TELEMETRY_DISABLED=1'
-env NEXT_PUBLIC_TURNSTILE_SITE_KEY= TURNSTILE_SECRET_KEY= $BUILD_ENV bun run build # expected to fail without Turnstile keys
-env $BUILD_ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA TURNSTILE_SECRET_KEY=1x0000000000000000000000AA bun run build # expected to fail with test keys
-env $BUILD_ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAACIBfakeCIpublicsitekey0000000000 TURNSTILE_SECRET_KEY=0x4AAAAAACIBfakeCIsecretkey00000000000000000 bun run build # fake format-valid keys; expected to compile
+env $BUILD_ENV SUPPORT_EMAIL=support@example.invalid bun run build # expected to compile without any Turnstile key
+env $BUILD_ENV SUPPORT_EMAIL= bun run build # expected to fail: SUPPORT_EMAIL is required
 ```
 
-Run the Docker job steps using the isolated project name and alternate ports shown in [the Docker guide](docs/en/03-docker.md). Production builds always validate Turnstile. The local pre-commit hook alone uses `RAPIDAUTH_SKIP_TURNSTILE_BUILD_CHECK=1` for a compile check; never set it in production.
+Run the Docker job steps using the isolated project name and alternate ports shown in [the Docker guide](docs/en/03-docker.md). The production build does not need Turnstile keys.
 
 ## Tech Stack
 
@@ -190,23 +187,29 @@ BETTER_AUTH_URL="http://localhost:3000"
 RESEND_API_KEY="re_xxxxxxxxxxxxx"
 FROM_EMAIL="RapidAuth <noreply@yourdomain.com>"
 
-# OAuth (Optional)
+# OAuth (Optional): each provider turns on only when both of its values are set
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 GITHUB_CLIENT_ID=""
 GITHUB_CLIENT_SECRET=""
+
+# Turnstile (Optional, recommended in production): turns on only when both keys are set
+TURNSTILE_SITE_KEY=""
+TURNSTILE_SECRET_KEY=""
 ```
 
-## Turnstile (Required in production)
+The server reads these variables when it starts. To change them, restart the server; no rebuild is needed.
 
-Turnstile protects registration, verification code resends, and password reset code requests. `bun run init:setup` asks for the two keys and can use test keys for local development. Production builds require both real keys and fail if either is missing or a test key is used.
+## Turnstile (Optional, recommended in production)
+
+Turnstile protects registration, verification code resends, and password reset code requests. Turnstile is optional: it turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, and stays off (without errors) otherwise. We recommend always turning it on in production by setting both variables on the server where you deploy. `bun run init:setup` asks for the two keys and can use test keys for local development. The production build does not need them.
 
 Setup guides: [English](docs/en/02-turnstile.md) · [Español](docs/es/02-turnstile.md).
 
 Cloudflare's test keys work on `localhost` and development domains:
 
 ```bash
-NEXT_PUBLIC_TURNSTILE_SITE_KEY="1x00000000000000000000AA"
+TURNSTILE_SITE_KEY="1x00000000000000000000AA"
 TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 ```
 
@@ -386,12 +389,14 @@ Set these required environment variables in the runtime environment of each depl
 - `BETTER_AUTH_URL`
 - `RESEND_API_KEY`
 - `FROM_EMAIL`
-- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (real Cloudflare key)
-- `TURNSTILE_SECRET_KEY` (real Cloudflare key)
 
-OAuth credentials are optional. Additionally, every environment running `next build` (production, staging, previews, and CI) needs real Turnstile keys during compilation; test keys make the build fail. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is embedded during compilation, so changing it requires a new build. For Docker, pass the public site key as `ARG`/`--build-arg` and mount `TURNSTILE_SECRET_KEY` as a BuildKit secret during the build; also provide the secret to the running container.
+The following are optional. Each pair turns its feature on only when both values are set:
 
-This applies across hosting providers, including Vercel, Netlify, Railway, Render, Coolify, Docker on a VPS, and any CI pipeline that runs the build. For example, Vercel variables are configured under **Project Settings → Environment Variables**; CI should provide both as secrets to the build step.
+- `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` (real Cloudflare keys). Turnstile is optional, but we recommend always turning it on in production.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+- `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
+
+The server reads all of them when it starts, so the build needs none of them: set them as normal runtime variables on whichever server or platform you deploy to, and restart to change them. Vercel, Netlify, Railway, Render, Coolify, and Docker on a VPS are examples; the same applies to any other host. For Docker, pass them to the running container only (see the Docker guide).
 
 Every hostname serving the app must be covered by the widget's **Hostnames**. Cloudflare does not support `*` wildcards, but adding a hostname covers its subdomains. For example, `example.com` covers `staging.example.com`; adding only `app.example.com` does not cover its parent or sibling subdomains. Add unrelated hostnames individually or use separate widgets per environment. See [Cloudflare's hostname management guide](https://developers.cloudflare.com/turnstile/additional-configuration/hostname-management/).
 
@@ -404,7 +409,7 @@ Every hostname serving the app must be covered by the widget's **Hostnames**. Cl
 
 ### Docker
 
-Use the [Docker guide](docs/en/03-docker.md) for local development and production builds, or read the [guía en español](docs/es/03-docker.md). It covers BuildKit secrets and runtime environment variables.
+Use the [Docker guide](docs/en/03-docker.md) for local development and production builds, or read the [guía en español](docs/es/03-docker.md). It covers runtime environment variables and the optional Sentry build secret.
 
 ## Contributing
 

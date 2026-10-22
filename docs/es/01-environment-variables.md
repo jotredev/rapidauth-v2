@@ -102,21 +102,23 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 
 ## Turnstile
 
-### `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+Turnstile es opcional. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Se recomienda activarlo en producción: define ambas variables en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El servidor las lee al arrancar, así que cambiarlas requiere reiniciar, no reconstruir.
 
-- **Propósito:** Clave pública que muestra el widget en el navegador.
-- **Obligatoria:** Opcional para `next dev`; se requiere una clave real en cada `next build`, incluidos producción, staging, vistas previas y CI.
+### `TURNSTILE_SITE_KEY`
+
+- **Propósito:** Clave pública que muestra el widget en el navegador. El servidor la lee y se la pasa a la página.
+- **Obligatoria:** No. Defínela junto con `TURNSTILE_SECRET_KEY`; si defines solo una, el servidor se detiene con un error.
 - **Dónde obtenerla:** Crea un widget de Cloudflare Turnstile. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - **Formato de ejemplo:** `tu-site-key-real-de-turnstile`
-- **Secreta:** No. Los valores `NEXT_PUBLIC_*` se incrustan en el bundle del cliente al compilar; cambiar esta clave requiere un build nuevo.
+- **Secreta:** No. Se envía al navegador, pero es una variable normal de ejecución (no `NEXT_PUBLIC_*`), así que no se compila dentro del build.
 
 ### `TURNSTILE_SECRET_KEY`
 
 - **Propósito:** Valida en el servidor los tokens de Turnstile.
-- **Obligatoria:** Opcional para `next dev`; se requiere una clave real en cada `next build` y en el servidor de producción en ejecución.
+- **Obligatoria:** No. Defínela junto con `TURNSTILE_SITE_KEY`.
 - **Dónde obtenerla:** Copia la Secret Key del mismo widget de Cloudflare Turnstile que la site key.
 - **Formato de ejemplo:** `tu-secret-key-real-de-turnstile`
-- **Secreta:** Sí. Mantenla en el servidor. En Docker, móntala con BuildKit durante el build y vuelve a proporcionarla al contenedor en ejecución.
+- **Secreta:** Sí. Mantenla en el servidor y entrégala al servidor o contenedor en ejecución, nunca al build.
 
 ## Monitoreo de errores (Sentry)
 
@@ -145,6 +147,8 @@ Todas las variables de Sentry son opcionales. Si `NEXT_PUBLIC_SENTRY_DSN` está 
 - **Secreta:** No.
 
 ## OAuth
+
+Cada proveedor es opcional y se activa, junto con su botón de inicio de sesión, solo cuando están definidos su client ID y su client secret. El servidor los lee al arrancar, así que cambiarlos requiere reiniciar, no reconstruir.
 
 Para cualquiera de los proveedores, agrega la URL de callback correspondiente a la aplicación OAuth: `<BETTER_AUTH_URL>/api/auth/callback/google` o `<BETTER_AUTH_URL>/api/auth/callback/github`. Por ejemplo, el callback local de Google es `http://localhost:3000/api/auth/callback/google`.
 
@@ -179,22 +183,6 @@ Para cualquiera de los proveedores, agrega la URL de callback correspondiente a 
 - **Dónde obtenerla:** Configuración de la OAuth App de GitHub, junto con el client ID.
 - **Formato de ejemplo:** `reemplazar-con-github-client-secret`
 - **Secreta:** Sí. Mantenla en el servidor.
-
-### `NEXT_PUBLIC_GOOGLE_ENABLED`
-
-- **Propósito:** Controla si aparece el botón de inicio con Google.
-- **Obligatoria:** No; usa `true` cuando Google esté configurado y `false` cuando esté deshabilitado.
-- **Dónde obtenerla:** Asígnala en `.env`.
-- **Formato de ejemplo:** `false`
-- **Secreta:** No. Esta opción `NEXT_PUBLIC_*` se incrusta al compilar. Usa `true` solo si configuraste las credenciales de Google correspondientes.
-
-### `NEXT_PUBLIC_GITHUB_ENABLED`
-
-- **Propósito:** Controla si aparece el botón de inicio con GitHub.
-- **Obligatoria:** No; usa `true` cuando GitHub esté configurado y `false` cuando esté deshabilitado.
-- **Dónde obtenerla:** Asígnala en `.env`.
-- **Formato de ejemplo:** `false`
-- **Secreta:** No. Esta opción `NEXT_PUBLIC_*` se incrusta al compilar. Usa `true` solo si configuraste las credenciales de GitHub correspondientes.
 
 ## Almacenamiento de archivos
 
@@ -298,7 +286,7 @@ Algunas funciones se activan con una pareja de variables. El servidor comprueba 
 
 - Google: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
 - GitHub: `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET`.
-- Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`.
+- Turnstile: `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`.
 - Almacenamiento S3: con `STORAGE_DRIVER=s3`, todas las variables `S3_*` que requiere (consulta [Almacenamiento de archivos](#almacenamiento-de-archivos)).
 
 Si no defines ninguna de las dos variables de una pareja de Google, GitHub o Turnstile, la función queda desactivada y no hay error. Si defines solo una, el servidor imprime un único error que lista todo lo que falta y se detiene:
@@ -313,7 +301,7 @@ Un `STORAGE_DRIVER` inválido o una configuración S3 incompleta se reportan en 
 
 ## Valores públicos y momento de compilación
 
-Todos los valores `NEXT_PUBLIC_*` son públicos y se compilan dentro del bundle del cliente. Configura los valores deseados antes de compilar; cambiar uno requiere ejecutar de nuevo `next build` y desplegar. Los builds de producción requieren claves reales de sitio y secret de Turnstile.
+Los ajustes de Google, GitHub y Turnstile se leen al arrancar el servidor: cámbialos y reinicia, sin reconstruir. El resto de valores `NEXT_PUBLIC_*` (como el DSN de Sentry) son públicos y se compilan dentro del bundle del cliente; cambiar uno de esos requiere ejecutar de nuevo `next build` y desplegar.
 
 ---
 
