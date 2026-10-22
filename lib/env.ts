@@ -116,6 +116,17 @@ function isRemoteUrl(value: string | undefined): boolean {
   }
 }
 
+/**
+ * Which Docker services `bun dev` starts, from the effective environment
+ * (variables exported in the terminal already merged over `.env`).
+ */
+export function resolveDevServices(env: EnvSource): { dockerDatabase: boolean; mailpit: boolean } {
+  return {
+    dockerDatabase: isDockerDatabaseUrl(env.DATABASE_URL, env.DB_PORT),
+    mailpit: !env.RESEND_API_KEY?.trim(),
+  };
+}
+
 const REQUIRED_S3_VARIABLES = [
   'S3_REGION',
   'S3_BUCKET',

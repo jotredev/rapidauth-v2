@@ -2,6 +2,26 @@
 
 Esta guía instala y configura RapidAuth sin ejecutar `bun run init:setup`. Sigue los pasos en orden.
 
+## Inicio rápido para desarrollo
+
+Para desarrollar en local solo necesitas Docker encendido y luego:
+
+```sh
+bun install
+bun dev
+```
+
+`bun dev` prepara todo lo demás, sin que tengas que configurar ni leer nada antes:
+
+- **`.env`:** si no existe, `bun dev` lo crea desde `.env.example` con valores locales: un `BETTER_AUTH_SECRET` aleatorio, `BETTER_AUTH_URL=http://localhost:3000`, la `DATABASE_URL` del PostgreSQL local en Docker y un `SUPPORT_EMAIL` local. Un `.env` existente nunca se sobrescribe.
+- **Base de datos:** inicia el PostgreSQL local en Docker solo si `DATABASE_URL` apunta a él: host `localhost`, `127.0.0.1` o `::1`, usuario, contraseña y base `rapidauth`, y puerto `DB_PORT` (por defecto `5432`). Con cualquier otra URL, como la de Neon, no toca Docker ni la base.
+- **Tablas:** cuando inicia la base local y esta no tiene tablas, las crea con `prisma db push`. No ejecuta el seed y nunca toca una base que ya tiene tablas. Ejecuta `bun run db:seed` para crear la cuenta de administrador.
+- **Mailpit:** inicia la bandeja local en `http://localhost:8025` solo si `RESEND_API_KEY` está vacía.
+- **Prioridad:** las variables ya exportadas en tu terminal ganan a `.env`, igual que en Next.js y Prisma. Todas las decisiones anteriores usan ese valor efectivo. Por ejemplo, si exportas una `DATABASE_URL` de Neon, no se inicia Docker aunque `.env` apunte a la base local.
+- **Resumen:** al terminar muestra qué servicios están activos y la línea `For production, run bun run init:setup`.
+
+El resto de esta guía sirve para configurar todo a mano, por ejemplo antes de desplegar.
+
 ## 1. Prepara los requisitos
 
 - Instala [Bun](https://bun.sh/).
@@ -29,7 +49,7 @@ El script `postinstall` ejecuta automáticamente `prisma generate`. No necesitas
 
 ## 3. Crea y completa `.env`
 
-Copia el archivo de ejemplo y luego edita `.env`:
+Para desarrollar en local, `bun dev` crea `.env` por ti (consulta el inicio rápido). Para configurarlo tú, copia el archivo de ejemplo y luego edita `.env`:
 
 ```sh
 cp .env.example .env
@@ -149,7 +169,7 @@ RapidAuth envía un aviso por email al dueño de la cuenta cuando cambia su cont
 bun dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000), entra a la página de inicio de sesión e ingresa con `SEED_ADMIN_EMAIL` y la contraseña impresa o configurada durante el seed. Abre **Profile → Security**, activa la autenticación de dos factores y después confirma que cargue el panel de admin.
+Si Docker está encendido, `bun dev` también inicia la base local y Mailpit cuando corresponde (consulta el inicio rápido). Abre [http://localhost:3000](http://localhost:3000), entra a la página de inicio de sesión e ingresa con `SEED_ADMIN_EMAIL` y la contraseña impresa o configurada durante el seed. Abre **Profile → Security**, activa la autenticación de dos factores y después confirma que cargue el panel de admin.
 
 ## Antes de desplegar
 

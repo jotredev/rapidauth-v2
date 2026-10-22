@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { formatEnvSummary, resolveEnv } from '../../lib/env';
+import { formatEnvSummary, resolveDevServices, resolveEnv } from '../../lib/env';
 
 const google = { GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' };
 const github = { GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' };
@@ -56,6 +56,25 @@ test.describe('environment resolution', () => {
     expect(docker({ DATABASE_URL: local.replace('rapidauth@', 'other@') })).toBe(false);
     expect(docker({ DATABASE_URL: 'not a url' })).toBe(false);
     expect(docker({})).toBe(false);
+  });
+
+  test('decides which Docker services bun dev starts from the effective environment', () => {
+    const local = 'postgresql://rapidauth:rapidauth@localhost:5432/rapidauth?sslmode=disable';
+    const neon = 'postgresql://u:p@ep-x.neon.tech:5432/neondb?sslmode=require';
+    const dotenvFile = { DATABASE_URL: local, RESEND_API_KEY: '' };
+    // dev-setup.ts merges the .env file with variables exported in the terminal, the terminal winning.
+    const effective = (terminal: Record<string, string>) => resolveDevServices({ ...dotenvFile, ...terminal });
+
+    expect(effective({})).toEqual({ dockerDatabase: true, mailpit: true });
+    expect(resolveDevServices({ DATABASE_URL: neon })).toEqual({ dockerDatabase: false, mailpit: true });
+    expect(effective({ DATABASE_URL: neon })).toEqual({ dockerDatabase: false, mailpit: true });
+    expect(effective({ RESEND_API_KEY: 're_123' })).toEqual({ dockerDatabase: true, mailpit: false });
+    expect(effective({ RESEND_API_KEY: '  ' })).toEqual({ dockerDatabase: true, mailpit: true });
+    expect(effective({ DATABASE_URL: neon, RESEND_API_KEY: 're_123' })).toEqual({
+      dockerDatabase: false,
+      mailpit: false,
+    });
+    expect(resolveDevServices({ ...dotenvFile, DATABASE_URL: neon }).dockerDatabase).toBe(false);
   });
 
   test('resolves the email provider', () => {

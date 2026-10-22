@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'dotenv';
-import { formatEnvSummary, isDockerDatabaseUrl, resolveEnv } from '../lib/env';
+import { formatEnvSummary, resolveDevServices, resolveEnv } from '../lib/env';
 import {
   checkDockerPrerequisites,
   commandErrorOutput,
@@ -74,8 +74,7 @@ async function main(): Promise<void> {
 
   // Effective environment: variables already exported in the terminal win over .env, as in Next.js and Prisma.
   const env = { ...parse(readFileSync(envPath)), ...process.env };
-  const useDockerDatabase = isDockerDatabaseUrl(env.DATABASE_URL, env.DB_PORT);
-  const useMailpit = !env.RESEND_API_KEY?.trim();
+  const { dockerDatabase: useDockerDatabase, mailpit: useMailpit } = resolveDevServices(env);
 
   if (useDockerDatabase || useMailpit) {
     const prerequisiteError = checkDockerPrerequisites();
