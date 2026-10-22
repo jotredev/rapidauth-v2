@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -7,10 +6,10 @@ import { formatEnvSummary, resolveDevServices, resolveEnv } from '../lib/env';
 import {
   checkDockerPrerequisites,
   commandErrorOutput,
-  countDockerDatabaseTables,
   ensureDockerDatabase,
   ensureDockerService,
 } from './lib/docker';
+import { BaselineRequiredError, baselineMessage, runMigrateDeploy } from './lib/migrations';
 
 const root = process.cwd();
 const envPath = path.resolve(root, '.env');
@@ -58,15 +57,20 @@ function runDockerStep(what: string, step: () => Promise<void> | void): Promise<
     });
 }
 
-/** Creates the tables with the current mechanism (prisma db push) when the local database is empty. */
-function ensureTables(databaseUrl: string): void {
-  if (countDockerDatabaseTables() > 0) return;
-  process.stdout.write('The local database is empty. Creating the tables with prisma db push...\n');
-  // Pass the URL that was checked as the Docker database: prisma.config.ts never overrides process.env.
-  execFileSync('bunx', ['prisma', 'db', 'push'], {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
-  });
+/** Applies the pending migrations (prisma migrate deploy) to the local database; safe to run on every start. */
+function applyMigrations(databaseUrl: string): boolean {
+  process.stdout.write('Applying database migrations with prisma migrate deploy...\n');
+  try {
+    // Pass the URL that was checked as the Docker database: prisma.config.ts never overrides process.env.
+    runMigrateDeploy(databaseUrl);
+    return true;
+  } catch (error) {
+    process.stderr.write(
+      error instanceof BaselineRequiredError ? baselineMessage() : `Could not apply the migrations: ${commandErrorOutput(error)}\n`,
+    );
+    process.exitCode = 1;
+    return false;
+  }
 }
 
 async function main(): Promise<void> {
@@ -92,12 +96,9 @@ async function main(): Promise<void> {
   if (useDockerDatabase) {
     const started = await runDockerStep(
       'DATABASE_URL points to the local PostgreSQL in Docker',
-      async () => {
-        await ensureDockerDatabase(env.DB_PORT);
-        ensureTables(env.DATABASE_URL as string);
-      },
+      () => ensureDockerDatabase(env.DB_PORT),
     );
-    if (!started) return;
+    if (!started || !applyMigrations(env.DATABASE_URL as string)) return;
   }
 
   if (useMailpit) {

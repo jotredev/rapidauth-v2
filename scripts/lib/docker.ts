@@ -90,20 +90,3 @@ export async function ensureDockerService(
 export async function ensureDockerDatabase(port?: string): Promise<void> {
   await ensureDockerService('db', 'Local PostgreSQL', port ? { DB_PORT: port } : {});
 }
-
-/** Counts the tables in the public schema of the local Docker database. */
-export function countDockerDatabaseTables(): number {
-  const output = execFileSync(
-    'docker',
-    [
-      ...DOCKER_COMPOSE_ARGS, 'exec', '-T', 'db',
-      'psql', '-U', 'rapidauth', '-d', 'rapidauth', '-tA',
-      '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'",
-    ],
-    { encoding: 'utf8', timeout: 15_000 },
-  ).trim();
-  if (!/^\d+$/.test(output)) {
-    throw new Error(`Could not count the tables in the local database: psql returned "${output}".`);
-  }
-  return Number.parseInt(output, 10);
-}

@@ -22,6 +22,7 @@ import { createS3Storage } from '../lib/storage';
 import { getThemeChangedPaths } from './lib/theme-safety';
 import { getSupportEmail } from '../lib/support-email';
 import { isDockerDatabaseUrl } from '../lib/env';
+import { BaselineRequiredError, baselineMessage, runMigrateDeploy } from './lib/migrations';
 
 // ============================================================================
 // CONFIGURATION
@@ -748,8 +749,8 @@ async function runPrismaGenerate(): Promise<void> {
   execSync('bunx prisma generate', { stdio: 'inherit' });
 }
 
-async function runPrismaPush(): Promise<void> {
-  execSync('bunx prisma db push', { stdio: 'inherit' });
+async function runPrismaMigrate(): Promise<void> {
+  runMigrateDeploy();
 }
 
 async function runSeed(): Promise<void> {
@@ -1891,14 +1892,15 @@ async function runSetup() {
     }
 
     println();
-    println(`  ${colors.cyan}${icons.arrow} Pushing schema to database...${colors.reset}`);
+    println(`  ${colors.cyan}${icons.arrow} Applying database migrations...${colors.reset}`);
     println();
     try {
-      await runPrismaPush();
+      await runPrismaMigrate();
       println();
-      println(`  ${colors.green}${icons.success} Database schema pushed${colors.reset}`);
+      println(`  ${colors.green}${icons.success} Database migrations applied${colors.reset}`);
     } catch (err) {
-      println(`  ${colors.red}${icons.error} Failed to push schema${colors.reset}`);
+      println(`  ${colors.red}${icons.error} Failed to apply migrations${colors.reset}`);
+      if (err instanceof BaselineRequiredError) println(baselineMessage());
       throw err;
     }
 

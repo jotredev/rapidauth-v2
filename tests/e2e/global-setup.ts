@@ -107,7 +107,7 @@ export default async function globalSetup(config: FullConfig) {
     : 'postgresql://rapidauth:rapidauth@127.0.0.1:55432/rapidauth?sslmode=disable';
   const env = createE2EEnvironment(databaseUrl);
 
-  run('bunx', ['prisma', 'db', 'push'], env);
+  run('bunx', ['prisma', 'migrate', 'deploy'], env);
   await resetDatabaseAndSeed(databaseUrl, env);
   await resetOutbox();
 

@@ -25,7 +25,7 @@
     "setup:proxy": "bun run scripts/setup.ts --only proxy",
     "setup:support": "bun run scripts/setup.ts --only support",
     "db:generate": "bunx prisma generate",
-    "db:push": "bunx prisma db push",
+    "db:deploy": "bunx prisma migrate deploy",
     "db:switch": "bun run scripts/setup.ts --only database",
     "db:migrate": "bunx prisma migrate dev",
     "db:studio": "bunx prisma studio",

@@ -15,6 +15,21 @@ if [ "$#" -gt 0 ]; then
   exec "$@"
 fi
 
-bunx prisma db push
+if ! migrate_output="$(bunx prisma migrate deploy 2>&1)"; then
+  printf '%s\n' "$migrate_output" >&2
+  if printf '%s' "$migrate_output" | grep -q 'P3005'; then
+    cat >&2 <<'MSG'
+
+This database already has tables but no migration history (Prisma error P3005).
+It was probably created with `prisma db push`. Nothing was changed.
+If its tables match the current schema, mark the initial migration as applied yourself:
+  docker compose run --rm app bunx prisma migrate resolve --applied 0_init
+Then start the containers again. Guide (English): docs/en/00-manual-setup.md
+Guía (español): docs/es/00-manual-setup.md
+MSG
+  fi
+  exit 1
+fi
+printf '%s\n' "$migrate_output"
 bun run db:seed
 exec bunx next dev --turbopack --hostname 0.0.0.0
