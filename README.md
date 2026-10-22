@@ -44,8 +44,8 @@ Choose **one** of these four ways to start. You do not need to follow the other 
 | --- | --- | --- | --- |
 | Setup wizard | [Bun](https://bun.sh/); Docker engine only for its local database option | External PostgreSQL or local PostgreSQL in Docker | `bun run init:setup` |
 | Manual setup | [Bun](https://bun.sh/) | External PostgreSQL, such as [Neon](https://neon.tech) | `bun dev` after following the manual guide |
-| Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `docker compose -f docker/compose.yaml up --build` |
-| Docker for the database only | [Bun](https://bun.sh/) and a Docker engine | Local PostgreSQL in Docker; no external database | `docker compose -f docker/compose.yaml up -d db`, then `bun dev` |
+| Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `docker compose up --build` |
+| Docker for the database only | [Bun](https://bun.sh/) and a Docker engine | Local PostgreSQL in Docker; no external database | `docker compose up -d db`, then `bun dev` |
 
 ### Option 1: Setup wizard
 

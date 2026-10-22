@@ -48,7 +48,7 @@ Compose configura `DATABASE_URL` y `BETTER_AUTH_URL` para la app. Los valores de
 Ejecuta este comando desde la raíz del proyecto. La primera vez descarga imágenes y prepara la app de desarrollo, así que puede tardar unos minutos:
 
 ```sh
-docker compose -f docker/compose.yaml up --build
+docker compose up --build
 ```
 
 Deberías ver que PostgreSQL pasa la comprobación de salud, Prisma aplica el esquema con `db push`, termina el seed y Next.js queda listo en el puerto 3000. La primera vez, el seed crea `admin@admin.com` y muestra su contraseña generada en los logs de la app. Guárdala: el seed solo la muestra cuando crea esa cuenta.
@@ -58,7 +58,7 @@ Abre [http://localhost:3000](http://localhost:3000) e inicia sesión con `admin@
 Para volver a ver los mensajes del seed, abre otra terminal en la raíz del proyecto y ejecuta:
 
 ```sh
-docker compose -f docker/compose.yaml logs app
+docker compose logs app
 ```
 
 La contraseña solo aparece en los logs de la ejecución que creó el admin. Mantén esos logs privados.
@@ -70,7 +70,7 @@ cd docker
 docker compose up --build
 ```
 
-Si creas otro proyecto a partir de esta plantilla, cambia `name: rapidauth` en `docker/compose.yaml` por el nombre del nuevo proyecto para que no comparta contenedores ni base de datos con este.
+Si creas otro proyecto a partir de esta plantilla, cambia `name: rapidauth` en el `compose.yaml` de la raíz por el nombre del nuevo proyecto para que no comparta contenedores ni base de datos con este.
 
 Los comandos `bun run docker:up`, `bun run docker:logs`, `bun run docker:down` y `bun run docker:reset` son atajos opcionales. Requieren Bun en tu computadora; los comandos de Docker anteriores no.
 
@@ -80,12 +80,12 @@ Esta es una alternativa a ejecutar ambos servicios en Docker. Suele ser más rá
 
 También puedes elegir esta opción de base de datos en `bun run init:setup`. El asistente comprueba Docker, inicia solo la base, guarda su URL local en `.env` y luego aplica el esquema y crea el admin como parte del setup.
 
-La base se inicia automáticamente cuando arranca el motor de Docker, salvo que la hayas detenido a propósito con `docker compose -f docker/compose.yaml stop db`.
+La base se inicia automáticamente cuando arranca el motor de Docker, salvo que la hayas detenido a propósito con `docker compose stop db`.
 
 Inicia solo la base en segundo plano. Este comando para la base no necesita un archivo `.env`:
 
 ```sh
-docker compose -f docker/compose.yaml up -d db
+docker compose up -d db
 ```
 
 Configura en `.env` la URL de la base local de Docker:
@@ -118,7 +118,7 @@ Este modo usa la misma base PostgreSQL y el mismo volumen con nombre que Docker 
 Para detener PostgreSQL y conservar sus datos, ejecuta:
 
 ```sh
-docker compose -f docker/compose.yaml stop db
+docker compose stop db
 ```
 
 ## 4. Trabaja en la app
@@ -127,14 +127,14 @@ docker compose -f docker/compose.yaml stop db
 - `DOCKER_DEV_POLLING` controla el sondeo de archivos. Su valor predeterminado es `true` y revisa cambios una vez por segundo. Esto ayuda a Docker Desktop y otros motores con carpetas compartidas a detectar las ediciones. Usa un poco más de procesador. En Linux con Docker Engine nativo, puedes apagarlo:
 
   ```sh
-  DOCKER_DEV_POLLING=false docker compose -f docker/compose.yaml up --build
+  DOCKER_DEV_POLLING=false docker compose up --build
   ```
 
   Si cambias esta opción mientras la app está activa, vuelve a crear el contenedor para aplicar el nuevo valor.
 - Pueden aparecer avisos como `watch error ... NotFound` mientras se reemplazan archivos. Son inofensivos si la app se recarga y sigue funcionando.
-- Para seguir los logs, ejecuta `docker compose -f docker/compose.yaml logs -f` en otra terminal.
-- Presiona **Ctrl+C** para detener el comando actual. El volumen con nombre de la base permanece en el disco. También puedes detener los servicios con `docker compose -f docker/compose.yaml down`.
-- Vuelve a iniciar con `docker compose -f docker/compose.yaml up --build`. Los cambios de código se recargan solos. La app sincroniza dependencias solo cuando cambia `bun.lock`.
+- Para seguir los logs, ejecuta `docker compose logs -f` en otra terminal.
+- Presiona **Ctrl+C** para detener el comando actual. El volumen con nombre de la base permanece en el disco. También puedes detener los servicios con `docker compose down`.
+- Vuelve a iniciar con `docker compose up --build`. Los cambios de código se recargan solos. La app sincroniza dependencias solo cuando cambia `bun.lock`.
 - Después de editar un Dockerfile o Compose, usa `up --build` para reconstruir la imagen de la app.
 
 ## 5. Cambia los puertos de tu computadora
@@ -142,17 +142,17 @@ docker compose -f docker/compose.yaml stop db
 Los puertos predeterminados son app `3000`, base `5432` y Prisma Studio `5555`. Indica otro puerto antes del comando de Compose. Por ejemplo, en macOS o Linux:
 
 ```sh
-APP_PORT=3001 docker compose -f docker/compose.yaml up --build
+APP_PORT=3001 docker compose up --build
 ```
 
-En PowerShell, configura `$env:APP_PORT = "3001"` y luego ejecuta el comando de Compose. Abre `http://localhost:3001`. También puedes usar `DB_PORT` y `STUDIO_PORT`. El número a la derecha de cada asignación no cambia dentro del contenedor.
+En PowerShell, configura `$env:APP_PORT = "3001"` y luego ejecuta el comando de Compose. Abre `http://localhost:3001`. También puedes usar `DB_PORT` y `STUDIO_PORT`. El número a la derecha de cada asignación no cambia dentro del contenedor. Compose también lee `APP_PORT`, `DB_PORT` y `STUDIO_PORT` del archivo `.env` de la raíz del proyecto; una variable definida en tu terminal tiene prioridad.
 
 ## 6. Abre la base y usa comandos de Prisma
 
 Prisma Studio se ejecuta dentro del contenedor de la app y Compose publica su puerto. Mantén los servicios activos. En otra terminal, ejecuta:
 
 ```sh
-docker compose -f docker/compose.yaml exec app bunx prisma studio --port 5555 --browser none
+docker compose exec app bunx prisma studio --port 5555 --browser none
 ```
 
 Abre [http://localhost:5555](http://localhost:5555). Prisma Studio no tiene una opción de hostname en su línea de comandos, así que Compose define `HOST=0.0.0.0` en el contenedor. Eso permite acceder por el puerto publicado; no agregues una opción de hostname que Prisma no admite.
@@ -160,13 +160,13 @@ Abre [http://localhost:5555](http://localhost:5555). Prisma Studio no tiene una 
 Puedes volver a ejecutar el seed mientras la app está activa:
 
 ```sh
-docker compose -f docker/compose.yaml exec app bun run db:seed
+docker compose exec app bun run db:seed
 ```
 
 El seed se puede repetir: si el admin ya existe, no crea otro. Para restablecer la contraseña de un usuario:
 
 ```sh
-docker compose -f docker/compose.yaml exec app bun run scripts/reset-password.ts admin@admin.com
+docker compose exec app bun run scripts/reset-password.ts admin@admin.com
 ```
 
 La nueva contraseña aparece una sola vez en el resultado del comando. Bun se ejecuta dentro del contenedor; no necesitas instalarlo en tu computadora.
@@ -176,7 +176,7 @@ La nueva contraseña aparece una sola vez en el resultado del comando. Bun se ej
 Para detener la app y la base, y borrar permanentemente sus datos almacenados, ejecuta:
 
 ```sh
-docker compose -f docker/compose.yaml down -v
+docker compose down -v
 ```
 
 **La opción `-v` borra el volumen de la base local, incluidas las cuentas y sus datos.** El siguiente `up --build` crea tablas vacías y una cuenta admin nueva. Sin `-v`, la base se conserva para el próximo inicio.
@@ -189,19 +189,19 @@ El motor está detenido. Abre Docker Desktop u OrbStack y espera a que funcione.
 
 ### Un puerto ya está ocupado
 
-Elige otro puerto de tu computadora. Por ejemplo, inicia la app en 3001 con `APP_PORT=3001 docker compose -f docker/compose.yaml up --build`. Usa `DB_PORT` para la base y `STUDIO_PORT` para Studio. En PowerShell, define la variable `$env:...` correspondiente antes de Compose.
+Elige otro puerto de tu computadora. Por ejemplo, inicia la app en 3001 con `APP_PORT=3001 docker compose up --build`. Usa `DB_PORT` para la base y `STUDIO_PORT` para Studio. En PowerShell, define la variable `$env:...` correspondiente antes de Compose.
 
 ### Falta `.env` o falla el correo
 
-Copia `.env.example` a `.env`. Comprueba que `RESEND_API_KEY` sea válida y que Resend acepte `FROM_EMAIL`. Revisa los mensajes de la app con `docker compose -f docker/compose.yaml logs app`.
+Copia `.env.example` a `.env`. Comprueba que `RESEND_API_KEY` sea válida y que Resend acepte `FROM_EMAIL`. Revisa los mensajes de la app con `docker compose logs app`.
 
 ### No aparecen los cambios
 
-Espera un segundo y actualiza el navegador. Confirma que editaste archivos dentro de la carpeta del proyecto. Mantén `DOCKER_DEV_POLLING=true` en Docker Desktop. Si hace falta, reinicia la app con `docker compose -f docker/compose.yaml restart app`.
+Espera un segundo y actualiza el navegador. Confirma que editaste archivos dentro de la carpeta del proyecto. Mantén `DOCKER_DEV_POLLING=true` en Docker Desktop. Si hace falta, reinicia la app con `docker compose restart app`.
 
 ### Cambió una dependencia o un archivo de Docker
 
-Ejecuta `docker compose -f docker/compose.yaml up --build`. Esto reconstruye la imagen de la app y conserva el volumen de la base. No uses `down -v` para reconstruir.
+Ejecuta `docker compose up --build`. Esto reconstruye la imagen de la app y conserva el volumen de la base. No uses `down -v` para reconstruir.
 
 ## Temas, Bun y CI
 
@@ -251,7 +251,7 @@ La imagen se ejecuta con un usuario sin privilegios. Docker comprueba la salud c
 Puedes usar la imagen de desarrollo para aplicar el esquema Prisma y crear el admin en una base externa, sin instalar Bun en tu computadora. Primero confirma que exista `.env`; Compose lo necesita para iniciar el servicio. Sustituye la URL de ejemplo por tu cadena de conexión de producción:
 
 ```sh
-docker compose -f docker/compose.yaml run --rm \
+docker compose run --rm \
   -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
   app bunx prisma db push
 ```
@@ -259,12 +259,12 @@ docker compose -f docker/compose.yaml run --rm \
 Después crea el admin:
 
 ```sh
-docker compose -f docker/compose.yaml run --rm \
+docker compose run --rm \
   -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
   app bun run db:seed
 ```
 
-**Estos comandos apuntan a la base real indicada en `DATABASE_URL` y pueden cambiar datos de producción.** Revisa con cuidado el host y el nombre de la base antes de ejecutarlos. Guarda la contraseña que imprime el seed. Para restablecer esa cuenta después, mientras la app usa la URL de producción, ejecuta `docker compose -f docker/compose.yaml exec -e DATABASE_URL="<url-de-produccion>" app bun run scripts/reset-password.ts admin@admin.com`.
+**Estos comandos apuntan a la base real indicada en `DATABASE_URL` y pueden cambiar datos de producción.** Revisa con cuidado el host y el nombre de la base antes de ejecutarlos. Guarda la contraseña que imprime el seed. Para restablecer esa cuenta después, mientras la app usa la URL de producción, ejecuta `docker compose exec -e DATABASE_URL="<url-de-produccion>" app bun run scripts/reset-password.ts admin@admin.com`.
 
 ---
 

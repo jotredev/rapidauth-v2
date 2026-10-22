@@ -48,7 +48,7 @@ Compose sets `DATABASE_URL` and `BETTER_AUTH_URL` for the app. OAuth values are 
 Run this command from the project root. The first start downloads images and builds the development app, so it may take a few minutes:
 
 ```sh
-docker compose -f docker/compose.yaml up --build
+docker compose up --build
 ```
 
 You should see PostgreSQL become healthy, Prisma apply the schema with `db push`, the seed finish, and Next.js become ready on port 3000. The first seed creates `admin@admin.com` and prints its generated password in the app logs. Save it; the seed prints it only when it creates that account.
@@ -58,7 +58,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign in with `admin@admi
 To find the seed output later, open another terminal in the project root and run:
 
 ```sh
-docker compose -f docker/compose.yaml logs app
+docker compose logs app
 ```
 
 The password appears only in the logs from the run that created the admin. Keep those logs private.
@@ -70,7 +70,7 @@ cd docker
 docker compose up --build
 ```
 
-If you create another project from this template, change `name: rapidauth` in `docker/compose.yaml` to the new project name so it does not share containers or a database with this project.
+If you create another project from this template, change `name: rapidauth` in the root `compose.yaml` to the new project name so it does not share containers or a database with this project.
 
 The `bun run docker:up`, `bun run docker:logs`, `bun run docker:down`, and `bun run docker:reset` commands are optional shortcuts. They require Bun on the host; the Docker commands above do not.
 
@@ -80,12 +80,12 @@ This is an alternative to running both services in Docker. It is often faster on
 
 You can also choose this database option in `bun run init:setup`. The wizard checks Docker, starts only the database, writes its local URL to `.env`, then applies the schema and seeds the admin as part of setup.
 
-The database starts automatically when the Docker engine starts, unless you intentionally stopped it with `docker compose -f docker/compose.yaml stop db`.
+The database starts automatically when the Docker engine starts, unless you intentionally stopped it with `docker compose stop db`.
 
 Start only the database in the background. This database-only command does not need a `.env` file:
 
 ```sh
-docker compose -f docker/compose.yaml up -d db
+docker compose up -d db
 ```
 
 Set the local Docker database URL in `.env`:
@@ -118,7 +118,7 @@ This uses the same PostgreSQL database and named volume as the full Docker setup
 To stop PostgreSQL while keeping its data, run:
 
 ```sh
-docker compose -f docker/compose.yaml stop db
+docker compose stop db
 ```
 
 ## 4. Work on the app
@@ -127,14 +127,14 @@ docker compose -f docker/compose.yaml stop db
 - `DOCKER_DEV_POLLING` controls file polling. It defaults to `true` and checks for changes once per second, which helps Docker Desktop and other file-sharing engines notice edits. It uses a little extra CPU. On Linux with native Docker Engine, you can turn it off:
 
   ```sh
-  DOCKER_DEV_POLLING=false docker compose -f docker/compose.yaml up --build
+  DOCKER_DEV_POLLING=false docker compose up --build
   ```
 
   If you change this setting while the app is already running, recreate the app container for the new value to take effect.
 - Messages such as `watch error ... NotFound` can appear while files are being replaced. They are harmless if the app reloads and continues running.
-- To follow logs, run `docker compose -f docker/compose.yaml logs -f` in another terminal.
-- Press **Ctrl+C** to stop the attached command. The named database volume stays on disk. You can also stop the services with `docker compose -f docker/compose.yaml down`.
-- Start again with `docker compose -f docker/compose.yaml up --build`. Code edits reload automatically. The app syncs dependencies only when `bun.lock` changes.
+- To follow logs, run `docker compose logs -f` in another terminal.
+- Press **Ctrl+C** to stop the attached command. The named database volume stays on disk. You can also stop the services with `docker compose down`.
+- Start again with `docker compose up --build`. Code edits reload automatically. The app syncs dependencies only when `bun.lock` changes.
 - After editing a Dockerfile or Compose settings, use `up --build` to rebuild the app image.
 
 ## 5. Change the host ports
@@ -142,17 +142,17 @@ docker compose -f docker/compose.yaml stop db
 The defaults are app `3000`, database `5432`, and Prisma Studio `5555`. Set a different host port before the Compose command. For example, on macOS or Linux:
 
 ```sh
-APP_PORT=3001 docker compose -f docker/compose.yaml up --build
+APP_PORT=3001 docker compose up --build
 ```
 
-In PowerShell, use `$env:APP_PORT = "3001"` and then run the Compose command. Open `http://localhost:3001`. The same settings are available as `DB_PORT` and `STUDIO_PORT`. The number on the right side of each mapping stays fixed inside the container.
+In PowerShell, use `$env:APP_PORT = "3001"` and then run the Compose command. Open `http://localhost:3001`. The same settings are available as `DB_PORT` and `STUDIO_PORT`. The number on the right side of each mapping stays fixed inside the container. Compose also reads `APP_PORT`, `DB_PORT` and `STUDIO_PORT` from the `.env` file in the project root; a variable set in your shell takes priority.
 
 ## 6. View the database and use Prisma commands
 
 Prisma Studio runs inside the app container, and Compose publishes its port. Keep the app stack running. In a second terminal, run:
 
 ```sh
-docker compose -f docker/compose.yaml exec app bunx prisma studio --port 5555 --browser none
+docker compose exec app bunx prisma studio --port 5555 --browser none
 ```
 
 Open [http://localhost:5555](http://localhost:5555). Prisma Studio's CLI has no hostname option, so Compose sets `HOST=0.0.0.0` on the app container. That makes Studio reachable through the published host port; do not add an unsupported hostname flag.
@@ -160,13 +160,13 @@ Open [http://localhost:5555](http://localhost:5555). Prisma Studio's CLI has no 
 You can run the seed again while the app is running:
 
 ```sh
-docker compose -f docker/compose.yaml exec app bun run db:seed
+docker compose exec app bun run db:seed
 ```
 
 The seed is safe to repeat; if the admin exists, it skips creating another one. To reset a user's password, run:
 
 ```sh
-docker compose -f docker/compose.yaml exec app bun run scripts/reset-password.ts admin@admin.com
+docker compose exec app bun run scripts/reset-password.ts admin@admin.com
 ```
 
 The new password is printed once in the command output. These commands run Bun inside the container, so Bun is not required on your computer.
@@ -176,7 +176,7 @@ The new password is printed once in the command output. These commands run Bun i
 To stop the app and database and permanently erase their stored data, run:
 
 ```sh
-docker compose -f docker/compose.yaml down -v
+docker compose down -v
 ```
 
 **The `-v` option deletes the local database volume, including accounts and data.** The next `up --build` creates empty tables and a new admin account. Without `-v`, the database stays available for the next start.
@@ -189,19 +189,19 @@ The engine is stopped. Open Docker Desktop or OrbStack and wait until it is runn
 
 ### A port is already in use
 
-Choose another host port. For example, start the app on 3001 with `APP_PORT=3001 docker compose -f docker/compose.yaml up --build`. Use `DB_PORT` for the database and `STUDIO_PORT` for Studio. In PowerShell, set the matching `$env:...` variable before running Compose.
+Choose another host port. For example, start the app on 3001 with `APP_PORT=3001 docker compose up --build`. Use `DB_PORT` for the database and `STUDIO_PORT` for Studio. In PowerShell, set the matching `$env:...` variable before running Compose.
 
 ### `.env` is missing or email fails
 
-Copy `.env.example` to `.env`. Check that `RESEND_API_KEY` is valid and `FROM_EMAIL` is allowed by your Resend account. Read app messages with `docker compose -f docker/compose.yaml logs app`.
+Copy `.env.example` to `.env`. Check that `RESEND_API_KEY` is valid and `FROM_EMAIL` is allowed by your Resend account. Read app messages with `docker compose logs app`.
 
 ### Changes do not appear
 
-Wait one second and refresh the browser. Confirm the edited files are inside the project folder. Keep `DOCKER_DEV_POLLING=true` for Docker Desktop. Restart the app with `docker compose -f docker/compose.yaml restart app` if needed.
+Wait one second and refresh the browser. Confirm the edited files are inside the project folder. Keep `DOCKER_DEV_POLLING=true` for Docker Desktop. Restart the app with `docker compose restart app` if needed.
 
 ### A dependency or Docker file changed
 
-Run `docker compose -f docker/compose.yaml up --build`. This rebuilds the app image and keeps the database volume. Do not use `down -v` for a rebuild.
+Run `docker compose up --build`. This rebuilds the app image and keeps the database volume. Do not use `down -v` for a rebuild.
 
 ## Themes, Bun, and CI
 
@@ -251,7 +251,7 @@ The image runs as an unprivileged user. Docker checks `/api/auth/ok` for health.
 You can use the development image to apply the Prisma schema and seed an external database, without installing Bun on your computer. First make sure `.env` exists so Compose can build and start the app service. Replace the example URL with your real production connection string:
 
 ```sh
-docker compose -f docker/compose.yaml run --rm \
+docker compose run --rm \
   -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
   app bunx prisma db push
 ```
@@ -259,12 +259,12 @@ docker compose -f docker/compose.yaml run --rm \
 Then create the admin:
 
 ```sh
-docker compose -f docker/compose.yaml run --rm \
+docker compose run --rm \
   -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
   app bun run db:seed
 ```
 
-**These commands point at the real database in `DATABASE_URL` and can change production data.** Check the host and database name carefully before running them. Save the generated admin password from the seed output. To reset that account later while the app is running with the production URL, use `docker compose -f docker/compose.yaml exec -e DATABASE_URL="<production-url>" app bun run scripts/reset-password.ts admin@admin.com`.
+**These commands point at the real database in `DATABASE_URL` and can change production data.** Check the host and database name carefully before running them. Save the generated admin password from the seed output. To reset that account later while the app is running with the production URL, use `docker compose exec -e DATABASE_URL="<production-url>" app bun run scripts/reset-password.ts admin@admin.com`.
 
 ---
 

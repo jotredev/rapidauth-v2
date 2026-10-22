@@ -1,0 +1,5 @@
+name: rapidauth
+
+include:
+  - docker/db.yaml
+  - docker/app.dev.yaml
