@@ -165,7 +165,8 @@ jobs:
       - name: Build passes without Turnstile keys
         shell: bash
         run: |
-          env | grep -i turnstile && exit 1
+          # Check variable names only: the branch name in GITHUB_REF may contain "turnstile".
+          env | cut -d= -f1 | grep -i turnstile && exit 1
           bun run build
 
   audit:
