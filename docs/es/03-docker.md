@@ -37,7 +37,7 @@ cp .env.example .env
 
 En PowerShell de Windows, usa `Copy-Item .env.example .env`. Abre `.env` en un editor de texto y configura:
 
-- `RESEND_API_KEY`: tu clave de API de Resend. Es necesaria para las funciones de correo.
+- `RESEND_API_KEY`: tu clave de API de Resend. Déjala vacía en desarrollo: los correos van entonces al buzón de Mailpit en [http://localhost:8025](http://localhost:8025), que `docker compose up` arranca por ti. Con clave, los correos salen por Resend y Mailpit no se enciende.
 - `FROM_EMAIL`: un remitente aceptado por Resend. Verifica su dominio en Resend para entregar correos reales.
 - `BETTER_AUTH_SECRET`: reemplaza el ejemplo por un secreto único. En macOS o Linux, puedes generarlo con `openssl rand -hex 32`.
 
@@ -186,7 +186,7 @@ Elige otro puerto de tu computadora. Por ejemplo, inicia la app en 3001 con `APP
 
 ### Falta `.env` o falla el correo
 
-Copia `.env.example` a `.env`. Comprueba que `RESEND_API_KEY` sea válida y que Resend acepte `FROM_EMAIL`. Revisa los mensajes de la app con `docker compose logs app`.
+Copia `.env.example` a `.env`. Sin `RESEND_API_KEY`, lee los correos en [http://localhost:8025](http://localhost:8025). Con clave, comprueba que sea válida y que Resend acepte `FROM_EMAIL`. Revisa los mensajes de la app con `docker compose logs app`.
 
 ### No aparecen los cambios
 

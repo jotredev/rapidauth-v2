@@ -23,9 +23,20 @@ async function waitForS3(endpoint: string) {
   throw new Error('S3Mock did not become ready within 30 seconds.');
 }
 
+async function waitForMailpit(apiUrl: string) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      if ((await fetch(`${apiUrl}/api/v1/info`)).ok) return;
+    } catch { /* not listening yet */ }
+    await delay(500);
+  }
+  throw new Error('Mailpit did not become ready within 30 seconds.');
+}
+
 async function main() {
   if (process.env.CI === 'true') {
     await waitForS3('http://127.0.0.1:9090');
+    await waitForMailpit('http://127.0.0.1:8025');
     const env = {
       ...process.env,
       DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://rapidauth:rapidauth@127.0.0.1:5432/rapidauth?sslmode=disable',
@@ -50,6 +61,7 @@ async function main() {
   const smtpPort = run('docker', ['port', mailpitContainer, '1025/tcp'], process.env, true).split(':').at(-1);
   const apiPort = run('docker', ['port', mailpitContainer, '8025/tcp'], process.env, true).split(':').at(-1);
   if (!smtpPort || !apiPort) throw new Error('Could not determine Mailpit host ports.');
+  await waitForMailpit(`http://127.0.0.1:${apiPort}`);
   const env = {
     ...process.env,
     DATABASE_URL: databaseUrl,

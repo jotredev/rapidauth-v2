@@ -58,25 +58,10 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 
 ## Correo
 
-### `EMAIL_DELIVERY`
-
-- **Propósito:** Elige el transporte de correo. El valor predeterminado `resend` envía mediante Resend; `outbox` guarda los mensajes de prueba en disco.
-- **Obligatoria:** No.
-- **Valores:** `resend` o `outbox`.
-- **Advertencia:** `outbox` es solo para pruebas automatizadas y la aplicación lo rechaza en producción.
-- **Secreta:** No.
-
-### `EMAIL_OUTBOX_DIR`
-
-- **Propósito:** Carpeta donde `EMAIL_DELIVERY=outbox` guarda mensajes JSON, incluidos destinatario, asunto, HTML y enlace principal.
-- **Obligatoria:** No. El valor predeterminado es `.e2e-outbox/`.
-- **Advertencia:** Solo para pruebas; Git ignora la carpeta predeterminada.
-- **Secreta:** No.
-
 ### `RESEND_API_KEY`
 
-- **Propósito:** Autoriza el envío de correo mediante Resend.
-- **Obligatoria:** Para enviar correos en desarrollo y producción; usa credenciales de producción en producción.
+- **Propósito:** Autoriza el envío de correo mediante Resend. Con clave, los correos se envían por Resend. Sin ella, van a Mailpit, un buzón local en `http://localhost:8025` que arranca con `docker compose up`.
+- **Obligatoria:** No en desarrollo local. Sí en producción: sin ella ningún correo llega a nadie, y el resumen de arranque muestra un aviso cuando `BETTER_AUTH_URL` no es local.
 - **Dónde obtenerla:** Crea una API key en el panel de Resend.
 - **Formato de ejemplo:** `re_reemplazar_con_tu_api_key`
 - **Secreta:** Sí. Mantenla en el servidor.
@@ -274,7 +259,7 @@ Cuando el servidor arranca (`bun dev` o `bun run start`), RapidAuth lee estas va
 ```text
 Environment:
   Database:  Docker PostgreSQL
-  Emails:    Resend
+  Emails:    Resend (o Mailpit si RESEND_API_KEY está vacía)
   Files:     local disk
   Turnstile: on
   Google:    off

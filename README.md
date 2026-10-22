@@ -13,7 +13,7 @@ A production-ready Next.js 16+ authentication boilerplate with Better Auth, desi
 ### Authentication
 - Email/Password authentication with strong password validation
 - OAuth integration (Google & GitHub)
-- Email verification with a 6-digit code sent via Resend
+- Email verification with a 6-digit code sent via Resend (or to a local Mailpit inbox when no API key is set)
 - Two-Factor Authentication (TOTP) with backup codes
 - Password recovery with a 6-digit code
 - Session management with IP & User Agent tracking
@@ -49,7 +49,7 @@ Choose **one** of these four ways to start. You do not need to follow the other 
 
 ### Option 1: Setup wizard
 
-**Requirements:** Bun. Choose an external PostgreSQL database or let the wizard run local PostgreSQL in Docker; the local option also requires a Docker engine. Create a [Resend](https://resend.com) account for email delivery; OAuth credentials are optional.
+**Requirements:** Bun. Choose an external PostgreSQL database or let the wizard run local PostgreSQL in Docker; the local option also requires a Docker engine. Create a [Resend](https://resend.com) account for email delivery (optional in development: without a key, emails go to Mailpit at `http://localhost:8025`); OAuth credentials are optional.
 
 ```bash
 # Clone the repository
@@ -76,7 +76,7 @@ You can run `bun run init:setup` again later. It offers the sections to update; 
 
 ### Option 2: Manual setup
 
-**Requirements:** Bun and access to an external PostgreSQL database. Create a [Resend](https://resend.com) account for email delivery; OAuth credentials are optional.
+**Requirements:** Bun and access to an external PostgreSQL database. Create a [Resend](https://resend.com) account for email delivery (optional in development: without a key, emails go to Mailpit at `http://localhost:8025`); OAuth credentials are optional.
 
 To configure each step yourself, follow the [English manual setup guide](docs/en/00-manual-setup.md) or the [guía de setup manual en español](docs/es/00-manual-setup.md). Start the app with `bun dev` after completing that guide.
 
@@ -183,7 +183,7 @@ BETTER_AUTH_SECRET="auto-generated"
 BETTER_AUTH_URL="http://localhost:3000"
 # BETTER_AUTH_URL is required; without it every auth request fails with a clear error.
 
-# Email (Resend)
+# Email (Resend). Leave empty in development: emails go to Mailpit at http://localhost:8025
 RESEND_API_KEY="re_xxxxxxxxxxxxx"
 FROM_EMAIL="RapidAuth <noreply@yourdomain.com>"
 
@@ -387,7 +387,7 @@ Set these required environment variables in the runtime environment of each depl
 - `DATABASE_URL`
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
-- `RESEND_API_KEY`
+- `RESEND_API_KEY` (without it, emails go to Mailpit and reach nobody)
 - `FROM_EMAIL`
 
 The following are optional. Each pair turns its feature on only when both values are set:

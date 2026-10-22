@@ -72,9 +72,9 @@ const ENV_VARIABLES: EnvVariable[] = [
   // Email
   {
     key: 'RESEND_API_KEY',
-    description: 'Resend API key for sending emails',
+    description: 'Resend API key for sending emails (leave empty to use Mailpit)',
     placeholder: 're_xxxxxxxxxxxxx',
-    required: true,
+    required: false,
     sensitive: true,
     category: 'email',
     helpUrl: 'https://resend.com/api-keys',
@@ -86,7 +86,6 @@ const ENV_VARIABLES: EnvVariable[] = [
     },
   },
   // FROM_EMAIL is handled separately in askEmailConfig()
-  // EMAIL_OUTBOX_DIR is E2E-only and intentionally is not managed by this wizard.
 ];
 
 // ============================================================================
@@ -1215,7 +1214,7 @@ async function askSupportEmail(existingValue?: string): Promise<string> {
 const ENV_SECTION_KEYS: Record<string, string[]> = {
   database: ['DATABASE_URL', 'DB_PORT', 'DOCKER_DATABASE'],
   auth: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
-  email: ['EMAIL_DELIVERY', 'RESEND_API_KEY', 'FROM_EMAIL'],
+  email: ['RESEND_API_KEY', 'FROM_EMAIL'],
   support: ['SUPPORT_EMAIL'],
   captcha: ['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
   monitoring: ['NEXT_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'SENTRY_TRACES_SAMPLE_RATE'],
@@ -1618,7 +1617,6 @@ async function runSetup() {
     existingEnv.DATABASE_URL &&
     existingEnv.BETTER_AUTH_SECRET &&
     existingEnv.BETTER_AUTH_URL &&
-    existingEnv.RESEND_API_KEY &&
     existingEnv.FROM_EMAIL
   );
   let selection = forcedSection ?? '';
@@ -1692,7 +1690,7 @@ async function runSetup() {
       '',
       'Before you start, make sure you have:',
       '  • An external PostgreSQL database or Docker for local PostgreSQL',
-      '  • A Resend account for sending emails',
+      '  • A Resend account for sending emails (optional: without it, emails go to Mailpit)',
       '  • A free Cloudflare account for Turnstile',
       '  • OAuth credentials (optional)',
       '  • A Sentry account (optional)',
@@ -1739,10 +1737,13 @@ async function runSetup() {
       }
     } else if (category.key === 'email') {
       // Handle email category specially
-      newEnv['EMAIL_DELIVERY'] = 'resend';
       const categoryVars = ENV_VARIABLES.filter(
         (v) => v.category === 'email',
       );
+
+      println(`  ${colors.dim}With a Resend API key, emails are sent through Resend.${colors.reset}`);
+      println(`  ${colors.dim}Without one, they go to Mailpit, a local inbox at http://localhost:8025.${colors.reset}`);
+      println();
 
       // First ask for RESEND_API_KEY
       for (const variable of categoryVars) {
@@ -1752,89 +1753,95 @@ async function runSetup() {
         }
       }
 
-      // Then ask for FROM_EMAIL with domain check
-      const { fromEmail, testEmail } = await askEmailConfig();
-      newEnv['FROM_EMAIL'] = fromEmail;
+      if (!newEnv['RESEND_API_KEY']) {
+        println(`     ${colors.yellow}${icons.warning} No Resend key: emails will go to Mailpit (http://localhost:8025).${colors.reset}`);
+        println(`     ${colors.dim}Set RESEND_API_KEY before deploying, or no email will reach anyone.${colors.reset}`);
+        println();
+      } else {
+        // Then ask for FROM_EMAIL with domain check
+        const { fromEmail, testEmail } = await askEmailConfig();
+        newEnv['FROM_EMAIL'] = fromEmail;
 
-      // Send test email
-      println(`  ${icons.email} ${colors.bold}Sending test email...${colors.reset}`);
-      println();
+        // Send test email
+        println(`  ${icons.email} ${colors.bold}Sending test email...${colors.reset}`);
+        println();
 
-      let emailSuccess = false;
-      let retryCount = 0;
-      const maxRetries = 3;
+        let emailSuccess = false;
+        let retryCount = 0;
+        const maxRetries = 3;
 
-      while (!emailSuccess && retryCount < maxRetries) {
-        const result = await sendTestEmail(
-          newEnv['RESEND_API_KEY'],
-          fromEmail,
-          testEmail,
-        );
-
-        if (result.success) {
-          println(`     ${colors.green}${icons.success} Test email sent successfully to ${testEmail}${colors.reset}`);
-          println(`     ${colors.dim}Please check your inbox (and spam folder)${colors.reset}`);
-          println();
-
-          const confirmed = await question(
-            `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Did you receive the email? (y/n)${colors.reset}: `,
+        while (!emailSuccess && retryCount < maxRetries) {
+          const result = await sendTestEmail(
+            newEnv['RESEND_API_KEY'],
+            fromEmail,
+            testEmail,
           );
 
-          if (confirmed.toLowerCase() === 'y' || confirmed.toLowerCase() === 'yes') {
-            emailSuccess = true;
+          if (result.success) {
+            println(`     ${colors.green}${icons.success} Test email sent successfully to ${testEmail}${colors.reset}`);
+            println(`     ${colors.dim}Please check your inbox (and spam folder)${colors.reset}`);
             println();
-            println(`     ${colors.green}${icons.success} Email configuration verified!${colors.reset}`);
-          } else {
-            println();
-            println(`     ${colors.yellow}${icons.warning} Email might be in spam folder or delayed${colors.reset}`);
-            const continueAnyway = await question(
-              `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Continue anyway? (y/n)${colors.reset}: `,
+
+            const confirmed = await question(
+              `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Did you receive the email? (y/n)${colors.reset}: `,
             );
-            if (continueAnyway.toLowerCase() === 'y' || continueAnyway.toLowerCase() === 'yes') {
+
+            if (confirmed.toLowerCase() === 'y' || confirmed.toLowerCase() === 'yes') {
               emailSuccess = true;
+              println();
+              println(`     ${colors.green}${icons.success} Email configuration verified!${colors.reset}`);
             } else {
-              retryCount++;
-              if (retryCount < maxRetries) {
-                println();
-                println(`     ${colors.cyan}Let's try again...${colors.reset}`);
-                const retryConfig = await askEmailConfig();
-                newEnv['FROM_EMAIL'] = retryConfig.fromEmail;
+              println();
+              println(`     ${colors.yellow}${icons.warning} Email might be in spam folder or delayed${colors.reset}`);
+              const continueAnyway = await question(
+                `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Continue anyway? (y/n)${colors.reset}: `,
+              );
+              if (continueAnyway.toLowerCase() === 'y' || continueAnyway.toLowerCase() === 'yes') {
+                emailSuccess = true;
+              } else {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                  println();
+                  println(`     ${colors.cyan}Let's try again...${colors.reset}`);
+                  const retryConfig = await askEmailConfig();
+                  newEnv['FROM_EMAIL'] = retryConfig.fromEmail;
+                }
               }
             }
-          }
-        } else {
-          println(`     ${colors.red}${icons.error} Failed to send test email: ${result.error}${colors.reset}`);
-          println();
-
-          if (result.error?.includes('not verified') || result.error?.includes('not allowed')) {
-            println(`     ${colors.yellow}${icons.warning} This error usually means:${colors.reset}`);
-            println(`     ${colors.dim}  - The recipient email is not verified in Resend${colors.reset}`);
-            println(`     ${colors.dim}  - You're using onboarding@resend.dev with wrong recipient${colors.reset}`);
+          } else {
+            println(`     ${colors.red}${icons.error} Failed to send test email: ${result.error}${colors.reset}`);
             println();
-          }
 
-          retryCount++;
-          if (retryCount < maxRetries) {
-            const retry = await question(
-              `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Try again? (y/n)${colors.reset}: `,
-            );
-            if (retry.toLowerCase() !== 'y' && retry.toLowerCase() !== 'yes') {
-              break;
+            if (result.error?.includes('not verified') || result.error?.includes('not allowed')) {
+              println(`     ${colors.yellow}${icons.warning} This error usually means:${colors.reset}`);
+              println(`     ${colors.dim}  - The recipient email is not verified in Resend${colors.reset}`);
+              println(`     ${colors.dim}  - You're using onboarding@resend.dev with wrong recipient${colors.reset}`);
+              println();
             }
-            println();
-            const retryConfig2 = await askEmailConfig();
-            newEnv['FROM_EMAIL'] = retryConfig2.fromEmail;
+
+            retryCount++;
+            if (retryCount < maxRetries) {
+              const retry = await question(
+                `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Try again? (y/n)${colors.reset}: `,
+              );
+              if (retry.toLowerCase() !== 'y' && retry.toLowerCase() !== 'yes') {
+                break;
+              }
+              println();
+              const retryConfig2 = await askEmailConfig();
+              newEnv['FROM_EMAIL'] = retryConfig2.fromEmail;
+            }
           }
         }
-      }
 
-      if (!emailSuccess) {
+        if (!emailSuccess) {
+          println();
+          println(`     ${colors.yellow}${icons.warning} Continuing without email verification${colors.reset}`);
+          println(`     ${colors.dim}You may need to fix email configuration manually${colors.reset}`);
+        }
+
         println();
-        println(`     ${colors.yellow}${icons.warning} Continuing without email verification${colors.reset}`);
-        println(`     ${colors.dim}You may need to fix email configuration manually${colors.reset}`);
       }
-
-      println();
     } else if (category.key === 'support') {
       newEnv.SUPPORT_EMAIL = await askSupportEmail(existingEnv.SUPPORT_EMAIL);
     } else if (category.key === 'captcha') {

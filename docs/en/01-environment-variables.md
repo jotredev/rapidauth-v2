@@ -58,25 +58,10 @@ This reference covers every variable read by the application and setup scripts. 
 
 ## Email
 
-### `EMAIL_DELIVERY`
-
-- **Purpose:** Selects the email transport. The default `resend` sends through Resend; `outbox` writes test messages to disk.
-- **Required:** No.
-- **Values:** `resend` or `outbox`.
-- **Warning:** `outbox` is only for automated tests and is rejected in production.
-- **Secret:** No.
-
-### `EMAIL_OUTBOX_DIR`
-
-- **Purpose:** Directory where `EMAIL_DELIVERY=outbox` writes JSON messages, including the recipient, subject, HTML and primary link.
-- **Required:** No. Defaults to `.e2e-outbox/`.
-- **Warning:** Test use only; the default directory is ignored by Git.
-- **Secret:** No.
-
 ### `RESEND_API_KEY`
 
-- **Purpose:** Authenticates email requests sent through Resend.
-- **Required:** For email delivery in development and production; use production credentials for production.
+- **Purpose:** Authenticates email requests sent through Resend. With a key, emails are sent through Resend. Without one, they go to Mailpit, a local inbox at `http://localhost:8025` that starts with `docker compose up`.
+- **Required:** No for local development. Required in production: without it, no email reaches anyone, and the startup summary shows a warning when `BETTER_AUTH_URL` is not local.
 - **Where to get it:** Create an API key in the Resend dashboard.
 - **Example format:** `re_replace_with_your_resend_key`
 - **Secret:** Yes. Keep it server-side.
@@ -274,7 +259,7 @@ When the server starts (`bun dev` or `bun run start`), RapidAuth reads these var
 ```text
 Environment:
   Database:  Docker PostgreSQL
-  Emails:    Resend
+  Emails:    Resend (or Mailpit when RESEND_API_KEY is empty)
   Files:     local disk
   Turnstile: on
   Google:    off

@@ -25,7 +25,6 @@ test.describe('environment resolution', () => {
       database: { docker: false },
       email: {
         provider: 'mailpit',
-        delivery: 'resend',
         mailpitSmtpAddress: 'localhost:1025',
         mailpitOnRemoteHost: false,
         from: 'RapidAuth <onboarding@resend.dev>',
@@ -227,7 +226,6 @@ test.describe('environment resolution', () => {
     expect(config.turnstile).toEqual({ enabled: true, siteKey: 'site', secretKey: 'secret' });
     expect(config.email).toEqual({
       provider: 'outbox',
-      delivery: 'outbox',
       resendApiKey: ' re_123 ',
       mailpitSmtpAddress: 'localhost:1025',
       mailpitOnRemoteHost: false,

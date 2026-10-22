@@ -19,8 +19,6 @@ export type ResolvedEnv = {
   database: { docker: boolean };
   email: {
     provider: EmailProvider;
-    /** EMAIL_DELIVERY as lib/email.ts reads it: defaults to "resend". */
-    delivery: string;
     resendApiKey?: string;
     /** Internal (set by docker/app.dev.yaml, not documented): where Mailpit listens, as host:port. */
     mailpitSmtpAddress: string;
@@ -171,7 +169,6 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
     database: { docker: env.DOCKER_DATABASE === 'true' },
     email: {
       provider,
-      delivery: env.EMAIL_DELIVERY ?? 'resend',
       resendApiKey: env.RESEND_API_KEY,
       mailpitSmtpAddress: env.MAILPIT_SMTP_ADDRESS?.trim() || 'localhost:1025',
       mailpitOnRemoteHost: provider === 'mailpit' && isRemoteUrl(env.BETTER_AUTH_URL),

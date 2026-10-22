@@ -37,7 +37,7 @@ cp .env.example .env
 
 In Windows PowerShell, use `Copy-Item .env.example .env`. Open `.env` in a text editor and set:
 
-- `RESEND_API_KEY`: your Resend API key, required for email features.
+- `RESEND_API_KEY`: your Resend API key. Leave it empty in development: emails then go to the Mailpit inbox at [http://localhost:8025](http://localhost:8025), which `docker compose up` starts for you. With a key, emails go through Resend and Mailpit does not start.
 - `FROM_EMAIL`: a sender accepted by Resend. Verify its domain in Resend to deliver real email.
 - `BETTER_AUTH_SECRET`: replace the example with a unique secret. On macOS or Linux, generate one with `openssl rand -hex 32`.
 
@@ -186,7 +186,7 @@ Choose another host port. For example, start the app on 3001 with `APP_PORT=3001
 
 ### `.env` is missing or email fails
 
-Copy `.env.example` to `.env`. Check that `RESEND_API_KEY` is valid and `FROM_EMAIL` is allowed by your Resend account. Read app messages with `docker compose logs app`.
+Copy `.env.example` to `.env`. Without `RESEND_API_KEY`, read the emails at [http://localhost:8025](http://localhost:8025). With a key, check that it is valid and `FROM_EMAIL` is allowed by your Resend account. Read app messages with `docker compose logs app`.
 
 ### Changes do not appear
 

@@ -7,7 +7,7 @@ This guide installs and configures RapidAuth without running `bun run init:setup
 - Install [Bun](https://bun.sh/).
 - If you use Node.js directly for the Next.js runtime, use version 20.9 or newer.
 - Have access to a PostgreSQL database, such as Neon or another PostgreSQL provider.
-- Create a [Resend](https://resend.com/) account for email delivery.
+- Create a [Resend](https://resend.com/) account for email delivery. It is optional in development: without a key, emails go to Mailpit at `http://localhost:8025` (started by Docker Compose); it is required in production.
 - Optional but recommended for production: create a free Cloudflare account and real Turnstile keys. See [Cloudflare Turnstile](02-turnstile.md).
 - OAuth credentials are optional. Create Google and/or GitHub OAuth applications only if you want social sign-in.
 - Sentry error monitoring is optional. The app makes no Sentry requests without a valid DSN; see [Error monitoring](06-error-monitoring.md) if you want to enable it.
@@ -49,7 +49,7 @@ Paste the generated 64-character hexadecimal value into `.env`. Set `BETTER_AUTH
 
 ## 4. Configure and check email
 
-Set `RESEND_API_KEY` and `FROM_EMAIL`. For production, verify the sender domain in Resend and use an address on that domain. You can make a minimal API check with a verified sender and recipient:
+Set `RESEND_API_KEY` and `FROM_EMAIL`. In development you can leave `RESEND_API_KEY` empty: emails then go to Mailpit at `http://localhost:8025` instead of Resend. For production, verify the sender domain in Resend and use an address on that domain. You can make a minimal API check with a verified sender and recipient:
 
 ```sh
 export RESEND_API_KEY="re_replace_with_your_resend_key"
@@ -155,7 +155,7 @@ Open [http://localhost:3000](http://localhost:3000), go to the sign-in page, and
 
 - Review and personalize the public Terms of Service (`/terms`) and Privacy Policy (`/privacy`) before launch. Set `legalEntityName`, `governingLaw`, `lastUpdated`, and `termsVersion` in `config/site.ts`, and set `SUPPORT_EMAIL` in your environment (see [Environment variables](01-environment-variables.md)), then edit the page copy in `app/(legal)/terms/page.tsx` and `app/(legal)/privacy/page.tsx` to match your service. Increase `termsVersion` whenever users must accept a revised version. These documents are templates, not legal advice; have a qualified lawyer review them.
 - Set a unique `BETTER_AUTH_SECRET`, the correct public `BETTER_AUTH_URL`, and a production `DATABASE_URL` in the target environment.
-- Set `RESEND_API_KEY` and a verified `FROM_EMAIL` sender.
+- Set `RESEND_API_KEY` and a verified `FROM_EMAIL` sender. Without the key, emails go to Mailpit and reach nobody.
 - Recommended: turn Turnstile on in production by setting `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` as normal runtime variables on the server where you deploy (Vercel, Docker on a VPS, or any other host). The build does not need them; restart to apply changes. See [Cloudflare Turnstile](02-turnstile.md).
 - Add every serving hostname, or a parent hostname that covers its subdomains, to the Turnstile widget.
 - Set OAuth callback URLs to the deployed `BETTER_AUTH_URL` if social sign-in is enabled. Set the provider's client ID and secret as runtime variables; the buttons follow them after a restart.

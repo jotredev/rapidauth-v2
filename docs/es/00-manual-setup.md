@@ -7,7 +7,7 @@ Esta guía instala y configura RapidAuth sin ejecutar `bun run init:setup`. Sigu
 - Instala [Bun](https://bun.sh/).
 - Si ejecutas Next.js directamente con Node.js, usa la versión 20.9 o posterior.
 - Ten acceso a una base de datos PostgreSQL, como Neon u otro proveedor de PostgreSQL.
-- Crea una cuenta en [Resend](https://resend.com/) para enviar correo.
+- Crea una cuenta en [Resend](https://resend.com/) para enviar correo. Es opcional en desarrollo: sin clave, los correos van a Mailpit en `http://localhost:8025` (lo arranca Docker Compose); en producción es obligatoria.
 - Opcional pero recomendado en producción: crea una cuenta gratis en Cloudflare y obtén claves reales de Turnstile. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - OAuth es opcional. Crea aplicaciones OAuth de Google o GitHub solo si quieres habilitar el inicio de sesión social.
 - El monitoreo de errores con Sentry es opcional. La app no hace peticiones a Sentry sin un DSN válido; consulta [Monitoreo de errores](06-error-monitoring.md) si quieres activarlo.
@@ -49,7 +49,7 @@ Pega en `.env` el valor hexadecimal de 64 caracteres. Para desarrollo local, con
 
 ## 4. Configura y comprueba el correo
 
-Configura `RESEND_API_KEY` y `FROM_EMAIL`. En producción, verifica el dominio del remitente en Resend y usa una dirección de ese dominio. Puedes comprobar la API con un remitente y destinatario verificados:
+Configura `RESEND_API_KEY` y `FROM_EMAIL`. En desarrollo puedes dejar `RESEND_API_KEY` vacía: los correos van entonces a Mailpit en `http://localhost:8025` en lugar de Resend. En producción, verifica el dominio del remitente en Resend y usa una dirección de ese dominio. Puedes comprobar la API con un remitente y destinatario verificados:
 
 ```sh
 export RESEND_API_KEY="re_reemplazar_con_tu_api_key"
@@ -155,7 +155,7 @@ Abre [http://localhost:3000](http://localhost:3000), entra a la página de inici
 
 - Revisa y personaliza los Términos de servicio (`/terms`) y la Política de privacidad (`/privacy`) antes de publicar. Configura `legalEntityName`, `governingLaw`, `lastUpdated` y `termsVersion` en `config/site.ts`, y configura `SUPPORT_EMAIL` en tu entorno (consulta [Variables de entorno](01-environment-variables.md)); después adapta el texto de `app/(legal)/terms/page.tsx` y `app/(legal)/privacy/page.tsx` a tu servicio. Aumenta `termsVersion` cuando debas pedir que se acepte una versión revisada. Estos documentos son plantillas, no asesoría legal; pide a un abogado que los revise.
 - Configura un `BETTER_AUTH_SECRET` único, el `BETTER_AUTH_URL` público correcto y un `DATABASE_URL` de producción.
-- Configura `RESEND_API_KEY` y un remitente `FROM_EMAIL` con dominio verificado.
+- Configura `RESEND_API_KEY` y un remitente `FROM_EMAIL` con dominio verificado. Sin la clave, los correos van a Mailpit y no llegan a nadie.
 - Recomendado: activa Turnstile en producción poniendo `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` como variables normales de ejecución en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El build no las necesita; reinicia para aplicar cambios. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - Agrega todos los hostnames desde donde se sirve la app, o un hostname padre que cubra sus subdominios, al widget de Turnstile.
 - Si habilitaste OAuth, configura las URLs de callback con el `BETTER_AUTH_URL` publicado. Define el client ID y el secret del proveedor como variables de ejecución; los botones las siguen tras un reinicio.
