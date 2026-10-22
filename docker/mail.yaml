@@ -1,0 +1,16 @@
+services:
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    restart: unless-stopped
+    # Only starts without RESEND_API_KEY: with a key, the profile below is never
+    # activated, so `docker compose up` skips this service. Compose has no
+    # "start if unset" condition, so the profile name carries the check.
+    profiles: ["${RESEND_API_KEY:+resend-configured}"]
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

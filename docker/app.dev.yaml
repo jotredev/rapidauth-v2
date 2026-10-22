@@ -10,6 +10,7 @@ services:
       DATABASE_URL: postgresql://rapidauth:rapidauth@db:5432/rapidauth?sslmode=disable
       BETTER_AUTH_URL: "http://localhost:${APP_PORT:-3000}"
       HOST: "0.0.0.0"
+      MAILPIT_SMTP_ADDRESS: "mailpit:1025"
       DOCKER_DEV_POLLING: "${DOCKER_DEV_POLLING:-true}"
       PRISMA_HIDE_UPDATE_MESSAGE: "1"
       NEXT_TELEMETRY_DISABLED: "1"
