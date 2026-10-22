@@ -113,9 +113,6 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable
       BETTER_AUTH_URL: http://localhost:3000
       BETTER_AUTH_SECRET: 0000000000000000000000000000000000000000000000000000000000000000
-      # These fake values pass the real-key format check; they are not secrets.
-      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
-      TURNSTILE_SECRET_KEY: 0x4AAAAAACIBfakeCIsecretkey00000000000000000
       SUPPORT_EMAIL: support@example.invalid
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
@@ -132,8 +129,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
 
-  turnstile-guard:
-    name: Turnstile build guard
+  build-guard:
+    name: Build guard
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -158,8 +155,6 @@ jobs:
       - name: Reject missing support email
         shell: bash
         env:
-          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
-          TURNSTILE_SECRET_KEY: 0x4AAAAAACIBfakeCIsecretkey00000000000000000
           SUPPORT_EMAIL: ""
         run: |
           if bun run build > /tmp/build-without-support-email.log 2>&1; then
@@ -167,25 +162,11 @@ jobs:
             exit 1
           fi
           grep -F "SUPPORT_EMAIL" /tmp/build-without-support-email.log
-      - name: Reject missing Turnstile keys
+      - name: Build passes without Turnstile keys
         shell: bash
         run: |
-          if bun run build > /tmp/build-without-turnstile.log 2>&1; then
-            echo "The production build unexpectedly passed without Turnstile keys."
-            exit 1
-          fi
-          grep -F "docs/en/02-turnstile.md" /tmp/build-without-turnstile.log
-      - name: Reject Turnstile test keys
-        shell: bash
-        env:
-          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
-          TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
-        run: |
-          if bun run build > /tmp/build-with-test-turnstile.log 2>&1; then
-            echo "The production build unexpectedly passed with Turnstile test keys."
-            exit 1
-          fi
-          grep -F "docs/en/02-turnstile.md" /tmp/build-with-test-turnstile.log
+          env | grep -i turnstile && exit 1
+          bun run build
 
   audit:
     name: Dependency audit
@@ -212,7 +193,7 @@ jobs:
     timeout-minutes: 35
     env:
       TURNSTILE_SECRET_KEY: 0x4AAAAAACIBfakeCIsecretkey00000000000000000
-      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
+      TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -254,10 +235,7 @@ jobs:
           tags: rapidauth-ci-production:local
           load: true
           build-args: |
-            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ env.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
             SUPPORT_EMAIL=support@example.invalid
-          secret-envs: |
-            turnstile_secret_key=TURNSTILE_SECRET_KEY
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Run the production image and verify health
@@ -274,7 +252,7 @@ jobs:
             --network rapidauth-ci_default -p 3001:3000 \
             -e DATABASE_URL -e BETTER_AUTH_URL -e BETTER_AUTH_SECRET \
             -e RESEND_API_KEY -e FROM_EMAIL \
-            -e TURNSTILE_SECRET_KEY -e NEXT_PUBLIC_TURNSTILE_SITE_KEY \
+            -e TURNSTILE_SECRET_KEY -e TURNSTILE_SITE_KEY \
             -e SUPPORT_EMAIL \
             rapidauth-ci-production:local
           for attempt in $(seq 1 120); do
