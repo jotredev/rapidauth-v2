@@ -233,8 +233,8 @@ bun run typecheck      # TypeScript check
 
 # Database
 bun run db:generate    # Generate Prisma Client
-bun run db:push        # Push schema to database
-bun run db:migrate     # Create migration
+bun run db:deploy      # Apply pending migrations (migrate deploy)
+bun run db:migrate     # Create a new migration (migrate dev, local database only)
 bun run db:studio      # Open Prisma Studio
 bun run db:seed        # Seed database
 

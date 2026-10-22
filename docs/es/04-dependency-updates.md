@@ -37,7 +37,7 @@ Actualiza una librería crítica a la vez. Lee sus notas de migración y segurid
 
 #### Actualizar una instalación existente a Better Auth 1.7
 
-En **cada entorno** (desarrollo, staging y producción), ejecuta `bun run db:push` para agregar `verified`, `failedVerificationCount` y `lockedUntil` a `twoFactor`; después ejecuta `bun run db:seed` para normalizar las cuentas de contraseña antiguas. Sin este paso, el administrador creado por un seed anterior no puede iniciar sesión con Better Auth 1.7. El seed se puede repetir de forma segura y no borra datos.
+En **cada entorno** (desarrollo, staging y producción), ejecuta `bun run db:deploy` para aplicar las migraciones y agregar `verified`, `failedVerificationCount` y `lockedUntil` a `twoFactor`; después ejecuta `bun run db:seed` para normalizar las cuentas de contraseña antiguas. Sin este paso, el administrador creado por un seed anterior no puede iniciar sesión con Better Auth 1.7. El seed se puede repetir de forma segura y no borra datos.
 
 ### Etapa 3: versiones mayores
 

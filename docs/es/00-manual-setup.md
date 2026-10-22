@@ -15,7 +15,7 @@ bun dev
 
 - **`.env`:** si no existe, `bun dev` lo crea desde `.env.example` con valores locales: un `BETTER_AUTH_SECRET` aleatorio, `BETTER_AUTH_URL=http://localhost:3000`, la `DATABASE_URL` del PostgreSQL local en Docker y un `SUPPORT_EMAIL` local. Un `.env` existente nunca se sobrescribe.
 - **Base de datos:** inicia el PostgreSQL local en Docker solo si `DATABASE_URL` apunta a él: host `localhost`, `127.0.0.1` o `::1`, usuario, contraseña y base `rapidauth`, y puerto `DB_PORT` (por defecto `5432`). Con cualquier otra URL, como la de Neon, no toca Docker ni la base.
-- **Tablas:** cuando inicia la base local y esta no tiene tablas, las crea con `prisma db push`. No ejecuta el seed y nunca toca una base que ya tiene tablas. Ejecuta `bun run db:seed` para crear la cuenta de administrador.
+- **Tablas:** en cada inicio de la base local ejecuta `prisma migrate deploy`, que crea las tablas si la base está vacía y, si no, aplica solo las migraciones pendientes. Si la base ya tiene tablas pero no historial de migraciones, como una creada con `prisma db push`, se detiene y explica cómo adoptarla (consulta [Migraciones de la base de datos](#migraciones-de-la-base-de-datos)); nunca modifica esa base por sí solo. No ejecuta el seed. Ejecuta `bun run db:seed` para crear la cuenta de administrador.
 - **Mailpit:** inicia la bandeja local en `http://localhost:8025` solo si `RESEND_API_KEY` está vacía.
 - **Prioridad:** las variables ya exportadas en tu terminal ganan a `.env`, igual que en Next.js y Prisma. Todas las decisiones anteriores usan ese valor efectivo. Por ejemplo, si exportas una `DATABASE_URL` de Neon, no se inicia Docker aunque `.env` apunte a la base local.
 - **Resumen:** al terminar muestra qué servicios están activos y la línea `For production, run bun run init:setup`.
@@ -99,18 +99,20 @@ El inicio de sesión con Google y GitHub solo abre cuentas existentes. Las perso
 
 Turnstile es opcional. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. Para `next dev` puedes usar claves de prueba de Cloudflare. El build de producción no necesita las claves: el servidor las lee al arrancar, así que para cambiarlas solo hace falta reiniciar. Sigue la [guía de Turnstile](02-turnstile.md) para crear un widget y autorizar los hostnames desde los que se servirá la app.
 
-## 7. Sincroniza el esquema y crea el admin
+## 7. Aplica las migraciones y crea el admin
 
 Sentry sigue siendo opcional. Puedes ejecutar `bun run setup:sentry` en cualquier momento para configurarlo con una guía, o seguir la [guía manual de Sentry](06-error-monitoring.md). Omitirlo no afecta los builds ni las funciones de la app.
 
 Con `DATABASE_URL` configurada en `.env`, ejecuta:
 
 ```sh
-bun run db:push
+bun run db:deploy
 bun run db:seed
 ```
 
-El esquema de usuario guarda la fecha y la versión de los términos aceptados, además del estado y la caducidad de las contraseñas temporales. Ejecuta `bunx prisma db push` al desplegar esta versión en una instalación existente, además de hacerlo en una instalación nueva. Después de actualizar el esquema, toda persona sin una aceptación guardada —incluidas las cuentas existentes— verá la pantalla de aceptación de términos al iniciar sesión. Quien tenga guardada una versión anterior verá de nuevo la misma pantalla. Cambia `termsVersion` en `config/site.ts` cuando los cambios legales requieran una nueva aceptación; ese cambio hace obligatoria la versión actual para todas las cuentas.
+Si `db:deploy` se detiene con el error `P3005`, la base se creó con `prisma db push`; sigue [Migraciones de la base de datos](#migraciones-de-la-base-de-datos).
+
+El esquema de usuario guarda la fecha y la versión de los términos aceptados, además del estado y la caducidad de las contraseñas temporales. Ejecuta `bun run db:deploy` al desplegar esta versión en una instalación existente, además de hacerlo en una instalación nueva. Después de actualizar el esquema, toda persona sin una aceptación guardada —incluidas las cuentas existentes— verá la pantalla de aceptación de términos al iniciar sesión. Quien tenga guardada una versión anterior verá de nuevo la misma pantalla. Cambia `termsVersion` en `config/site.ts` cuando los cambios legales requieran una nueva aceptación; ese cambio hace obligatoria la versión actual para todas las cuentas.
 
 Toda persona creada desde el panel de administración recibe un email de invitación. La invitación es válida durante 7 días, permite definir una contraseña y aceptar los términos actuales, y se puede reenviar desde la tabla de usuarios mientras siga pendiente. Una contraseña temporal generada por un admin debe cambiarse en el siguiente inicio de sesión y caduca después de 72 horas. Un admin no puede generar una contraseña temporal para otro admin; en ese caso debe enviar el enlace de restablecimiento por email.
 
@@ -132,16 +134,71 @@ Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` despu
 
 ## Cambiar de base de datos (Neon ↔ Docker)
 
-Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma db push` y el seed contra la base nueva. Los datos no se copian entre bases.
+Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma migrate deploy` y el seed contra la base nueva. Si esa base ya tiene tablas creadas con `db push`, se detiene con el mensaje de [Migraciones de la base de datos](#migraciones-de-la-base-de-datos). Los datos no se copian entre bases.
 
 También puedes cambiarla manualmente editando `DATABASE_URL` en `.env`. `bun dev` solo inicia Docker si apunta a la base local de Docker. Luego ejecuta:
 
 ```sh
-bun run db:push
+bun run db:deploy
 bun run db:seed
 ```
 
 Usa `sslmode=disable` solo con la base local de Docker. Nunca lo uses en producción.
+
+## Migraciones de la base de datos
+
+El esquema se versiona con Prisma Migrate. Cada cambio vive en una carpeta dentro de `prisma/migrations/`, y la primera, `0_init`, crea todas las tablas. `bun dev`, `bun run init:setup`, el contenedor de desarrollo con Docker y las pruebas E2E aplican las migraciones pendientes con `prisma migrate deploy`. Es seguro repetirlo: solo aplica lo que falta. Nunca uses `prisma db push` contra una base con datos reales; puede borrar columnas sin avisar.
+
+### Crear una migración nueva
+
+1. Edita `prisma/schema.prisma`.
+2. Con la base local de Docker encendida (`bun dev` la inicia), ejecuta:
+
+   ```sh
+   bun run db:migrate -- --name <nombre_corto>
+   ```
+
+   Prisma crea `prisma/migrations/<fecha>_<nombre_corto>/migration.sql` y la aplica a la base local. Lee el SQL generado antes de continuar, sobre todo si borra o renombra una columna.
+3. Haz commit de la carpeta nueva de `prisma/migrations/` junto con el cambio en `schema.prisma`.
+
+Ejecuta `bun run db:migrate` solo contra la base local de Docker, nunca contra una base de producción.
+
+### Aplicar las migraciones en un servidor o en Neon
+
+Ejecuta esto con el `DATABASE_URL` de esa base **antes** del commit y push que despliega el código nuevo, para que la base esté lista cuando arranque la nueva versión:
+
+```sh
+bun run db:deploy
+```
+
+Con Docker y sin Bun en tu computadora, consulta [Crear tablas de producción y el primer admin con Docker](03-docker.md#crear-tablas-de-producción-y-el-primer-admin-con-docker).
+
+### Adoptar una base existente creada con `db push`
+
+Si la base ya tiene tablas pero no tiene la tabla `_prisma_migrations`, `prisma migrate deploy` se detiene con el error `P3005` y no cambia nada. `bun dev`, `bun run init:setup` y el contenedor de Docker muestran esta guía cuando ocurre. RapidAuth nunca lo resuelve automáticamente: **tú ejecutas estos comandos, en tu propia base.**
+
+1. Comprueba que la base coincide con el esquema. El comando debe informar que no hay diferencias (código de salida 0):
+
+   ```sh
+   bunx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+   ```
+
+   Si muestra diferencias, no continúes: corrige primero el esquema o la base, o el historial dirá que `0_init` se aplicó cuando no es cierto.
+2. Marca la migración inicial como aplicada. Solo escribe una fila en `_prisma_migrations`; no toca tus tablas:
+
+   ```sh
+   bunx prisma migrate resolve --applied 0_init
+   ```
+
+   Con el contenedor de desarrollo de Docker, usa la misma URL en ambos comandos:
+
+   ```sh
+   docker compose run --rm -e DATABASE_URL="<url-de-la-base>" app bunx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+   docker compose run --rm -e DATABASE_URL="<url-de-la-base>" app bunx prisma migrate resolve --applied 0_init
+   ```
+
+   Para la base local de Docker, omite `-e DATABASE_URL=...`; el servicio ya apunta a ella.
+3. Ejecuta `bun run db:deploy`. Debe decir `No pending migrations to apply`.
 
 ## CI y versión de Bun
 
@@ -174,6 +231,7 @@ Si Docker está encendido, `bun dev` también inicia la base local y Mailpit cua
 ## Antes de desplegar
 
 - Revisa y personaliza los Términos de servicio (`/terms`) y la Política de privacidad (`/privacy`) antes de publicar. Configura `legalEntityName`, `governingLaw`, `lastUpdated` y `termsVersion` en `config/site.ts`, y configura `SUPPORT_EMAIL` en tu entorno (consulta [Variables de entorno](01-environment-variables.md)); después adapta el texto de `app/(legal)/terms/page.tsx` y `app/(legal)/privacy/page.tsx` a tu servicio. Aumenta `termsVersion` cuando debas pedir que se acepte una versión revisada. Estos documentos son plantillas, no asesoría legal; pide a un abogado que los revise.
+- Ejecuta `bun run db:deploy` con el `DATABASE_URL` de producción antes del commit y push que despliega, para que la base tenga todas las migraciones que necesita el código nuevo (consulta [Migraciones de la base de datos](#migraciones-de-la-base-de-datos)).
 - Configura un `BETTER_AUTH_SECRET` único, el `BETTER_AUTH_URL` público correcto y un `DATABASE_URL` de producción.
 - Configura `RESEND_API_KEY` y un remitente `FROM_EMAIL` con dominio verificado. Sin la clave, los correos van a Mailpit y no llegan a nadie.
 - Recomendado: activa Turnstile en producción poniendo `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` como variables normales de ejecución en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El build no las necesita; reinicia para aplicar cambios. Consulta [Cloudflare Turnstile](02-turnstile.md).

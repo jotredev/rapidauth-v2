@@ -37,7 +37,7 @@ Update one critical library at a time. Read its migration and security notes, ve
 
 #### Update an existing installation to Better Auth 1.7
 
-For **each environment** (development, staging, and production), run `bun run db:push` to add `verified`, `failedVerificationCount`, and `lockedUntil` to `twoFactor`, then run `bun run db:seed` to normalize legacy password accounts. Without this step, an admin created by an older seed cannot sign in with Better Auth 1.7. The seed is safe to repeat and does not delete data.
+For **each environment** (development, staging, and production), run `bun run db:deploy` to apply the migrations and add `verified`, `failedVerificationCount`, and `lockedUntil` to `twoFactor`, then run `bun run db:seed` to normalize legacy password accounts. Without this step, an admin created by an older seed cannot sign in with Better Auth 1.7. The seed is safe to repeat and does not delete data.
 
 ### Stage 3: major releases
 

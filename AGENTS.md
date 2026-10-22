@@ -144,7 +144,8 @@ bun run typecheck              # Type check
 bun run lint                   # Lint (zero warnings allowed)
 bunx shadcn add [name]         # Add shadcn component with the pinned local CLI
 bunx prisma generate           # Generate Prisma client
-bunx prisma db push            # Push schema to database
+bun run db:deploy              # Apply pending migrations (migrate deploy)
+bun run db:migrate -- --name x  # Create a new migration (local Docker database only)
 ```
 
 ## Git Workflow

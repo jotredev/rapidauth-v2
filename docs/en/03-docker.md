@@ -51,7 +51,7 @@ Run this command from the project root. The first start downloads images and bui
 docker compose up --build
 ```
 
-You should see PostgreSQL become healthy, Prisma apply the schema with `db push`, the seed finish, and Next.js become ready on port 3000. The first seed creates `admin@admin.com` and prints its generated password in the app logs. Save it; the seed prints it only when it creates that account.
+You should see PostgreSQL become healthy, Prisma apply the migrations with `migrate deploy`, the seed finish, and Next.js become ready on port 3000. The first seed creates `admin@admin.com` and prints its generated password in the app logs. Save it; the seed prints it only when it creates that account.
 
 Open [http://localhost:3000](http://localhost:3000) and sign in with `admin@admin.com` and the password from the logs. Change the generated password after signing in.
 
@@ -95,7 +95,7 @@ If `.env` does not exist, `bun dev` creates it with local values (random `BETTER
 
 Run `bun run db:switch` to choose an external PostgreSQL database or the local Docker database. The wizard saves the previous URL as a comment in `.env`, then pushes the schema and seeds the new database. It does not copy records between databases.
 
-To switch manually, edit `DATABASE_URL` in `.env`. Use the Docker URL above for local Docker PostgreSQL, or your provider's URL for an external database. Then run `bun run db:push` and `bun run db:seed`. Use `sslmode=disable` only for the local Docker database, never production.
+To switch manually, edit `DATABASE_URL` in `.env`. Use the Docker URL above for local Docker PostgreSQL, or your provider's URL for an external database. Then run `bun run db:deploy` and `bun run db:seed`. If that database already has tables created with `db push`, see [Database migrations](00-manual-setup.md#database-migrations). Use `sslmode=disable` only for the local Docker database, never production.
 
 Install dependencies with `bun install` if you have not already, then start the app on your computer. `bun dev` creates the tables when the local database is empty; run `bun run db:seed` once to create the admin:
 
@@ -239,12 +239,12 @@ The image runs as an unprivileged user. Docker checks `/api/auth/ok` for health.
 
 ### Create production tables and the first admin with Docker
 
-You can use the development image to apply the Prisma schema and seed an external database, without installing Bun on your computer. First make sure `.env` exists so Compose can build and start the app service. Replace the example URL with your real production connection string:
+You can use the development image to apply the Prisma migrations and seed an external database, without installing Bun on your computer. First make sure `.env` exists so Compose can build and start the app service. Replace the example URL with your real production connection string:
 
 ```sh
 docker compose run --rm \
   -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
-  app bunx prisma db push
+  app bunx prisma migrate deploy
 ```
 
 Then create the admin:
