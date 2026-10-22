@@ -63,13 +63,6 @@ docker compose logs app
 
 La contraseña solo aparece en los logs de la ejecución que creó el admin. Mantén esos logs privados.
 
-También puedes iniciar Compose desde su carpeta:
-
-```sh
-cd docker
-docker compose up --build
-```
-
 Si creas otro proyecto a partir de esta plantilla, cambia `name: rapidauth` en el `compose.yaml` de la raíz por el nombre del nuevo proyecto para que no comparta contenedores ni base de datos con este.
 
 Los comandos `bun run docker:up`, `bun run docker:logs`, `bun run docker:down` y `bun run docker:reset` son atajos opcionales. Requieren Bun en tu computadora; los comandos de Docker anteriores no.

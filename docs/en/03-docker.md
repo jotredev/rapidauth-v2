@@ -63,13 +63,6 @@ docker compose logs app
 
 The password appears only in the logs from the run that created the admin. Keep those logs private.
 
-You can also start Compose from its folder:
-
-```sh
-cd docker
-docker compose up --build
-```
-
 If you create another project from this template, change `name: rapidauth` in the root `compose.yaml` to the new project name so it does not share containers or a database with this project.
 
 The `bun run docker:up`, `bun run docker:logs`, `bun run docker:down`, and `bun run docker:reset` commands are optional shortcuts. They require Bun on the host; the Docker commands above do not.
