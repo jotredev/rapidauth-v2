@@ -212,6 +212,12 @@ let cached: EnvResolution | undefined;
 
 /** Resolves `process.env` once and reuses the result for the rest of the process. */
 export function getEnv(): EnvResolution {
-  cached ??= resolveEnv(process.env);
+  cached ??= resolveEnv({
+    ...process.env,
+    // Literal access on purpose: Next replaces it with the build-time value.
+    // The Docker runner only receives this key as a build ARG, so a dynamic
+    // lookup in the running container would not find it.
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+  });
   return cached;
 }
