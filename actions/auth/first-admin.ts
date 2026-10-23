@@ -8,17 +8,15 @@ import { registerSchema } from '@/validations/auth';
 import { checkRateLimit, getClientIp, hashKey } from '@/lib/rate-limit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { reportError } from '@/lib/report-error';
+import { hasAdminUser, isFirstRunWindowOpen } from '@/lib/first-run-admin';
 import {
+  FIRST_RUN_ADMIN_EXISTS_MESSAGE,
   FIRST_RUN_CLOSED_MESSAGE,
-  hasAdminUser,
-  isFirstRunWindowOpen,
-} from '@/lib/first-run-admin';
-
-const ADMIN_EXISTS_MESSAGE = 'An administrator already exists.';
+} from '@/lib/first-run-admin-messages';
 
 class AdminAlreadyExistsError extends Error {
   constructor() {
-    super(ADMIN_EXISTS_MESSAGE);
+    super(FIRST_RUN_ADMIN_EXISTS_MESSAGE);
     this.name = 'AdminAlreadyExistsError';
   }
 }
@@ -39,7 +37,7 @@ export const createFirstAdminAction = async (
     }
 
     if (await hasAdminUser()) {
-      return { response: 'error', message: ADMIN_EXISTS_MESSAGE, data: null };
+      return { response: 'error', message: FIRST_RUN_ADMIN_EXISTS_MESSAGE, data: null };
     }
 
     if (!isFirstRunWindowOpen()) {
@@ -141,7 +139,7 @@ export const createFirstAdminAction = async (
     };
   } catch (error) {
     if (error instanceof AdminAlreadyExistsError) {
-      return { response: 'error', message: ADMIN_EXISTS_MESSAGE, data: null };
+      return { response: 'error', message: FIRST_RUN_ADMIN_EXISTS_MESSAGE, data: null };
     }
 
     const code =

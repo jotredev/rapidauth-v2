@@ -9,9 +9,6 @@ export const FIRST_RUN_ADMIN_PATH = '/auth/setup';
 
 export const FIRST_RUN_WINDOW_MS = 15 * 60 * 1000;
 
-export const FIRST_RUN_CLOSED_MESSAGE =
-  'The setup window has closed. Restart the app to open it again.';
-
 export type FirstRunState = 'completed' | 'open' | 'closed';
 
 /**

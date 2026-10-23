@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "lib": [
       "dom",
       "dom.iterable",
@@ -39,7 +41,9 @@
     ".next-e2e-normal/types/**/*.ts",
     ".next-e2e-normal/dev/types/**/*.ts",
     ".next-e2e-reject/types/**/*.ts",
-    ".next-e2e-reject/dev/types/**/*.ts"
+    ".next-e2e-reject/dev/types/**/*.ts",
+    ".next-step2/types/**/*.ts",
+    ".next-step2/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

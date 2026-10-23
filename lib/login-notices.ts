@@ -7,6 +7,7 @@ const LOGIN_NOTICES = {
   "temporary-password-expired": TEMPORARY_PASSWORD_EXPIRED_MESSAGE,
   "password-reset": "Password reset. Sign in with your new password.",
   "email-verified": "Email verified. Sign in with your password.",
+  "admin-created": "Administrator account created. Sign in to continue.",
 } as const;
 
 export function getLoginNotice(
