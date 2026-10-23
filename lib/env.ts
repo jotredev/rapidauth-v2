@@ -13,7 +13,7 @@ export interface S3StorageConfig {
 
 export type EnvSource = Record<string, string | undefined>;
 
-export type EmailProvider = 'resend' | 'mailpit' | 'outbox';
+export type EmailProvider = 'resend' | 'mailpit';
 
 export type ResolvedEnv = {
   database: { docker: boolean };
@@ -25,7 +25,6 @@ export type ResolvedEnv = {
     /** True when emails go to Mailpit but BETTER_AUTH_URL points to a non-local host. */
     mailpitOnRemoteHost: boolean;
     from: string;
-    outboxDir: string;
   };
   storage: {
     driver: StorageDriver;
@@ -78,7 +77,6 @@ function resolvePair(env: EnvSource, keys: readonly [string, string]) {
 }
 
 function resolveEmailProvider(env: EnvSource): EmailProvider {
-  if (env.EMAIL_DELIVERY === 'outbox') return 'outbox';
   return env.RESEND_API_KEY?.trim() ? 'resend' : 'mailpit';
 }
 
@@ -206,7 +204,6 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
       mailpitSmtpAddress: env.MAILPIT_SMTP_ADDRESS?.trim() || 'localhost:1025',
       mailpitOnRemoteHost: provider === 'mailpit' && isRemoteUrl(env.BETTER_AUTH_URL),
       from: env.FROM_EMAIL ?? 'RapidAuth <onboarding@resend.dev>',
-      outboxDir: env.EMAIL_OUTBOX_DIR ?? '.e2e-outbox',
     },
     storage,
     turnstile: {
@@ -239,7 +236,6 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
 const EMAIL_LABELS: Record<EmailProvider, string> = {
   resend: 'Resend',
   mailpit: 'Mailpit',
-  outbox: 'local outbox (testing)',
 };
 
 /** Short startup summary. Built only from resolved values: never keys, URLs or DSNs. */

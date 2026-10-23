@@ -11,9 +11,6 @@ import {
 import { getEnv } from '@/lib/env';
 import { siteConfig } from '@/config/site';
 import { getPublicSupportEmail, SUPPORT_EMAIL_NOT_CONFIGURED } from '@/lib/support-email';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { reportError } from '@/lib/report-error';
 import {
   recordOperationalLog,
@@ -30,10 +27,7 @@ export class EmailDeliveryError extends Error {
   }
 }
 
-const { provider: emailProvider, from: FROM_EMAIL, outboxDir } = getEnv().config.email;
-if (emailProvider === 'outbox' && process.env.NODE_ENV === 'production') {
-  throw new Error('EMAIL_DELIVERY=outbox is only available outside production.');
-}
+const { provider: emailProvider, from: FROM_EMAIL } = getEnv().config.email;
 
 let resend: Resend | undefined;
 
@@ -72,48 +66,19 @@ async function deliverEmail({
   to,
   subject,
   html,
-  url,
-  code,
   template,
   userId,
 }: {
   to: string;
   subject: string;
   html: string;
-  url?: string;
-  code?: string;
   template: EmailTemplate;
   userId?: string;
 }) {
   const startTime = performance.now();
 
   try {
-    if (emailProvider === 'outbox') {
-      const localPart = to.split('@')[0] ?? '';
-      if (localPart.endsWith('+delivery-fail')) {
-        throw new EmailDeliveryError(
-          'Outbox delivery forced failure for testing',
-          'outbox_forced_failure',
-        );
-      }
-
-      const directory = outboxDir;
-      await mkdir(directory, { recursive: true });
-      const filename = `${Date.now()}-${randomUUID()}.json`;
-      const outboxPayload: Record<string, unknown> = {
-        to,
-        subject,
-        html,
-        ...(url !== undefined ? { url } : {}),
-        ...(code !== undefined ? { code } : {}),
-        sentAt: new Date().toISOString(),
-      };
-      await writeFile(
-        join(directory, filename),
-        JSON.stringify(outboxPayload, null, 2),
-        { encoding: 'utf8', mode: 0o600 },
-      );
-    } else if (emailProvider === 'mailpit') {
+    if (emailProvider === 'mailpit') {
       try {
         await getMailpitTransport().sendMail({ from: FROM_EMAIL, to, subject, html });
       } catch (error) {
@@ -208,7 +173,6 @@ export async function sendVerificationCodeEmail({
     to: email,
     subject: 'Your verification code',
     html,
-    code,
     template: 'verification-code',
     userId,
   });
@@ -236,7 +200,6 @@ export async function sendPasswordResetCodeEmail({
     to: email,
     subject: 'Your password reset code',
     html,
-    code,
     template: 'password-reset-code',
     userId,
   });
@@ -268,7 +231,6 @@ export async function sendInvitationEmail({
     to: email,
     subject: `You're invited to ${siteConfig.appName}`,
     html,
-    url,
     template: 'invitation',
     userId,
   });
@@ -291,7 +253,6 @@ export async function sendAccountDeletedEmail({ email, name, deletedAt }: {
     to: email,
     subject: 'Your account has been deleted',
     html,
-    url: '',
     template: 'account-deleted',
   });
 }
@@ -363,7 +324,6 @@ export async function sendSecurityNoticeEmail({
     to,
     subject: notice.subject,
     html,
-    url: '',
     template: 'security-notice',
     userId,
   });

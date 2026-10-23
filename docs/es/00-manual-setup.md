@@ -147,7 +147,7 @@ Usa `sslmode=disable` solo con la base local de Docker. Nunca lo uses en producc
 
 ## Migraciones de la base de datos
 
-El esquema se versiona con Prisma Migrate. Cada cambio vive en una carpeta dentro de `prisma/migrations/`, y la primera, `0_init`, crea todas las tablas. `bun dev`, `bun run init:setup`, el contenedor de desarrollo con Docker y las pruebas E2E aplican las migraciones pendientes con `prisma migrate deploy`. Es seguro repetirlo: solo aplica lo que falta. Nunca uses `prisma db push` contra una base con datos reales; puede borrar columnas sin avisar.
+El esquema se versiona con Prisma Migrate. Cada cambio vive en una carpeta dentro de `prisma/migrations/`, y la primera, `0_init`, crea todas las tablas. `bun dev`, `bun run init:setup` y el contenedor de desarrollo con Docker aplican las migraciones pendientes con `prisma migrate deploy`. Es seguro repetirlo: solo aplica lo que falta. Nunca uses `prisma db push` contra una base con datos reales; puede borrar columnas sin avisar.
 
 ### Crear una migración nueva
 

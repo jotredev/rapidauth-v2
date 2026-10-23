@@ -45,7 +45,7 @@ const nextConfig = (phase: string): NextConfig => {
       SUPPORT_EMAIL: getSupportEmail(process.env) ?? '',
     },
     logging: { serverFunctions: false },
-    distDir: process.env.RAPIDAUTH_NEXT_DIST_DIR ?? ".next",
+    distDir: ".next",
     reactCompiler: true,
     output: "standalone",
     outputFileTracingIncludes: {

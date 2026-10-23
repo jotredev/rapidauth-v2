@@ -12,32 +12,11 @@ export const FIRST_RUN_WINDOW_MS = 15 * 60 * 1000;
 export type FirstRunState = 'completed' | 'open' | 'closed';
 
 /**
- * Internal, server-only and undocumented (like RAPIDAUTH_NEXT_DIST_DIR): lets the
- * E2E suite shorten or expire the window. Anything that is not a non-negative
- * integer falls back to the 15 minute default.
- */
-export function getFirstRunWindowMs(
-  env: Record<string, string | undefined> = process.env
-): number {
-  const raw = env.RAPIDAUTH_FIRST_RUN_WINDOW_MS?.trim();
-  if (!raw || !/^\d+$/.test(raw)) return FIRST_RUN_WINDOW_MS;
-
-  const value = Number(raw);
-  return Number.isSafeInteger(value) ? value : FIRST_RUN_WINDOW_MS;
-}
-
-/**
  * The window is counted from process start, not from module load, so every
  * route bundle (and dev-mode reload) agrees on the same moment.
  */
-export function isFirstRunWindowOpen({
-  uptimeSeconds = process.uptime(),
-  windowMs = getFirstRunWindowMs(),
-}: {
-  uptimeSeconds?: number;
-  windowMs?: number;
-} = {}): boolean {
-  return uptimeSeconds * 1000 < windowMs;
+export function isFirstRunWindowOpen(): boolean {
+  return process.uptime() * 1000 < FIRST_RUN_WINDOW_MS;
 }
 
 export async function hasAdminUser(

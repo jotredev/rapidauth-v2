@@ -1,11 +1,6 @@
 **/.env*
 node_modules
 .next
-.next-e2e-normal
-.next-e2e-reject
-.e2e-outbox
-playwright-report
-test-results
 .git
 .playwright-mcp
 docs

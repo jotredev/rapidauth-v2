@@ -35,16 +35,10 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts",
-    ".next-e2e-normal/types/**/*.ts",
-    ".next-e2e-normal/dev/types/**/*.ts",
-    ".next-e2e-reject/types/**/*.ts",
-    ".next-e2e-reject/dev/types/**/*.ts"
+    "**/*.mts"
   ],
   "exclude": [
     "node_modules",
-    "themes",
-    ".next-e2e-normal",
-    ".next-e2e-reject"
+    "themes"
   ]
 }

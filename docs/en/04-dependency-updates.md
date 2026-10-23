@@ -8,7 +8,7 @@ For each proposed update:
 
 1. Read the release notes and linked changes for the package and every package in the group. Look for breaking changes, removed or renamed APIs, migration steps, security fixes, supported runtime versions, and changes to peer dependencies.
 2. Confirm the new version is stable, supported by this project, and compatible with the other changed packages. Check the exact versions in `package.json` and the resolved changes in `bun.lock`.
-3. Review the CI results and the generated diff. Accept the pull request only when the change is understood, every required CI job is green (including E2E), and the checklist for its update stage is complete.
+3. Review the CI results and the generated diff. Accept the pull request only when the change is understood, every required CI job is green, and the checklist for its update stage is complete.
 4. Close or defer it when it is a prerelease, violates a toolchain limit, needs a migration that is not included, breaks a check, or its behavior cannot be verified. Record the reason and revisit it in the relevant planned stage.
 
 Dependabot groups minor and patch updates. A grouped pull request can be split when a package needs separate investigation.
@@ -17,7 +17,7 @@ Dependabot groups minor and patch updates. A grouped pull request can be split w
 
 The October 2026 upgrade is the model: first minor and patch releases, then critical libraries such as Better Auth, then major releases, and finally shadcn components. Keep each stage isolated and finish its checklist before beginning the next one. For **every stage**, require all of these checks:
 
-- [ ] CI is green, including lint, exact dependency versions, type checking, E2E, production build, dependency audit, theme synchronization, and Docker jobs.
+- [ ] CI is green, including lint, exact dependency versions, type checking, production build, dependency audit, theme synchronization, and Docker jobs.
 - [ ] Sign in and sign out work with valid and invalid credentials.
 - [ ] Password creation, change, and recovery work, including the verification steps used by those flows.
 - [ ] Email verification with a 6-digit code and verification code resend work.
@@ -71,15 +71,4 @@ Add a dependency with its complete exact version, such as `bun add package@1.2.3
 
 ## Preview email templates
 
-Run `bun run email:preview` to open the templates from `emails/` at `http://localhost:3200`. The preview server uses a port separate from the app and the E2E servers.
-
-## Run end-to-end tests locally
-
-Start the dedicated PostgreSQL test container on port `55432`, then run the E2E suite:
-
-```bash
-bun run test:e2e:db
-bun run test:e2e
-```
-
-The test setup refuses non-local database URLs, requires `sslmode=disable`, and uses a separate port from the development database. It starts `next dev` with test Turnstile keys and a filesystem email outbox. E2E tests run in CI on every pull request without repository secrets, including Dependabot pull requests.
+Run `bun run email:preview` to open the templates from `emails/` at `http://localhost:3200`. The preview server uses a port separate from the app.

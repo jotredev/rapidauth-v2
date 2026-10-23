@@ -50,7 +50,7 @@ Pasa el DSN público como `NEXT_PUBLIC_SENTRY_DSN` durante la construcción de l
 
 ## 6. Comprueba la integración
 
-Ejecuta la aplicación, provoca un error inesperado en un flujo de desarrollo o staging y abre **Issues** en el proyecto de Sentry. El evento debe incluir una etiqueta `area` cuando proviene de un error atrapado por la aplicación. Para una comprobación automatizada segura que nunca contacta sentry.io, ejecuta la suite E2E: usa un DSN ficticio dirigido a un colector local y espera a que llegue el evento.
+Ejecuta la aplicación, provoca un error inesperado en un flujo de desarrollo o staging y abre **Issues** en el proyecto de Sentry. El evento debe incluir una etiqueta `area` cuando proviene de un error atrapado por la aplicación.
 
 Para una prueba manual única, llama temporalmente a `reportError(new Error('Sentry setup check'), { area: 'sentry.setup-check' })` desde un camino de servidor que puedas ejecutar, recarga ese camino, confirma el issue y elimina la llamada temporal. Nunca pongas credenciales ni datos personales en el error de prueba.
 

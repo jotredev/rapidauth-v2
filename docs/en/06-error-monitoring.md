@@ -50,7 +50,7 @@ Pass the public DSN as `NEXT_PUBLIC_SENTRY_DSN` during the image build because t
 
 ## 6. Verify the integration
 
-Run the application, trigger an unexpected error in a development or staging workflow, and open **Issues** in the Sentry project. The event should include an `area` tag when it came from a caught application error. For a safe automated check that never contacts sentry.io, run the E2E suite: it points a fictitious DSN at a local collector and waits for the event.
+Run the application, trigger an unexpected error in a development or staging workflow, and open **Issues** in the Sentry project. The event should include an `area` tag when it came from a caught application error.
 
 For a one-time manual check, temporarily call `reportError(new Error('Sentry setup check'), { area: 'sentry.setup-check' })` from a server-side code path you can execute, reload that path, confirm the issue, and remove the temporary call. Never put credentials or personal data in the test error.
 

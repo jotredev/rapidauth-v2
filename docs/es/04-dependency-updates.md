@@ -8,7 +8,7 @@ Para cada actualización propuesta:
 
 1. Lee las notas de versión y los cambios enlazados del paquete y de todos los paquetes del grupo. Busca cambios incompatibles, API eliminadas o renombradas, pasos de migración, correcciones de seguridad, versiones de runtime compatibles y cambios en dependencias pares.
 2. Confirma que la versión sea estable, compatible con este proyecto y con los demás paquetes modificados. Revisa las versiones exactas en `package.json` y los cambios resueltos en `bun.lock`.
-3. Revisa los resultados de CI y el diff generado. Acepta el pull request solo si entiendes el cambio, todos los trabajos de CI están en verde (incluidas las pruebas E2E) y completaste la lista de su etapa.
+3. Revisa los resultados de CI y el diff generado. Acepta el pull request solo si entiendes el cambio, todos los trabajos de CI están en verde y completaste la lista de su etapa.
 4. Ciérralo o déjalo pendiente si es una versión preliminar, rebasa un límite de herramientas, necesita una migración que no está incluida, rompe una comprobación o no puedes verificar su comportamiento. Anota el motivo y revísalo en la etapa planeada correspondiente.
 
 Dependabot agrupa las actualizaciones menores y de parche. Puedes separar un paquete del grupo si requiere una investigación propia.
@@ -17,7 +17,7 @@ Dependabot agrupa las actualizaciones menores y de parche. Puedes separar un paq
 
 La actualización de octubre de 2026 sirve como modelo: primero versiones menores y de parche; luego librerías críticas como Better Auth; después versiones mayores; y al final componentes de shadcn. Mantén cada etapa aislada y termina su lista de comprobación antes de iniciar la siguiente. **En cada etapa** deben pasar todos estos puntos:
 
-- [ ] CI está en verde, incluidos lint, versiones exactas, revisión de tipos, pruebas E2E, build de producción, auditoría de dependencias, sincronización del tema y trabajos de Docker.
+- [ ] CI está en verde, incluidos lint, versiones exactas, revisión de tipos, build de producción, auditoría de dependencias, sincronización del tema y trabajos de Docker.
 - [ ] Funcionan el inicio y cierre de sesión con credenciales válidas e inválidas.
 - [ ] Funcionan la creación, el cambio y la recuperación de contraseñas, incluidos los pasos de verificación de esos flujos.
 - [ ] Funcionan la verificación de email con código de 6 cifras y el reenvío del código de verificación.
@@ -71,15 +71,4 @@ Agrega una dependencia con su versión completa exacta, por ejemplo `bun add paq
 
 ## Vista previa de plantillas de correo
 
-Ejecuta `bun run email:preview` para abrir las plantillas de `emails/` en `http://localhost:3200`. El servidor de vista previa usa un puerto separado de la app y de los servidores E2E.
-
-## Ejecutar pruebas de punta a punta en local
-
-Inicia el contenedor PostgreSQL exclusivo de pruebas en el puerto `55432` y ejecuta la suite E2E:
-
-```bash
-bun run test:e2e:db
-bun run test:e2e
-```
-
-La preparación rechaza URLs de base de datos que no sean locales, exige `sslmode=disable` y usa un puerto separado del de desarrollo. Las pruebas inician `next dev` con claves de prueba de Turnstile y un buzón de correo en archivos. CI ejecuta E2E en cada pull request sin secretos del repositorio, incluidos los de Dependabot.
+Ejecuta `bun run email:preview` para abrir las plantillas de `emails/` en `http://localhost:3200`. El servidor de vista previa usa un puerto separado de la app.

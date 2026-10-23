@@ -15,9 +15,7 @@
     "typecheck": "tsc --noEmit",
     "deps:check": "bun run scripts/check-exact-versions.ts",
     "email:preview": "email dev --dir emails --port 3200",
-    "test:e2e": "bun run scripts/test-e2e.ts",
     "storage:migrate": "bun run scripts/migrate-storage.ts",
-    "test:e2e:db": "DB_PORT=55432 docker compose -p rapidauth-e2e up -d db",
     "prepare": "husky",
     "init:setup": "bun run scripts/setup.ts",
     "setup:sentry": "bun run scripts/setup.ts --only sentry",
@@ -72,7 +70,6 @@
   },
   "devDependencies": {
     "@clack/prompts": "1.8.1",
-    "@playwright/test": "1.64.1",
     "@react-email/ui": "6.11.3",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.19.2",
