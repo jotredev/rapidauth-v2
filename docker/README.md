@@ -10,3 +10,4 @@ Run the production mode with `docker compose up --build` from the project root. 
 - `docker/mail.yaml`: the `mailpit` service (local inbox at `127.0.0.1:8025`).
 - `docker/app.yaml`: the production `app` and one-shot `migrate` service.
 - `docker/app.dev.yaml`: the development `app` and its source and dependency volumes, included by `compose.dev.yaml` and started with `bun run docker:dev`.
+- `docker/cron.yaml`: the optional `cron` service that runs daily cleanup when `CRON_SECRET` is configured.

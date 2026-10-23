@@ -43,7 +43,7 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 
 ### `CRON_SECRET`
 
-- **Propósito:** Protege la ruta opcional `GET /api/cron/cleanup` que usa Vercel Cron o el workflow incluido de GitHub Actions.
+- **Propósito:** Protege la ruta opcional `GET /api/cron/cleanup` que usa Vercel Cron, Docker Compose o el workflow incluido de GitHub Actions.
 - **Obligatoria:** No. Si falta o tiene menos de 32 caracteres, la ruta queda desactivada y responde HTTP 404.
 - **Dónde obtenerla:** Ejecuta `bun run setup:cleanup` para generar un secreto aleatorio de 64 caracteres, o genera uno equivalente por tu cuenta.
 - **Secreta:** Sí. Usa el mismo valor en la aplicación desplegada y en su programador; nunca la expongas al navegador ni la subas al repositorio.

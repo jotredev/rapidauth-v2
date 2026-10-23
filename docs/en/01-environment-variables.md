@@ -43,7 +43,7 @@ This reference covers every variable read by the application and setup scripts. 
 
 ### `CRON_SECRET`
 
-- **Purpose:** Protects the optional `GET /api/cron/cleanup` route used by Vercel Cron or the included GitHub Actions workflow.
+- **Purpose:** Protects the optional `GET /api/cron/cleanup` route used by Vercel Cron, Docker Compose, or the included GitHub Actions workflow.
 - **Required:** No. Missing values and values shorter than 32 characters disable the route with HTTP 404.
 - **Where to get it:** Run `bun run setup:cleanup` to generate a 64-character random secret, or generate an equivalent secret yourself.
 - **Secret:** Yes. Keep the same value in the running application and its scheduler; never expose it to the browser or commit it.

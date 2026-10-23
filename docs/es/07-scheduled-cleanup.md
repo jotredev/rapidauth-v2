@@ -26,7 +26,27 @@ En el plan Hobby de Vercel, los cron solo pueden ejecutarse una vez al día y pu
 
 El workflow `.github/workflows/scheduled-cleanup.yml` incluido llama la ruta todos los días a las 03:00 UTC. Si falta cualquiera de los dos secretos de GitHub, muestra un aviso de configuración y termina correctamente sin hacer la petición.
 
+## Camino C: Docker
+
+1. Agrega `CRON_SECRET`, con al menos 32 caracteres aleatorios, a tu archivo `.env` en la raíz (o expórtalo en tu terminal):
+
+   ```env
+   CRON_SECRET="tu-secreto-aleatorio-seguro-de-al-menos-32-caracteres"
+   ```
+
+2. Inicia los contenedores con `docker compose up` (o `bun run docker:dev` para desarrollo).
+
+Cuando existe `CRON_SECRET`, Docker Compose enciende automáticamente el contenedor mínimo de `cron` (`docker/cron.yaml`). Este llama a `/api/cron/cleanup` una vez al día a las 03:00 UTC con la cabecera `Authorization: Bearer <CRON_SECRET>`. Sin `CRON_SECRET`, el contenedor permanece apagado (`scale: 0`).
+
+Puedes personalizar el horario con la variable `CRON_SCHEDULE` (predeterminado: `0 3 * * *`).
+
 ## Probarla manualmente
+
+En Docker, puedes ejecutar la limpieza a mano dentro del contenedor de cron en ejecución:
+
+```bash
+docker compose exec cron cleanup
+```
 
 En GitHub, abre **Actions → Scheduled cleanup → Run workflow**. Una ejecución correcta muestra el JSON devuelto por la ruta.
 
@@ -35,13 +55,13 @@ También puedes llamarla desde una terminal de confianza:
 ```bash
 curl --fail --silent --show-error \
   --header "Authorization: Bearer ${CRON_SECRET}" \
-  "https://auth.example.com/api/cron/cleanup"
+  "http://localhost:3000/api/cron/cleanup"
 ```
 
 La respuesta solo contiene contadores:
 
 ```json
-{"rateLimits":0,"verifications":0,"unverifiedUsers":0}
+{"rateLimits":0,"verifications":0,"unverifiedUsers":0,"operationalLogs":0}
 ```
 
 Puedes llamarla otra vez sin riesgo; los registros ya borrados no se vuelven a contar.
