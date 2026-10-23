@@ -115,10 +115,10 @@ async function stopServer() {
 }
 
 async function fillFirstAdminForm(page: Page, email: string) {
-  await page.getByLabel('Full Name').fill('E2E First Administrator');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password', { exact: true }).fill('E2e-First-Admin-123!');
-  await page.getByLabel('Confirm Password').fill('E2e-First-Admin-123!');
+  await page.getByPlaceholder('John Doe').fill('E2E First Administrator');
+  await page.getByPlaceholder('name@example.com').fill(email);
+  await page.getByPlaceholder('Create a password').fill('E2e-First-Admin-123!');
+  await page.getByPlaceholder('Confirm your password').fill('E2e-First-Admin-123!');
   await page.getByRole('checkbox').check();
 }
 
