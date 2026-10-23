@@ -16,7 +16,10 @@ const databaseUrl = process.env.DATABASE_URL ??
     : 'postgresql://rapidauth:rapidauth@127.0.0.1:55432/rapidauth?sslmode=disable');
 const isolatedDatabaseUrl = new URL(databaseUrl);
 isolatedDatabaseUrl.searchParams.set('schema', schema);
-const isolatedUrl = isolatedDatabaseUrl.toString();
+const prismaDatabaseUrl = isolatedDatabaseUrl.toString();
+const runtimeDatabaseUrl = new URL(databaseUrl);
+runtimeDatabaseUrl.searchParams.set('options', `-c search_path=${schema},public`);
+const isolatedUrl = runtimeDatabaseUrl.toString();
 
 let server: ChildProcess | undefined;
 async function queryDatabase(query: string) {
@@ -44,10 +47,10 @@ async function resetIsolatedSchema() {
 }
 
 function runPrismaDbPush() {
-  const env = createE2EEnvironment(isolatedUrl);
+  const env = createE2EEnvironment(prismaDatabaseUrl);
   const result = spawnSync('bunx', ['prisma', 'db', 'push', '--accept-data-loss'], {
     cwd: process.cwd(),
-    env: { ...env, DATABASE_URL: isolatedUrl },
+    env: { ...env, DATABASE_URL: prismaDatabaseUrl },
     stdio: 'inherit',
   });
   if (result.status !== 0) throw new Error('Prisma db push failed for the isolated E2E schema.');
