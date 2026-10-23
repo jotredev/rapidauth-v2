@@ -16,7 +16,7 @@ export type SentryBuildConfig = {
 };
 
 type SentryEnvKey =
-  | 'SENTRY_DSN'
+  | 'NEXT_PUBLIC_SENTRY_DSN'
   | 'SENTRY_ORG'
   | 'SENTRY_PROJECT'
   | 'SENTRY_AUTH_TOKEN'
@@ -57,7 +57,8 @@ export function getSentryEnvironment(env: SentryEnvironment): string {
 export function getSentryRuntimeConfig(
   env: SentryEnvironment,
 ): SentryRuntimeConfig {
-  const dsn = trimmed(env.SENTRY_DSN);
+  // Read through the env object so Next.js does not freeze the value at build time.
+  const dsn = trimmed(env.NEXT_PUBLIC_SENTRY_DSN);
   const enabled = isValidSentryDsn(dsn);
   const parsedSampleRate = Number.parseFloat(
     trimmed(env.SENTRY_TRACES_SAMPLE_RATE) ?? '0',
@@ -101,7 +102,7 @@ export function createSentryEnvValues(values: {
   tracesSampleRate?: string;
 }): Record<SentryEnvKey, string> {
   return {
-    SENTRY_DSN: trimmed(values.dsn) ?? '',
+    NEXT_PUBLIC_SENTRY_DSN: trimmed(values.dsn) ?? '',
     SENTRY_ORG: trimmed(values.org) ?? '',
     SENTRY_PROJECT: trimmed(values.project) ?? '',
     SENTRY_AUTH_TOKEN: trimmed(values.authToken) ?? '',

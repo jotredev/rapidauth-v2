@@ -196,7 +196,7 @@ GITHUB_CLIENT_ID=""
 GITHUB_CLIENT_SECRET=""
 
 # Turnstile (Optional, recommended in production): turns on only when both keys are set
-TURNSTILE_SITE_KEY=""
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=""
 TURNSTILE_SECRET_KEY=""
 ```
 
@@ -204,14 +204,14 @@ The server reads these variables when it starts. To change them, restart the ser
 
 ## Turnstile (Optional, recommended in production)
 
-Turnstile protects registration, verification code resends, and password reset code requests. Turnstile is optional: it turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, and stays off (without errors) otherwise. We recommend always turning it on in production by setting both variables on the server where you deploy. `bun run init:setup` asks for the two keys and can use test keys for local development. The production build does not need them.
+Turnstile protects registration, verification code resends, and password reset code requests. Turnstile is optional: it turns on only when both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, and stays off (without errors) otherwise. We recommend always turning it on in production by setting both variables on the server where you deploy. `bun run init:setup` asks for the two keys and can use test keys for local development. The production build does not need them.
 
 Setup guides: [English](docs/en/02-turnstile.md) · [Español](docs/es/02-turnstile.md).
 
 Cloudflare's test keys work on `localhost` and development domains:
 
 ```bash
-TURNSTILE_SITE_KEY="1x00000000000000000000AA"
+NEXT_PUBLIC_TURNSTILE_SITE_KEY="1x00000000000000000000AA"
 TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 ```
 
@@ -394,7 +394,7 @@ Set these required environment variables in the runtime environment of each depl
 
 The following are optional. Each pair turns its feature on only when both values are set:
 
-- `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` (real Cloudflare keys). Turnstile is optional, but we recommend always turning it on in production.
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` (real Cloudflare keys). Turnstile is optional, but we recommend always turning it on in production.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
 

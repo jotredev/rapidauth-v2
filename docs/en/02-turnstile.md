@@ -1,6 +1,6 @@
 # Cloudflare Turnstile
 
-Cloudflare Turnstile is optional in RapidAuth. It turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it stays off and nothing fails. We recommend always turning it on in production, by setting both variables on the server where you deploy. Development can use the test keys below. The production build never needs the keys.
+Cloudflare Turnstile is optional in RapidAuth. It turns on only when both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it stays off and nothing fails. We recommend always turning it on in production, by setting both variables on the server where you deploy. Development can use the test keys below. The production build never needs the keys.
 
 ## Create a widget
 
@@ -14,7 +14,7 @@ Cloudflare Turnstile is optional in RapidAuth. It turns on only when both `TURNS
 Set the keys in your environment:
 
 ```env
-TURNSTILE_SITE_KEY="your-site-key"
+NEXT_PUBLIC_TURNSTILE_SITE_KEY="your-site-key"
 TURNSTILE_SECRET_KEY="your-secret-key"
 ```
 
@@ -22,7 +22,7 @@ The site key is public: the server reads it and passes it to the page. The secre
 
 ## Production deployment
 
-Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` on the server where you deploy, as ordinary runtime environment variables. Vercel, Netlify, Railway, Render, Coolify, and Docker on a VPS are only examples; the same applies to any other host. The build, including staging, previews, and CI, does not need them.
+Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` on the server where you deploy, as ordinary runtime environment variables. Vercel, Netlify, Railway, Render, Coolify, and Docker on a VPS are only examples; the same applies to any other host. The build, including staging, previews, and CI, does not need them.
 
 For Docker, pass both variables only when you start the container (for example with `--env-file`). Nothing Turnstile-related goes into `docker build`. Follow the [Docker guide](03-docker.md#production-with-docker) for the commands.
 
@@ -62,7 +62,7 @@ The app stops if only one of the two Turnstile keys is set. Set both (or neither
 
 ### Turnstile is off and I want it on
 
-Check the startup summary: it prints `Turnstile: off` unless both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set in the environment of the running server (not only at build time). Set both and restart.
+Check the startup summary: it prints `Turnstile: off` unless both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set in the environment of the running server (not only at build time). Set both and restart.
 
 ---
 

@@ -97,7 +97,7 @@ El inicio de sesión con Google y GitHub solo abre cuentas existentes. Las perso
 
 ## 6. Configura Turnstile
 
-Turnstile es opcional. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. Para `next dev` puedes usar claves de prueba de Cloudflare. El build de producción no necesita las claves: el servidor las lee al arrancar, así que para cambiarlas solo hace falta reiniciar. Sigue la [guía de Turnstile](02-turnstile.md) para crear un widget y autorizar los hostnames desde los que se servirá la app.
+Turnstile es opcional. Se activa solo cuando están definidas `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. Para `next dev` puedes usar claves de prueba de Cloudflare. El build de producción no necesita las claves: el servidor las lee al arrancar, así que para cambiarlas solo hace falta reiniciar. Sigue la [guía de Turnstile](02-turnstile.md) para crear un widget y autorizar los hostnames desde los que se servirá la app.
 
 ## 7. Aplica las migraciones y elige cómo crear el admin
 
@@ -234,7 +234,7 @@ Si Docker está encendido, `bun dev` también inicia la base local y Mailpit cua
 - Ejecuta `bun run db:deploy` con el `DATABASE_URL` de producción antes del commit y push que despliega, para que la base tenga todas las migraciones que necesita el código nuevo (consulta [Migraciones de la base de datos](#migraciones-de-la-base-de-datos)).
 - Configura un `BETTER_AUTH_SECRET` único, el `BETTER_AUTH_URL` público correcto y un `DATABASE_URL` de producción.
 - Configura `RESEND_API_KEY` y un remitente `FROM_EMAIL` con dominio verificado. Sin la clave, los correos van a Mailpit y no llegan a nadie.
-- Recomendado: activa Turnstile en producción poniendo `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` como variables normales de ejecución en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El build no las necesita; reinicia para aplicar cambios. Consulta [Cloudflare Turnstile](02-turnstile.md).
+- Recomendado: activa Turnstile en producción poniendo `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` como variables normales de ejecución en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El build no las necesita; reinicia para aplicar cambios. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - Agrega todos los hostnames desde donde se sirve la app, o un hostname padre que cubra sus subdominios, al widget de Turnstile.
 - Si habilitaste OAuth, configura las URLs de callback con el `BETTER_AUTH_URL` publicado. Define el client ID y el secret del proveedor como variables de ejecución; los botones las siguen tras un reinicio.
 - Elige el almacenamiento de avatares para producción: configura `STORAGE_DRIVER=s3` con el bucket, las llaves y la URL pública, o usa Local solo si el servidor tiene disco persistente y escribible. Consulta [Almacenamiento de archivos](05-file-storage.md).

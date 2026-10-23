@@ -87,29 +87,29 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 
 ## Turnstile
 
-Turnstile es opcional. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Se recomienda activarlo en producción: define ambas variables en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El servidor las lee al arrancar, así que cambiarlas requiere reiniciar, no reconstruir.
+Turnstile es opcional. Se activa solo cuando están definidas `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Se recomienda activarlo en producción: define ambas variables en el servidor donde despliegas (Vercel, Docker en un VPS o cualquier otro host). El servidor las lee al arrancar, así que cambiarlas requiere reiniciar, no reconstruir.
 
-### `TURNSTILE_SITE_KEY`
+### `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 
 - **Propósito:** Clave pública que muestra el widget en el navegador. El servidor la lee y se la pasa a la página.
 - **Obligatoria:** No. Defínela junto con `TURNSTILE_SECRET_KEY`; si defines solo una, el servidor se detiene con un error.
 - **Dónde obtenerla:** Crea un widget de Cloudflare Turnstile. Consulta [Cloudflare Turnstile](02-turnstile.md).
 - **Formato de ejemplo:** `tu-site-key-real-de-turnstile`
-- **Secreta:** No. Se envía al navegador, pero es una variable normal de ejecución (no `NEXT_PUBLIC_*`), así que no se compila dentro del build.
+- **Secreta:** No. Se envía al navegador. El servidor la lee en tiempo de ejecución (a través de un objeto de entorno para que Next.js no la congele durante el build) y la pasa a la página como prop.
 
 ### `TURNSTILE_SECRET_KEY`
 
 - **Propósito:** Valida en el servidor los tokens de Turnstile.
-- **Obligatoria:** No. Defínela junto con `TURNSTILE_SITE_KEY`.
+- **Obligatoria:** No. Defínela junto con `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - **Dónde obtenerla:** Copia la Secret Key del mismo widget de Cloudflare Turnstile que la site key.
 - **Formato de ejemplo:** `tu-secret-key-real-de-turnstile`
 - **Secreta:** Sí. Mantenla en el servidor y entrégala al servidor o contenedor en ejecución, nunca al build.
 
 ## Monitoreo de errores (Sentry)
 
-Todas las variables de Sentry son opcionales. Si `SENTRY_DSN` está vacía o no es válida, el SDK no se inicializa ni envía eventos a Sentry. Consulta la [guía paso a paso de monitoreo de errores](06-error-monitoring.md).
+Todas las variables de Sentry son opcionales. Si `NEXT_PUBLIC_SENTRY_DSN` está vacía o no es válida, el SDK no se inicializa ni envía eventos a Sentry. Consulta la [guía paso a paso de monitoreo de errores](06-error-monitoring.md).
 
-### `SENTRY_DSN`
+### `NEXT_PUBLIC_SENTRY_DSN`
 
 - **Propósito:** Activa los reportes de errores de Sentry en el servidor y el navegador.
 - **Obligatoria:** No. Déjala vacía para mantener Sentry completamente apagado.
@@ -272,7 +272,7 @@ Algunas funciones se activan con una pareja de variables. El servidor comprueba 
 
 - Google: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
 - GitHub: `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET`.
-- Turnstile: `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`.
+- Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`.
 - Almacenamiento S3: con `STORAGE_DRIVER=s3`, todas las variables `S3_*` que requiere (consulta [Almacenamiento de archivos](#almacenamiento-de-archivos)).
 
 Si no defines ninguna de las dos variables de una pareja de Google, GitHub o Turnstile, la función queda desactivada y no hay error. Si defines solo una, el servidor imprime un único error que lista todo lo que falta y se detiene:
@@ -287,7 +287,7 @@ Un `STORAGE_DRIVER` inválido o una configuración S3 incompleta se reportan en 
 
 ## Valores públicos y momento de compilación
 
-Los ajustes de Google, GitHub y Turnstile se leen al arrancar el servidor: cámbialos y reinicia, sin reconstruir. El resto de valores `NEXT_PUBLIC_*` (como el DSN de Sentry) son públicos y se compilan dentro del bundle del cliente; cambiar uno de esos requiere ejecutar de nuevo `next build` y desplegar.
+Los ajustes de Google, GitHub, Turnstile y Sentry se leen al arrancar el servidor: cámbialos y reinicia, sin reconstruir. RapidAuth evita compilar `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `NEXT_PUBLIC_SENTRY_DSN` dentro del bundle en tiempo de compilación leyéndolas en tiempo de ejecución en el servidor (mediante objetos de entorno) y entregándolas de forma dinámica (como props de página o mediante `/api/sentry-config`).
 
 ---
 

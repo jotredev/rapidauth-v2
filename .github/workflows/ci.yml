@@ -124,7 +124,7 @@ jobs:
     timeout-minutes: 35
     env:
       TURNSTILE_SECRET_KEY: 0x4AAAAAACIBfakeCIsecretkey00000000000000000
-      TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -222,7 +222,7 @@ jobs:
             --network rapidauth_default -p 3001:3000 \
             -e DATABASE_URL -e BETTER_AUTH_URL -e BETTER_AUTH_SECRET \
             -e RESEND_API_KEY -e FROM_EMAIL \
-            -e TURNSTILE_SECRET_KEY -e TURNSTILE_SITE_KEY \
+            -e TURNSTILE_SECRET_KEY -e NEXT_PUBLIC_TURNSTILE_SITE_KEY \
             -e SUPPORT_EMAIL \
             rapidauth-ci-production:local
           for attempt in $(seq 1 120); do

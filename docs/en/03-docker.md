@@ -36,7 +36,7 @@ The example secret is accepted only for a localhost URL. If you set a public `BE
 
 You do not need to copy `.env.example`. If you create a root `.env`, its values replace the Compose defaults. Both the migration service and app always use the Compose `db` service; `DATABASE_URL` from `.env` is ignored. For a production deployment, set at least a unique `BETTER_AUTH_SECRET`, the public `BETTER_AUTH_URL`, and `SUPPORT_EMAIL`. Add `RESEND_API_KEY` and a verified `FROM_EMAIL` to deliver real email. Without a Resend key, email is captured by Mailpit and its inbox starts at port 8025; with a key, Mailpit stays stopped.
 
-To enable Sentry, set `SENTRY_DSN` in the root `.env` and restart the app container. The running server provides the public DSN to the browser; no image rebuild is needed. `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` are only needed at build time to upload source maps. The token is mounted as a BuildKit secret, never passed as a build argument. See [Error monitoring](06-error-monitoring.md).
+To enable Sentry, set `NEXT_PUBLIC_SENTRY_DSN` in the root `.env` and restart the app container. The running server provides the public DSN to the browser; no image rebuild is needed. `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` are only needed at build time to upload source maps. The token is mounted as a BuildKit secret, never passed as a build argument. See [Error monitoring](06-error-monitoring.md).
 
 Only the app is published on port 3000. PostgreSQL and Mailpit bind to `127.0.0.1`; Mailpit's web inbox is at port 8025 and its SMTP port is 1025. On a VPS, use the same Compose file and a protected `.env`; place a TLS reverse proxy in front of the app if you need HTTPS.
 

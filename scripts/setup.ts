@@ -382,7 +382,7 @@ async function askTurnstileConfig(
   );
 
   const hasExistingKeys = Boolean(
-    existingEnv.TURNSTILE_SITE_KEY && existingEnv.TURNSTILE_SECRET_KEY,
+    existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY && existingEnv.TURNSTILE_SECRET_KEY,
   );
   println('  Choose your Cloudflare Turnstile keys:');
   println('  [1] Use my Cloudflare keys');
@@ -397,7 +397,7 @@ async function askTurnstileConfig(
 
   if (choice === '0') {
     println(
-      `  ${colors.yellow}${icons.warning} Turnstile is off. Turn it on in production by setting TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY on your server (docs/en/02-turnstile.md).${colors.reset}`,
+      `  ${colors.yellow}${icons.warning} Turnstile is off. Turn it on in production by setting NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY on your server (docs/en/02-turnstile.md).${colors.reset}`,
     );
     return { siteKey: '', secretKey: '' };
   }
@@ -415,7 +415,7 @@ async function askTurnstileConfig(
   let siteKey: string;
   let secretKey: string;
   if (choice === '3') {
-    siteKey = existingEnv.TURNSTILE_SITE_KEY;
+    siteKey = existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     secretKey = existingEnv.TURNSTILE_SECRET_KEY;
     println(`  ${colors.green}${icons.success} Keeping existing Cloudflare keys${colors.reset}`);
   } else {
@@ -423,14 +423,14 @@ async function askTurnstileConfig(
       /\s/.test(value) ? 'Keys cannot contain spaces' : true;
     siteKey = await askVariable(
       {
-        key: 'TURNSTILE_SITE_KEY',
+        key: 'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
         description: 'Cloudflare Turnstile site key',
         placeholder: '0x4AAAA...',
         required: true,
         category: 'captcha',
         validate: noWhitespace,
       },
-      existingEnv.TURNSTILE_SITE_KEY,
+      existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
     );
 
     while (true) {
@@ -497,7 +497,7 @@ async function askSentryConfig(
   existingEnv: Record<string, string>,
 ): Promise<Record<string, string>> {
   const hasExistingValues = Boolean(
-    existingEnv.SENTRY_DSN ||
+    existingEnv.NEXT_PUBLIC_SENTRY_DSN ||
       existingEnv.SENTRY_ORG ||
       existingEnv.SENTRY_PROJECT ||
       existingEnv.SENTRY_AUTH_TOKEN,
@@ -528,7 +528,7 @@ async function askSentryConfig(
       println(`  ${colors.green}${icons.success} Keeping the current Sentry configuration${colors.reset}`);
       return createSentryEnvValues({
         authToken: existingEnv.SENTRY_AUTH_TOKEN,
-        dsn: existingEnv.SENTRY_DSN,
+        dsn: existingEnv.NEXT_PUBLIC_SENTRY_DSN,
         org: existingEnv.SENTRY_ORG,
         project: existingEnv.SENTRY_PROJECT,
         tracesSampleRate: existingEnv.SENTRY_TRACES_SAMPLE_RATE,
@@ -554,7 +554,7 @@ async function askSentryConfig(
 
   const dsn = await askVariable(
     {
-      key: 'SENTRY_DSN',
+      key: 'NEXT_PUBLIC_SENTRY_DSN',
       description: 'Public Sentry DSN read at runtime by the server and browser',
       placeholder: 'https://public-key@o0.ingest.sentry.io/project-id',
       required: true,
@@ -562,7 +562,7 @@ async function askSentryConfig(
       helpUrl: 'https://docs.sentry.io/product/sentry-basics/dsn-explainer/',
       validate: (value) => isValidSentryDsn(value) || 'Enter a valid Sentry DSN.',
     },
-    existingEnv.SENTRY_DSN,
+    existingEnv.NEXT_PUBLIC_SENTRY_DSN,
   );
 
   const wantsSourceMaps = await question(
@@ -1216,8 +1216,8 @@ const ENV_SECTION_KEYS: Record<string, string[]> = {
   auth: ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL'],
   email: ['RESEND_API_KEY', 'FROM_EMAIL'],
   support: ['SUPPORT_EMAIL'],
-  captcha: ['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
-  monitoring: ['SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'SENTRY_TRACES_SAMPLE_RATE'],
+  captcha: ['NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
+  monitoring: ['NEXT_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'SENTRY_TRACES_SAMPLE_RATE'],
   cleanup: ['CRON_SECRET'],
   proxy: ['TRUSTED_PROXY'],
   oauth: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
@@ -1285,7 +1285,7 @@ function updateEnvSections(
     const missing = keys.filter((key) => envVars[key] !== undefined && envVars[key] !== '' && !insertedKeys.has(key)
       && !(leavingDockerDatabase && key === 'DB_PORT'));
     const comments: string[] = [];
-    if (section === 'captcha' && (isTurnstileTestSiteKey(envVars.TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(envVars.TURNSTILE_SECRET_KEY)) && !updated.some((line) => line.startsWith('# Test keys: local development only.'))) {
+    if (section === 'captcha' && (isTurnstileTestSiteKey(envVars.NEXT_PUBLIC_TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(envVars.TURNSTILE_SECRET_KEY)) && !updated.some((line) => line.startsWith('# Test keys: local development only.'))) {
       comments.push('# Test keys: local development only. Set real keys before deploying (docs/en/02-turnstile.md)');
     }
     const appendLines = [...comments, ...missing.map((key) => {
@@ -1835,7 +1835,7 @@ async function runSetup() {
       newEnv.SUPPORT_EMAIL = await askSupportEmail(existingEnv.SUPPORT_EMAIL);
     } else if (category.key === 'captcha') {
       const turnstile = await askTurnstileConfig(existingEnv);
-      newEnv.TURNSTILE_SITE_KEY = turnstile.siteKey;
+      newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = turnstile.siteKey;
       newEnv.TURNSTILE_SECRET_KEY = turnstile.secretKey;
     } else if (category.key === 'oauth') {
       // Dynamic provider selection
@@ -1970,14 +1970,14 @@ async function runSetup() {
       '',
       ...(databaseSelected ? ['The admin password was shown once during the database step.', 'Save it and change it after your first login.', 'If the admin already existed, its password was kept.'] : []),
       '',
-      ...(!newEnv.TURNSTILE_SITE_KEY || !newEnv.TURNSTILE_SECRET_KEY
+      ...(!newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !newEnv.TURNSTILE_SECRET_KEY
         ? [
             'Turnstile is off. Turning it on in production is',
-            'recommended: set TURNSTILE_SITE_KEY and',
+            'recommended: set NEXT_PUBLIC_TURNSTILE_SITE_KEY and',
             'TURNSTILE_SECRET_KEY on your server.',
             '',
           ]
-        : isTurnstileTestSiteKey(newEnv.TURNSTILE_SITE_KEY) ||
+        : isTurnstileTestSiteKey(newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
             isTurnstileTestSecretKey(newEnv.TURNSTILE_SECRET_KEY)
           ? [
               'Before deploying: create a Turnstile widget',

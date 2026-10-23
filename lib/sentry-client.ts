@@ -13,7 +13,7 @@ export function initializeSentryClient(): Promise<boolean> {
 
       const { dsn } = (await response.json()) as { dsn: string | null };
       const config = getSentryRuntimeConfig({
-        SENTRY_DSN: dsn ?? undefined,
+        NEXT_PUBLIC_SENTRY_DSN: dsn ?? undefined,
         NEXT_PUBLIC_SENTRY_ENVIRONMENT:
           process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT,
         NODE_ENV: process.env.NODE_ENV,

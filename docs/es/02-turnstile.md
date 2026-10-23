@@ -1,6 +1,6 @@
 # Cloudflare Turnstile
 
-Cloudflare Turnstile es opcional en RapidAuth. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. En desarrollo puedes usar las claves de prueba de abajo. El build de producción nunca necesita las claves.
+Cloudflare Turnstile es opcional en RapidAuth. Se activa solo cuando están definidas `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. En desarrollo puedes usar las claves de prueba de abajo. El build de producción nunca necesita las claves.
 
 ## Crear un widget
 
@@ -14,7 +14,7 @@ Cloudflare Turnstile es opcional en RapidAuth. Se activa solo cuando están defi
 Configura las claves en tu entorno:
 
 ```env
-TURNSTILE_SITE_KEY="tu-site-key"
+NEXT_PUBLIC_TURNSTILE_SITE_KEY="tu-site-key"
 TURNSTILE_SECRET_KEY="tu-secret-key"
 ```
 
@@ -22,7 +22,7 @@ La site key es pública: el servidor la lee y se la pasa a la página. La secret
 
 ## Despliegue en producción
 
-Define `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` en el servidor donde despliegas, como variables de entorno de ejecución normales. Vercel, Netlify, Railway, Render, Coolify y Docker en un VPS son solo ejemplos; lo mismo aplica a cualquier otro host. El build, incluidos staging, vistas previas y CI, no las necesita.
+Define `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` en el servidor donde despliegas, como variables de entorno de ejecución normales. Vercel, Netlify, Railway, Render, Coolify y Docker en un VPS son solo ejemplos; lo mismo aplica a cualquier otro host. El build, incluidos staging, vistas previas y CI, no las necesita.
 
 Con Docker, pasa ambas variables solo al iniciar el contenedor (por ejemplo con `--env-file`). Nada de Turnstile entra en `docker build`. Sigue la [guía de Docker](03-docker.md#produccion-con-docker) para ver los comandos.
 
@@ -62,7 +62,7 @@ La app se detiene si solo configuraste una de las dos claves de Turnstile. Defin
 
 ### Turnstile está apagado y quiero activarlo
 
-Revisa el resumen de arranque: muestra `Turnstile: off` salvo que `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` estén definidas en el entorno del servidor en ejecución (no solo durante el build). Define ambas y reinicia.
+Revisa el resumen de arranque: muestra `Turnstile: off` salvo que `NEXT_PUBLIC_TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` estén definidas en el entorno del servidor en ejecución (no solo durante el build). Define ambas y reinicia.
 
 ---
 

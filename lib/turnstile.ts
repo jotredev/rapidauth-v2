@@ -14,7 +14,7 @@ const isTestKey = Boolean(
 
 if (Boolean(secretKey) !== Boolean(siteKey)) {
   throw new Error(
-    'TURNSTILE_SECRET_KEY and TURNSTILE_SITE_KEY must both be set to enable Turnstile.'
+    'TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY must both be set to enable Turnstile.'
   );
 }
 

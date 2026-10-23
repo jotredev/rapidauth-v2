@@ -29,7 +29,7 @@ export async function register(): Promise<void> {
     ) {
       warnedAboutInvalidDsn = true;
       console.warn(
-        'Sentry is disabled because SENTRY_DSN is not a valid DSN.',
+        'Sentry is disabled because NEXT_PUBLIC_SENTRY_DSN is not a valid DSN.',
       );
     }
     return;

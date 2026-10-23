@@ -87,29 +87,29 @@ This reference covers every variable read by the application and setup scripts. 
 
 ## Turnstile
 
-Turnstile is optional. It turns on only when both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it is off and nothing fails. Turning it on in production is recommended: set both variables on the server where you deploy (Vercel, Docker on a VPS, or any other host). The server reads them when it starts, so changing them needs a restart, not a rebuild.
+Turnstile is optional. It turns on only when both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; with neither, it is off and nothing fails. Turning it on in production is recommended: set both variables on the server where you deploy (Vercel, Docker on a VPS, or any other host). The server reads them when it starts, so changing them needs a restart, not a rebuild.
 
-### `TURNSTILE_SITE_KEY`
+### `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 
 - **Purpose:** Public key rendered by the browser widget. The server reads it and passes it to the page.
 - **Required:** No. Set it together with `TURNSTILE_SECRET_KEY`; setting only one stops the server with an error.
 - **Where to get it:** Create a Cloudflare Turnstile widget. See [Cloudflare Turnstile](02-turnstile.md).
 - **Example format:** `your-real-turnstile-site-key`
-- **Secret:** No. It is sent to the browser, but it is a normal runtime variable (not `NEXT_PUBLIC_*`), so it is not compiled into the build.
+- **Secret:** No. It is sent to the browser. The server reads it at runtime (via an env object so Next.js does not inline it at build time) and passes it to the page as a prop.
 
 ### `TURNSTILE_SECRET_KEY`
 
 - **Purpose:** Validates Turnstile tokens on the server.
-- **Required:** No. Set it together with `TURNSTILE_SITE_KEY`.
+- **Required:** No. Set it together with `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - **Where to get it:** Copy the Secret Key belonging to the same Cloudflare Turnstile widget as the site key.
 - **Example format:** `your-real-turnstile-secret-key`
 - **Secret:** Yes. Keep it server-side and provide it to the running server or container, never to the build.
 
 ## Error monitoring (Sentry)
 
-All Sentry variables are optional. With an empty or invalid `SENTRY_DSN`, the SDK is not initialized and sends no Sentry events. See the step-by-step [Error monitoring guide](06-error-monitoring.md).
+All Sentry variables are optional. With an empty or invalid `NEXT_PUBLIC_SENTRY_DSN`, the SDK is not initialized and sends no Sentry events. See the step-by-step [Error monitoring guide](06-error-monitoring.md).
 
-### `SENTRY_DSN`
+### `NEXT_PUBLIC_SENTRY_DSN`
 
 - **Purpose:** Activates Sentry error reporting in the server and browser.
 - **Required:** No. Leave it empty to keep Sentry fully disabled.
@@ -272,7 +272,7 @@ Some features are enabled by a pair of variables. The server checks these pairs:
 
 - Google: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 - GitHub: `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
-- Turnstile: `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
+- Turnstile: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.
 - S3 storage: when `STORAGE_DRIVER=s3`, all the `S3_*` variables it requires (see [File storage](#file-storage)).
 
 If you set neither variable of a Google, GitHub, or Turnstile pair, the feature is simply off and there is no error. If you set only one, the server prints a single error that lists everything missing and stops:
@@ -287,7 +287,7 @@ An invalid `STORAGE_DRIVER` or incomplete S3 settings are reported in the same e
 
 ## Public values and build timing
 
-Google, GitHub, and Turnstile settings are read when the server starts: change them and restart, with no rebuild. The remaining `NEXT_PUBLIC_*` values (such as the Sentry DSN) are public and compiled into the client bundle; changing one of those requires a new `next build` and deployment.
+Google, GitHub, Turnstile, and Sentry settings are read when the server starts: change them and restart, with no rebuild. RapidAuth avoids baking `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `NEXT_PUBLIC_SENTRY_DSN` into the client bundle at build time by reading them through server-side env objects and delivering them dynamically (via page props or `/api/sentry-config`).
 
 ---
 

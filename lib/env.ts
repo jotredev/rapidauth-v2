@@ -54,7 +54,7 @@ const PAIRS = [
   { name: 'GitHub', keys: ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'] },
   {
     name: 'Turnstile',
-    keys: ['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
+    keys: ['NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
   },
 ] as const;
 
@@ -227,7 +227,8 @@ export function resolveEnv(env: EnvSource = process.env): EnvResolution {
     storage,
     turnstile: {
       enabled: enabled.Turnstile,
-      siteKey: env.TURNSTILE_SITE_KEY,
+      // Read through the env object so Next.js does not freeze the value at build time.
+      siteKey: env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
       secretKey: env.TURNSTILE_SECRET_KEY,
     },
     google: {
