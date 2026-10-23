@@ -5,7 +5,9 @@ import { Client } from 'pg';
 import { expect, test, type Page } from '@playwright/test';
 import { createE2EEnvironment } from './helpers/e2e-environment';
 
-const schema = 'e2e_first_run_admin';
+// Prisma's adapter addresses the model schema explicitly, so search_path cannot isolate this flow.
+// A disposable database keeps the globalSetup admin available to the rest of the suite.
+const databaseName = 'rapidauth_first_run_admin';
 const normalBaseURL = 'http://127.0.0.1:3110';
 const expiredBaseURL = 'http://127.0.0.1:3111';
 const normalDistDir = '.next-e2e-first-run';
@@ -15,15 +17,12 @@ const databaseUrl = process.env.DATABASE_URL ??
     ? 'postgresql://rapidauth:rapidauth@127.0.0.1:5432/rapidauth?sslmode=disable'
     : 'postgresql://rapidauth:rapidauth@127.0.0.1:55432/rapidauth?sslmode=disable');
 const isolatedDatabaseUrl = new URL(databaseUrl);
-isolatedDatabaseUrl.searchParams.set('schema', schema);
-const prismaDatabaseUrl = isolatedDatabaseUrl.toString();
-const runtimeDatabaseUrl = new URL(databaseUrl);
-runtimeDatabaseUrl.searchParams.set('options', `-c search_path=${schema},public`);
-const isolatedUrl = runtimeDatabaseUrl.toString();
+isolatedDatabaseUrl.pathname = `/${databaseName}`;
+const isolatedUrl = isolatedDatabaseUrl.toString();
 
 let server: ChildProcess | undefined;
 async function queryDatabase(query: string) {
-  const client = new Client({ connectionString: databaseUrl });
+  const client = new Client({ connectionString: isolatedUrl });
   await client.connect();
   try {
     return await client.query(query);
@@ -32,28 +31,28 @@ async function queryDatabase(query: string) {
   }
 }
 
-async function resetIsolatedSchema() {
+async function resetIsolatedDatabase() {
   await queryDatabase(`
     DO $$
     DECLARE table_name text;
     BEGIN
       FOR table_name IN
-        SELECT tablename FROM pg_tables WHERE schemaname = '${schema}'
+        SELECT tablename FROM pg_tables WHERE schemaname = 'public'
       LOOP
-        EXECUTE format('TRUNCATE TABLE %I.%I CASCADE', '${schema}', table_name);
+        EXECUTE format('TRUNCATE TABLE public.%I CASCADE', table_name);
       END LOOP;
     END $$;
   `);
 }
 
 function runPrismaDbPush() {
-  const env = createE2EEnvironment(prismaDatabaseUrl);
+  const env = createE2EEnvironment(isolatedUrl);
   const result = spawnSync('bunx', ['prisma', 'db', 'push', '--accept-data-loss'], {
     cwd: process.cwd(),
-    env: { ...env, DATABASE_URL: prismaDatabaseUrl },
+    env: { ...env, DATABASE_URL: isolatedUrl },
     stdio: 'inherit',
   });
-  if (result.status !== 0) throw new Error('Prisma db push failed for the isolated E2E schema.');
+  if (result.status !== 0) throw new Error('Prisma db push failed for the isolated E2E database.');
 }
 
 async function startServer(baseURL: string, distDir: string, windowMs: number) {
@@ -129,8 +128,8 @@ test.describe('first-run administrator setup', () => {
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
-      await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
-      await client.query(`CREATE SCHEMA "${schema}"`);
+      await client.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`);
+      await client.query(`CREATE DATABASE "${databaseName}"`);
     } finally {
       await client.end();
     }
@@ -140,11 +139,17 @@ test.describe('first-run administrator setup', () => {
 
   test.afterAll(async () => {
     await stopServer();
-    await queryDatabase(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`);
+    } finally {
+      await client.end();
+    }
   });
 
   test('shows setup without an admin, then creates one and redirects to login', async ({ page }) => {
-    await resetIsolatedSchema();
+    await resetIsolatedDatabase();
     await page.goto(`${normalBaseURL}/auth/setup`);
     await expect(page.getByRole('heading', { name: 'Create your admin account' })).toBeVisible();
 
@@ -157,12 +162,12 @@ test.describe('first-run administrator setup', () => {
   });
 
   test('rejects the server action when an administrator already exists', async ({ page }) => {
-    await resetIsolatedSchema();
+    await resetIsolatedDatabase();
     await page.goto(`${normalBaseURL}/auth/setup`);
     await expect(page.getByRole('heading', { name: 'Create your admin account' })).toBeVisible();
 
     await queryDatabase(`
-      INSERT INTO "${schema}"."user"
+      INSERT INTO "user"
         ("id", "name", "email", "emailVerified", "role", "status", "updatedAt")
       VALUES
         ('e2e-existing-admin', 'Existing E2E Admin', 'existing-admin@e2e.invalid', true, 'admin', 'active', NOW())
@@ -172,20 +177,20 @@ test.describe('first-run administrator setup', () => {
 
     await expect(page.getByText('An administrator already exists.')).toBeVisible();
     const adminCount = await queryDatabase(
-      `SELECT COUNT(*)::int AS count FROM "${schema}"."user" WHERE "role" = 'admin'`,
+      `SELECT COUNT(*)::int AS count FROM "user" WHERE "role" = 'admin'`,
     );
     expect(adminCount.rows[0].count).toBe(1);
   });
 
   test('does not allow first-admin setup after the setup window has expired', async ({ page }) => {
-    await resetIsolatedSchema();
+    await resetIsolatedDatabase();
     await stopServer();
     await startServer(expiredBaseURL, expiredDistDir, 0);
     await page.goto(`${expiredBaseURL}/auth/setup`);
 
     await expect(page.getByRole('heading', { name: 'Setup window closed' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create admin account' })).toHaveCount(0);
-    const userCount = await queryDatabase(`SELECT COUNT(*)::int AS count FROM "${schema}"."user"`);
+    const userCount = await queryDatabase('SELECT COUNT(*)::int AS count FROM "user"');
     expect(userCount.rows[0].count).toBe(0);
   });
 });
