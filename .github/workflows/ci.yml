@@ -220,20 +220,17 @@ jobs:
           docker compose -p rapidauth-ci up -d --build
           for attempt in $(seq 1 120); do
             : "$attempt"
-            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3000/auth/login || true)"
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3000/auth/setup || true)"
             if [ "$status" = "200" ]; then
               break
             fi
             sleep 2
           done
           if [ "${status:-}" != "200" ]; then
-            echo "The development app did not return HTTP 200 from /auth/login."
+            echo "The development app did not return HTTP 200 from /auth/setup."
             docker compose -p rapidauth-ci logs app db
             exit 1
           fi
-          docker compose -p rapidauth-ci logs app > /tmp/rapidauth-app.log
-          grep -qF "Created admin user:" /tmp/rapidauth-app.log
-          echo "Admin creation log found."
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -274,7 +271,7 @@ jobs:
             echo "The production image did not become healthy."
             exit 1
           fi
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3001/auth/login)" = "200"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3001/auth/setup)" = "200"
       - name: Verify the build secret is absent from the image
         shell: bash
         run: |

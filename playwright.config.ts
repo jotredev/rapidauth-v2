@@ -58,7 +58,7 @@ export default defineConfig({
     },
     {
       command: `bunx next dev --hostname 127.0.0.1 --port ${port}`,
-      url: baseURL,
+      url: `${baseURL}/api/auth/ok`,
       // Never reuse an unrelated server that may be connected to another database.
       reuseExistingServer: false,
       timeout: 180_000,
@@ -88,7 +88,7 @@ export default defineConfig({
     },
     {
       command: `bunx next dev --hostname 127.0.0.1 --port ${rejectPort}`,
-      url: rejectBaseURL,
+      url: `${rejectBaseURL}/api/auth/ok`,
       // Never reuse an unrelated server that may be connected to another database.
       reuseExistingServer: false,
       timeout: 180_000,
