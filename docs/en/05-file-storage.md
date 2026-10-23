@@ -28,6 +28,8 @@ S3_FORCE_PATH_STYLE="true"
 
 Start the app and Silo with `docker compose --profile s3 up --build`. The `storage` hostname is only reachable from containers on the Compose network. To run the app on the host, start only Silo with `docker compose --profile s3 up -d storage-public-read`, then use `S3_ENDPOINT="http://localhost:9000" bun dev`. For a deployed app, point `S3_PUBLIC_URL` to a public HTTPS hostname or reverse proxy that serves the bucket; browsers cannot reach the private Compose hostname. The Silo profile is opt-in, so the normal `docker compose up` continues to use Local storage.
 
+For Docker development, run `docker compose -f compose.dev.yaml --profile s3 up --build`.
+
 ## Cloudflare R2 (recommended example)
 
 ### 1. Create a bucket
