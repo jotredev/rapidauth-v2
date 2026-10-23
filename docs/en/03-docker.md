@@ -51,17 +51,13 @@ Run this command from the project root. The first start downloads images and bui
 docker compose up --build
 ```
 
-You should see PostgreSQL become healthy, Prisma apply the migrations with `migrate deploy`, the seed finish, and Next.js become ready on port 3000. The first seed creates `admin@admin.com` and prints its generated password in the app logs. Save it; the seed prints it only when it creates that account.
+You should see PostgreSQL become healthy, Prisma apply the migrations with `migrate deploy`, and Next.js become ready on port 3000. The container does not create an admin account and prints no password.
 
-Open [http://localhost:3000](http://localhost:3000) and sign in with `admin@admin.com` and the password from the logs. Change the generated password after signing in.
+Open [http://localhost:3000](http://localhost:3000). While no admin exists, the app sends the home, sign-in and register pages to **Create your admin account** (`/auth/setup`). Enter your name, email and a password (at least 8 characters, with an uppercase letter and a number), accept the terms, and submit. Then sign in with that account. Because it signs in with a password, activate two-factor authentication under **Profile → Security** before using the admin panel.
 
-To find the seed output later, open another terminal in the project root and run:
+The setup screen exists only while there is no admin, and it closes 15 minutes after the app starts if nobody used it. When it is closed, it says so on screen; restart the app to open it again (`docker compose restart app`). Create the admin promptly, and do not publish the app on the internet before then.
 
-```sh
-docker compose logs app
-```
-
-The password appears only in the logs from the run that created the admin. Keep those logs private.
+To create the admin without the screen, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env` and run `docker compose exec app bun run db:seed` (see [Create the admin from the command line](#create-the-admin-from-the-command-line)).
 
 If you create another project from this template, change `name: rapidauth` in the root `compose.yaml` to the new project name so it does not share containers or a database with this project.
 
@@ -95,13 +91,12 @@ If `.env` does not exist, `bun dev` creates it with local values (random `BETTER
 
 Run `bun run db:switch` to choose an external PostgreSQL database or the local Docker database. The wizard saves the previous URL as a comment in `.env`, then pushes the schema and seeds the new database. It does not copy records between databases.
 
-To switch manually, edit `DATABASE_URL` in `.env`. Use the Docker URL above for local Docker PostgreSQL, or your provider's URL for an external database. Then run `bun run db:deploy` and `bun run db:seed`. If that database already has tables created with `db push`, see [Database migrations](00-manual-setup.md#database-migrations). Use `sslmode=disable` only for the local Docker database, never production.
+To switch manually, edit `DATABASE_URL` in `.env`. Use the Docker URL above for local Docker PostgreSQL, or your provider's URL for an external database. Then run `bun run db:deploy`; create the admin from the setup screen or with `bun run db:seed`. If that database already has tables created with `db push`, see [Database migrations](00-manual-setup.md#database-migrations). Use `sslmode=disable` only for the local Docker database, never production.
 
-Install dependencies with `bun install` if you have not already, then start the app on your computer. `bun dev` creates the tables when the local database is empty; run `bun run db:seed` once to create the admin:
+Install dependencies with `bun install` if you have not already, then start the app on your computer. `bun dev` creates the tables when the local database is empty. Open [http://localhost:3000](http://localhost:3000) and create the admin on the **Create your admin account** screen. To create it from the command line instead, run `bun run db:seed` once (see [Create the admin from the command line](#create-the-admin-from-the-command-line)):
 
 ```sh
 bun dev
-bun run db:seed
 ```
 
 `bun dev` also starts Mailpit (`http://localhost:8025`) when `RESEND_API_KEY` is empty. Variables exported in your terminal win over `.env` for all these decisions, so an exported Neon `DATABASE_URL` keeps Docker off. The tables are created only when the local database has none; a database that already has tables is never touched. For production, run `bun run init:setup`.
@@ -150,16 +145,18 @@ docker compose exec app bunx prisma studio --port 5555 --browser none
 
 Open [http://localhost:5555](http://localhost:5555). Prisma Studio's CLI has no hostname option, so Compose sets `HOST=0.0.0.0` on the app container. That makes Studio reachable through the published host port; do not add an unsupported hostname flag.
 
-You can run the seed again while the app is running:
+### Create the admin from the command line
+
+You can create the admin without the setup screen. Optionally set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env` first, then run the seed while the app is running:
 
 ```sh
 docker compose exec app bun run db:seed
 ```
 
-The seed is safe to repeat; if the admin exists, it skips creating another one. To reset a user's password, run:
+The seed is safe to repeat; if an account with that email already exists, it skips creating another one. Without `SEED_ADMIN_PASSWORD` it generates a password and prints it once in the command output. To reset a user's password, run:
 
 ```sh
-docker compose exec app bun run scripts/reset-password.ts admin@admin.com
+docker compose exec app bun run scripts/reset-password.ts <admin-email>
 ```
 
 The new password is printed once in the command output. These commands run Bun inside the container, so Bun is not required on your computer.
@@ -172,7 +169,7 @@ To stop the app and database and permanently erase their stored data, run:
 docker compose down -v
 ```
 
-**The `-v` option deletes the local database volume, including accounts and data.** The next `up --build` creates empty tables and a new admin account. Without `-v`, the database stays available for the next start.
+**The `-v` option deletes the local database volume, including accounts and data.** The next `up --build` creates empty tables, and the setup screen appears again so you can create a new admin. Without `-v`, the database stays available for the next start.
 
 ## Common problems
 
@@ -247,7 +244,7 @@ docker compose run --rm \
   app bunx prisma migrate deploy
 ```
 
-Then create the admin:
+Then create the admin with the seed. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env` first so you choose the credentials. Do this before the app receives public traffic: while no admin exists, anyone who reaches `/auth/setup` within 15 minutes of the server starting can create it.
 
 ```sh
 docker compose run --rm \
@@ -255,7 +252,7 @@ docker compose run --rm \
   app bun run db:seed
 ```
 
-**These commands point at the real database in `DATABASE_URL` and can change production data.** Check the host and database name carefully before running them. Save the generated admin password from the seed output. To reset that account later while the app is running with the production URL, use `docker compose exec -e DATABASE_URL="<production-url>" app bun run scripts/reset-password.ts admin@admin.com`.
+**These commands point at the real database in `DATABASE_URL` and can change production data.** Check the host and database name carefully before running them. If you did not set `SEED_ADMIN_PASSWORD`, save the generated password from the seed output. To reset that account later while the app is running with the production URL, use `docker compose exec -e DATABASE_URL="<production-url>" app bun run scripts/reset-password.ts <admin-email>`.
 
 ---
 

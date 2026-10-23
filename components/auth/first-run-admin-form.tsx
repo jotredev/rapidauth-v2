@@ -14,7 +14,7 @@ import {
   FIRST_RUN_CLOSED_MESSAGE,
 } from "@/lib/first-run-admin-messages";
 
-import { AuthCard, AuthLink } from "./auth-card";
+import { AuthCard } from "./auth-card";
 import { RegisterFields } from "./register-fields";
 import { TurnstileWidget } from "./turnstile-widget";
 import { Button } from "@/components/ui/button";
@@ -108,9 +108,6 @@ export function FirstRunClosed() {
     <AuthCard
       title="Setup window closed"
       description="The admin account was not created in time."
-      footer={
-        <AuthLink href="/auth/login">Go to sign in</AuthLink>
-      }
     >
       <Alert>
         <AlertDescription>

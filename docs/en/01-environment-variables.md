@@ -224,7 +224,7 @@ See the beginner [File storage guide](05-file-storage.md) for creating a bucket 
 
 ## Seed
 
-These variables are read only by `bun run db:seed`; they are not needed by the app after seeding.
+These variables are read only by `bun run db:seed`, the command-line alternative to the **Create your admin account** screen (`/auth/setup`); they are not needed by the app after seeding.
 
 ### `SEED_ADMIN_EMAIL`
 

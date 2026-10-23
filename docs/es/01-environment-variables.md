@@ -224,7 +224,7 @@ Consulta la [guía para principiantes](05-file-storage.md) para crear un bucket 
 
 ## Seed
 
-Estas variables solo las lee `bun run db:seed`; no hacen falta en la app después de crear el admin.
+Estas variables solo las lee `bun run db:seed`, la alternativa por línea de comandos a la pantalla **Create your admin account** (`/auth/setup`); no hacen falta en la app después de crear el admin.
 
 ### `SEED_ADMIN_EMAIL`
 

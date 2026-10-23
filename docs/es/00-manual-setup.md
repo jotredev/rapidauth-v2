@@ -15,7 +15,7 @@ bun dev
 
 - **`.env`:** si no existe, `bun dev` lo crea desde `.env.example` con valores locales: un `BETTER_AUTH_SECRET` aleatorio, `BETTER_AUTH_URL=http://localhost:3000`, la `DATABASE_URL` del PostgreSQL local en Docker y un `SUPPORT_EMAIL` local. Un `.env` existente nunca se sobrescribe.
 - **Base de datos:** inicia el PostgreSQL local en Docker solo si `DATABASE_URL` apunta a él: host `localhost`, `127.0.0.1` o `::1`, usuario, contraseña y base `rapidauth`, y puerto `DB_PORT` (por defecto `5432`). Con cualquier otra URL, como la de Neon, no toca Docker ni la base.
-- **Tablas:** en cada inicio de la base local ejecuta `prisma migrate deploy`, que crea las tablas si la base está vacía y, si no, aplica solo las migraciones pendientes. Si la base ya tiene tablas pero no historial de migraciones, como una creada con `prisma db push`, se detiene y explica cómo adoptarla (consulta [Migraciones de la base de datos](#migraciones-de-la-base-de-datos)); nunca modifica esa base por sí solo. No ejecuta el seed. Ejecuta `bun run db:seed` para crear la cuenta de administrador.
+- **Tablas:** en cada inicio de la base local ejecuta `prisma migrate deploy`, que crea las tablas si la base está vacía y, si no, aplica solo las migraciones pendientes. Si la base ya tiene tablas pero no historial de migraciones, como una creada con `prisma db push`, se detiene y explica cómo adoptarla (consulta [Migraciones de la base de datos](#migraciones-de-la-base-de-datos)); nunca modifica esa base por sí solo. No crea ninguna cuenta de admin: abre la app y usa la pantalla **Create your admin account** (consulta la [sección 9](#9-inicia-la-app-y-crea-el-admin)), o ejecuta `bun run db:seed`.
 - **Mailpit:** inicia la bandeja local en `http://localhost:8025` solo si `RESEND_API_KEY` está vacía.
 - **Prioridad:** las variables ya exportadas en tu terminal ganan a `.env`, igual que en Next.js y Prisma. Todas las decisiones anteriores usan ese valor efectivo. Por ejemplo, si exportas una `DATABASE_URL` de Neon, no se inicia Docker aunque `.env` apunte a la base local.
 - **Resumen:** al terminar muestra qué servicios están activos y la línea `For production, run bun run init:setup`.
@@ -99,7 +99,7 @@ El inicio de sesión con Google y GitHub solo abre cuentas existentes. Las perso
 
 Turnstile es opcional. Se activa solo cuando están definidas `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; con ninguna de las dos queda apagado y nada falla. Recomendamos activarlo siempre en producción, poniendo ambas variables en el servidor donde despliegas. Para `next dev` puedes usar claves de prueba de Cloudflare. El build de producción no necesita las claves: el servidor las lee al arrancar, así que para cambiarlas solo hace falta reiniciar. Sigue la [guía de Turnstile](02-turnstile.md) para crear un widget y autorizar los hostnames desde los que se servirá la app.
 
-## 7. Aplica las migraciones y crea el admin
+## 7. Aplica las migraciones y elige cómo crear el admin
 
 Sentry sigue siendo opcional. Puedes ejecutar `bun run setup:sentry` en cualquier momento para configurarlo con una guía, o seguir la [guía manual de Sentry](06-error-monitoring.md). Omitirlo no afecta los builds ni las funciones de la app.
 
@@ -107,7 +107,6 @@ Con `DATABASE_URL` configurada en `.env`, ejecuta:
 
 ```sh
 bun run db:deploy
-bun run db:seed
 ```
 
 Si `db:deploy` se detiene con el error `P3005`, la base se creó con `prisma db push`; sigue [Migraciones de la base de datos](#migraciones-de-la-base-de-datos).
@@ -116,7 +115,7 @@ El esquema de usuario guarda la fecha y la versión de los términos aceptados, 
 
 Toda persona creada desde el panel de administración recibe un email de invitación. La invitación es válida durante 7 días, permite definir una contraseña y aceptar los términos actuales, y se puede reenviar desde la tabla de usuarios mientras siga pendiente. Una contraseña temporal generada por un admin debe cambiarse en el siguiente inicio de sesión y caduca después de 72 horas. Un admin no puede generar una contraseña temporal para otro admin; en ese caso debe enviar el enlace de restablecimiento por email.
 
-El seed crea la primera cuenta de admin. `SEED_ADMIN_EMAIL` tiene como valor predeterminado `admin@admin.com`. Puedes configurar `SEED_ADMIN_PASSWORD` con una contraseña de al menos 8 caracteres antes de ejecutar el seed. Si no la defines, el seed genera una y la muestra una sola vez; guárdala porque el seed no volverá a mostrarla. Si el admin ya existe, el seed no crea otra cuenta. Después de iniciar sesión, este admin con contraseña debe activar la autenticación de dos factores en **Profile → Security** antes de usar el panel de administración. Los admins solo OAuth quedan exentos porque su proveedor aporta el segundo factor.
+Hay dos formas de crear la primera cuenta de admin. La predeterminada es la pantalla de configuración: mientras no exista un admin, el inicio, el inicio de sesión y el registro te llevan a **Create your admin account** (`/auth/setup`), donde escribes nombre, email y contraseña y aceptas los términos. La pantalla se cierra 15 minutos después de que arranca la app si nadie la usó; entonces lo explica en pantalla y debes reiniciar la app para abrirla de nuevo. La alternativa es el seed, que no necesita pantalla: ejecuta `bun run db:seed`. Con el seed, `SEED_ADMIN_EMAIL` tiene como valor predeterminado `admin@admin.com`. Puedes configurar `SEED_ADMIN_PASSWORD` con una contraseña de al menos 8 caracteres antes de ejecutar el seed. Si no la defines, el seed genera una y la muestra una sola vez; guárdala porque el seed no volverá a mostrarla. Si ya existe una cuenta con ese email, el seed no crea otra. Después de iniciar sesión, este admin con contraseña debe activar la autenticación de dos factores en **Profile → Security** antes de usar el panel de administración. Los admins solo OAuth quedan exentos porque su proveedor aporta el segundo factor.
 
 ## 8. Elige un tema de auth (opcional)
 
@@ -134,14 +133,15 @@ Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` despu
 
 ## Cambiar de base de datos (Neon ↔ Docker)
 
-Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma migrate deploy` y el seed contra la base nueva. Si esa base ya tiene tablas creadas con `db push`, se detiene con el mensaje de [Migraciones de la base de datos](#migraciones-de-la-base-de-datos). Los datos no se copian entre bases.
+Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma migrate deploy` y el seed contra la base nueva (el asistente de configuración sigue ejecutando el seed). Si esa base ya tiene tablas creadas con `db push`, se detiene con el mensaje de [Migraciones de la base de datos](#migraciones-de-la-base-de-datos). Los datos no se copian entre bases.
 
 También puedes cambiarla manualmente editando `DATABASE_URL` en `.env`. `bun dev` solo inicia Docker si apunta a la base local de Docker. Luego ejecuta:
 
 ```sh
 bun run db:deploy
-bun run db:seed
 ```
+
+Después crea el admin en la pantalla de configuración o ejecuta `bun run db:seed`.
 
 Usa `sslmode=disable` solo con la base local de Docker. Nunca lo uses en producción.
 
@@ -220,13 +220,13 @@ Las personas con sesión iniciada pueden borrar permanentemente su cuenta desde 
 
 RapidAuth envía un aviso por email al dueño de la cuenta cuando cambia su contraseña desde el perfil, la restablece mediante el enlace del email o un admin crea una contraseña temporal. También envía un aviso después de confirmar la activación del 2FA o al desactivarlo. Estos avisos incluyen la hora UTC y el email de soporte, pero nunca contraseñas, secretos TOTP ni códigos de respaldo.
 
-## 9. Inicia la app y comprueba el acceso de admin
+## 9. Inicia la app y crea el admin
 
 ```sh
 bun dev
 ```
 
-Si Docker está encendido, `bun dev` también inicia la base local y Mailpit cuando corresponde (consulta el inicio rápido). Abre [http://localhost:3000](http://localhost:3000), entra a la página de inicio de sesión e ingresa con `SEED_ADMIN_EMAIL` y la contraseña impresa o configurada durante el seed. Abre **Profile → Security**, activa la autenticación de dos factores y después confirma que cargue el panel de admin.
+Si Docker está encendido, `bun dev` también inicia la base local y Mailpit cuando corresponde (consulta el inicio rápido). Abre [http://localhost:3000](http://localhost:3000). Si no ejecutaste el seed, la app muestra **Create your admin account**: crea ahí el admin dentro de los 15 minutos posteriores al arranque (reinicia la app si la ventana se cerró). Después inicia sesión con esa cuenta, o con `SEED_ADMIN_EMAIL` y la contraseña impresa o configurada durante el seed. Abre **Profile → Security**, activa la autenticación de dos factores y después confirma que cargue el panel de admin.
 
 ## Antes de desplegar
 
@@ -238,7 +238,7 @@ Si Docker está encendido, `bun dev` también inicia la base local y Mailpit cua
 - Agrega todos los hostnames desde donde se sirve la app, o un hostname padre que cubra sus subdominios, al widget de Turnstile.
 - Si habilitaste OAuth, configura las URLs de callback con el `BETTER_AUTH_URL` publicado. Define el client ID y el secret del proveedor como variables de ejecución; los botones las siguen tras un reinicio.
 - Elige el almacenamiento de avatares para producción: configura `STORAGE_DRIVER=s3` con el bucket, las llaves y la URL pública, o usa Local solo si el servidor tiene disco persistente y escribible. Consulta [Almacenamiento de archivos](05-file-storage.md).
-- Elige un email de admin y contraseña segura, o guarda la contraseña generada que solo se muestra una vez y cámbiala tras iniciar sesión.
+- Crea el admin antes de que la app reciba tráfico público: mientras no exista un admin, cualquiera que llegue a `/auth/setup` en los 15 minutos posteriores al arranque del servidor puede crearlo. Prefiere el seed con un `SEED_ADMIN_EMAIL` deliberado y un `SEED_ADMIN_PASSWORD` seguro, o guarda la contraseña generada que solo se muestra una vez y cámbiala tras iniciar sesión.
 - Mantén `.env`, `.env.local` y todos los secretos fuera del control de versiones y de los argumentos de build de imágenes.
 
 Al cambiar de motor, primero ejecuta `bun run storage:migrate` para ver el plan y después `bun run storage:migrate --apply` para mover los avatares existentes.

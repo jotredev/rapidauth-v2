@@ -51,17 +51,13 @@ Ejecuta este comando desde la raíz del proyecto. La primera vez descarga imáge
 docker compose up --build
 ```
 
-Deberías ver que PostgreSQL pasa la comprobación de salud, Prisma aplica las migraciones con `migrate deploy`, termina el seed y Next.js queda listo en el puerto 3000. La primera vez, el seed crea `admin@admin.com` y muestra su contraseña generada en los logs de la app. Guárdala: el seed solo la muestra cuando crea esa cuenta.
+Deberías ver que PostgreSQL pasa la comprobación de salud, Prisma aplica las migraciones con `migrate deploy` y Next.js queda listo en el puerto 3000. El contenedor no crea ninguna cuenta de admin ni muestra contraseñas.
 
-Abre [http://localhost:3000](http://localhost:3000) e inicia sesión con `admin@admin.com` y la contraseña de los logs. Cámbiala después de entrar.
+Abre [http://localhost:3000](http://localhost:3000). Mientras no exista un admin, la app lleva el inicio, el inicio de sesión y el registro a **Create your admin account** (`/auth/setup`). Escribe tu nombre, email y una contraseña (mínimo 8 caracteres, con una mayúscula y un número), acepta los términos y envía el formulario. Después inicia sesión con esa cuenta. Como entra con contraseña, debe activar la autenticación de dos factores en **Profile → Security** antes de usar el panel de administración.
 
-Para volver a ver los mensajes del seed, abre otra terminal en la raíz del proyecto y ejecuta:
+La pantalla existe solo mientras no haya admin y se cierra 15 minutos después de que arranca la app si nadie la usó. Cuando está cerrada, lo explica en pantalla; reinicia la app para abrirla de nuevo (`docker compose restart app`). Crea el admin cuanto antes y no publiques la app en internet antes de hacerlo.
 
-```sh
-docker compose logs app
-```
-
-La contraseña solo aparece en los logs de la ejecución que creó el admin. Mantén esos logs privados.
+Para crear el admin sin la pantalla, define `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` en `.env` y ejecuta `docker compose exec app bun run db:seed` (consulta [Crear el admin desde la línea de comandos](#crear-el-admin-desde-la-línea-de-comandos)).
 
 Si creas otro proyecto a partir de esta plantilla, cambia `name: rapidauth` en el `compose.yaml` de la raíz por el nombre del nuevo proyecto para que no comparta contenedores ni base de datos con este.
 
@@ -95,13 +91,12 @@ Si `.env` no existe, `bun dev` lo crea con valores locales (`BETTER_AUTH_SECRET`
 
 Ejecuta `bun run db:switch` para elegir una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env`, sincroniza el esquema y crea el admin en la base nueva. No copia registros entre bases.
 
-Para cambiarla manualmente, edita `DATABASE_URL` en `.env`. Usa la URL de Docker de arriba para PostgreSQL local, o la de tu proveedor para una base externa. Luego ejecuta `bun run db:deploy` y `bun run db:seed`. Si esa base ya tiene tablas creadas con `db push`, consulta [Migraciones de la base de datos](00-manual-setup.md#migraciones-de-la-base-de-datos). Usa `sslmode=disable` solo con la base local de Docker; nunca en producción.
+Para cambiarla manualmente, edita `DATABASE_URL` en `.env`. Usa la URL de Docker de arriba para PostgreSQL local, o la de tu proveedor para una base externa. Luego ejecuta `bun run db:deploy`; crea el admin desde la pantalla de configuración o con `bun run db:seed`. Si esa base ya tiene tablas creadas con `db push`, consulta [Migraciones de la base de datos](00-manual-setup.md#migraciones-de-la-base-de-datos). Usa `sslmode=disable` solo con la base local de Docker; nunca en producción.
 
-Si aún no instalaste las dependencias, ejecuta `bun install`. Después, inicia la app en tu computadora. `bun dev` crea las tablas cuando la base local está vacía; ejecuta `bun run db:seed` una vez para crear el admin:
+Si aún no instalaste las dependencias, ejecuta `bun install`. Después, inicia la app en tu computadora. `bun dev` crea las tablas cuando la base local está vacía. Abre [http://localhost:3000](http://localhost:3000) y crea el admin en la pantalla **Create your admin account**. Para crearlo desde la línea de comandos, ejecuta `bun run db:seed` una vez (consulta [Crear el admin desde la línea de comandos](#crear-el-admin-desde-la-línea-de-comandos)):
 
 ```sh
 bun dev
-bun run db:seed
 ```
 
 `bun dev` también inicia Mailpit (`http://localhost:8025`) cuando `RESEND_API_KEY` está vacía. Las variables exportadas en tu terminal ganan a `.env` en todas estas decisiones, así que una `DATABASE_URL` de Neon exportada mantiene Docker apagado. Las tablas se crean solo si la base local no tiene ninguna; una base que ya tiene tablas nunca se toca. Para producción, ejecuta `bun run init:setup`.
@@ -150,16 +145,18 @@ docker compose exec app bunx prisma studio --port 5555 --browser none
 
 Abre [http://localhost:5555](http://localhost:5555). Prisma Studio no tiene una opción de hostname en su línea de comandos, así que Compose define `HOST=0.0.0.0` en el contenedor. Eso permite acceder por el puerto publicado; no agregues una opción de hostname que Prisma no admite.
 
-Puedes volver a ejecutar el seed mientras la app está activa:
+### Crear el admin desde la línea de comandos
+
+Puedes crear el admin sin la pantalla de configuración. Si quieres, define antes `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` en `.env` y ejecuta el seed mientras la app está activa:
 
 ```sh
 docker compose exec app bun run db:seed
 ```
 
-El seed se puede repetir: si el admin ya existe, no crea otro. Para restablecer la contraseña de un usuario:
+El seed se puede repetir: si ya existe una cuenta con ese email, no crea otra. Sin `SEED_ADMIN_PASSWORD` genera una contraseña y la muestra una sola vez en la salida del comando. Para restablecer la contraseña de un usuario:
 
 ```sh
-docker compose exec app bun run scripts/reset-password.ts admin@admin.com
+docker compose exec app bun run scripts/reset-password.ts <email-del-admin>
 ```
 
 La nueva contraseña aparece una sola vez en el resultado del comando. Bun se ejecuta dentro del contenedor; no necesitas instalarlo en tu computadora.
@@ -172,7 +169,7 @@ Para detener la app y la base, y borrar permanentemente sus datos almacenados, e
 docker compose down -v
 ```
 
-**La opción `-v` borra el volumen de la base local, incluidas las cuentas y sus datos.** El siguiente `up --build` crea tablas vacías y una cuenta admin nueva. Sin `-v`, la base se conserva para el próximo inicio.
+**La opción `-v` borra el volumen de la base local, incluidas las cuentas y sus datos.** El siguiente `up --build` crea tablas vacías y la pantalla de configuración vuelve a aparecer para que crees un admin nuevo. Sin `-v`, la base se conserva para el próximo inicio.
 
 ## Problemas comunes
 
@@ -247,7 +244,7 @@ docker compose run --rm \
   app bunx prisma migrate deploy
 ```
 
-Después crea el admin:
+Después crea el admin con el seed. Antes define `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` en `.env` para elegir las credenciales. Hazlo antes de que la app reciba tráfico público: mientras no exista un admin, cualquiera que llegue a `/auth/setup` en los 15 minutos posteriores al arranque del servidor puede crearlo.
 
 ```sh
 docker compose run --rm \
@@ -255,7 +252,7 @@ docker compose run --rm \
   app bun run db:seed
 ```
 
-**Estos comandos apuntan a la base real indicada en `DATABASE_URL` y pueden cambiar datos de producción.** Revisa con cuidado el host y el nombre de la base antes de ejecutarlos. Guarda la contraseña que imprime el seed. Para restablecer esa cuenta después, mientras la app usa la URL de producción, ejecuta `docker compose exec -e DATABASE_URL="<url-de-produccion>" app bun run scripts/reset-password.ts admin@admin.com`.
+**Estos comandos apuntan a la base real indicada en `DATABASE_URL` y pueden cambiar datos de producción.** Revisa con cuidado el host y el nombre de la base antes de ejecutarlos. Si no definiste `SEED_ADMIN_PASSWORD`, guarda la contraseña que imprime el seed. Para restablecer esa cuenta después, mientras la app usa la URL de producción, ejecuta `docker compose exec -e DATABASE_URL="<url-de-produccion>" app bun run scripts/reset-password.ts <email-del-admin>`.
 
 ---
 

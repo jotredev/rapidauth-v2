@@ -82,7 +82,7 @@ To configure each step yourself, follow the [English manual setup guide](docs/en
 
 ### Option 3: Docker
 
-**Requirements:** A Docker engine with Compose v2 and Buildx, such as Docker Desktop, OrbStack, Colima, or Docker Engine. You do not need Bun or PostgreSQL installed on your computer. Compose creates the local database, applies the schema, and seeds the admin account when it starts; you do not need to run `bun run init:setup`.
+**Requirements:** A Docker engine with Compose v2 and Buildx, such as Docker Desktop, OrbStack, Colima, or Docker Engine. You do not need Bun or PostgreSQL installed on your computer. Compose creates the local database and applies the schema when it starts; you create the admin account on the first-run screen (see Admin Account below). You do not need to run `bun run init:setup`.
 
 A `.env` file created by `bun run init:setup` also works with Docker. Compose supplies the local database URL and local app URL when starting the container. To start the app and database, follow the [English Docker guide](docs/en/03-docker.md) or the [guía de Docker en español](docs/es/03-docker.md).
 
@@ -94,7 +94,9 @@ Browse all guides from the [documentation index](docs/README.md).
 
 ### Admin Account
 
-The setup seed prints a randomly generated admin password once. Save it and change it after your first login. Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` to customize the seed credentials; a configured password must be at least 8 characters. If the admin already exists, the seed keeps its current password. To reset it, run `bun run scripts/reset-password.ts [email]` (defaults to `admin@admin.com`); the new password is printed once.
+There is no default password. While no admin exists, the home, sign-in and register pages send you to **Create your admin account** (`/auth/setup`). Enter a name, email and password, accept the terms, and sign in. The screen closes 15 minutes after the app starts if nobody used it; restart the app to open it again.
+
+To create the admin without the screen, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` (at least 8 characters) and run `bun run db:seed`; without a password the seed generates one and prints it once. `bun run init:setup` also seeds an admin. If an account with that email already exists, the seed keeps it. To reset a password, run `bun run scripts/reset-password.ts [email]` (defaults to `admin@admin.com`); the new password is printed once.
 
 ### Themes and template maintenance
 

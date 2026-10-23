@@ -31,5 +31,4 @@ MSG
   exit 1
 fi
 printf '%s\n' "$migrate_output"
-bun run db:seed
 exec bunx next dev --turbopack --hostname 0.0.0.0
