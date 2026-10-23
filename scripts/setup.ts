@@ -1540,7 +1540,7 @@ async function askStorageConfig(existingEnv: Record<string, string>): Promise<Re
   }
 
   const variables: EnvVariable[] = [
-    { key: 'S3_ENDPOINT', description: 'S3 API address; leave empty or type none for Amazon S3.', placeholder: 'https://<account>.r2.cloudflarestorage.com', required: false, category: 'storage' },
+    { key: 'S3_ENDPOINT', description: 'S3 API address; use http://storage:9000 in Docker or http://localhost:9000 with bun dev for local Silo. Leave empty or type none for Amazon S3.', placeholder: 'https://<account>.r2.cloudflarestorage.com', required: false, category: 'storage' },
     { key: 'S3_REGION', description: 'Region assigned by your storage provider.', placeholder: 'auto for Cloudflare R2', required: true, category: 'storage' },
     { key: 'S3_BUCKET', description: 'Exact name of the bucket you created.', placeholder: 'avatars', required: true, category: 'storage' },
     { key: 'S3_ACCESS_KEY_ID', description: 'Access key ID with permission to read, write, and delete objects in this bucket.', placeholder: 'Access key ID', required: true, category: 'storage', sensitive: true },

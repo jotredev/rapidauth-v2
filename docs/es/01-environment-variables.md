@@ -184,7 +184,7 @@ Consulta la [guía para principiantes](05-file-storage.md) para crear un bucket 
 
 ### `S3_ENDPOINT`
 
-- **Propósito:** Dirección de la API S3 para proveedores compatibles. Déjala vacía para Amazon S3.
+- **Propósito:** Dirección de la API S3 para proveedores compatibles. Déjala vacía para Amazon S3. Para el servicio Silo incluido, usa `http://storage:9000` en Docker y `http://localhost:9000` con `bun dev`.
 - **Requerida:** No.
 - **Ejemplo:** `https://<id-de-cuenta>.r2.cloudflarestorage.com` para Cloudflare R2.
 - **Secreto:** No.

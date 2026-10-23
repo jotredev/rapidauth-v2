@@ -184,7 +184,7 @@ See the beginner [File storage guide](05-file-storage.md) for creating a bucket 
 
 ### `S3_ENDPOINT`
 
-- **Purpose:** S3 API endpoint for compatible providers. Leave empty for Amazon S3.
+- **Purpose:** S3 API endpoint for compatible providers. Leave empty for Amazon S3. For the bundled Silo service, use `http://storage:9000` in Docker and `http://localhost:9000` with `bun dev`.
 - **Required:** No.
 - **Example:** `https://<account-id>.r2.cloudflarestorage.com` for Cloudflare R2.
 - **Secret:** No.

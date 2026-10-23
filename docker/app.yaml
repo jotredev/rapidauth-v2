@@ -36,6 +36,7 @@ services:
       BETTER_AUTH_URL: "${BETTER_AUTH_URL:-http://localhost:3000}"
       SUPPORT_EMAIL: "${SUPPORT_EMAIL:-support@example.invalid}"
       RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      S3_ENDPOINT: "${S3_ENDPOINT:-}"
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: "${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}"
       TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
       GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
@@ -53,6 +54,9 @@ services:
         condition: service_completed_successfully
       mailpit:
         condition: service_healthy
+        required: false
+      storage-public-read:
+        condition: service_completed_successfully
         required: false
     ports:
       - "${APP_PORT:-3000}:3000"
