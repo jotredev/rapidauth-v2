@@ -38,8 +38,6 @@ El workflow `.github/workflows/scheduled-cleanup.yml` incluido llama la ruta tod
 
 Cuando existe `CRON_SECRET`, Docker Compose enciende automáticamente el contenedor mínimo de `cron` (`docker/cron.yaml`). Este llama a `/api/cron/cleanup` una vez al día a las 03:00 UTC con la cabecera `Authorization: Bearer <CRON_SECRET>`. Sin `CRON_SECRET`, el contenedor permanece apagado (`scale: 0`).
 
-Puedes personalizar el horario con la variable `CRON_SCHEDULE` (predeterminado: `0 3 * * *`).
-
 ## Probarla manualmente
 
 En Docker, puedes ejecutar la limpieza a mano dentro del contenedor de cron en ejecución:

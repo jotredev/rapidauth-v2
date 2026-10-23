@@ -1,14 +1,14 @@
 services:
   cron:
-    image: alpine:3.20
+    image: alpine:3.24
     restart: unless-stopped
+    # With CRON_SECRET, scale evaluates to 1; without it, scale evaluates to 0 and the container stays stopped.
     scale: 0${CRON_SECRET:+1}
     env_file:
       - path: ../.env
         required: false
     environment:
       CRON_SECRET: "${CRON_SECRET:-}"
-      CRON_SCHEDULE: "${CRON_SCHEDULE:-0 3 * * *}"
     depends_on:
       app:
         condition: service_started
@@ -36,6 +36,6 @@ services:
         CLEANUP
         chmod +x /usr/local/bin/cleanup
 
-        echo "$${CRON_SCHEDULE} /usr/local/bin/cleanup" > /etc/crontabs/root
-        echo "Scheduled cleanup registered with schedule: $${CRON_SCHEDULE}"
+        echo "0 3 * * * /usr/local/bin/cleanup" > /etc/crontabs/root
+        echo "Scheduled cleanup registered for 03:00 UTC daily (0 3 * * *)"
         exec crond -f -l 2

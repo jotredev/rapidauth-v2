@@ -38,8 +38,6 @@ The included `.github/workflows/scheduled-cleanup.yml` calls the route every day
 
 When `CRON_SECRET` is present, Docker Compose automatically starts the minimal `cron` container (`docker/cron.yaml`). It calls `/api/cron/cleanup` once a day at 03:00 UTC using the required `Authorization: Bearer <CRON_SECRET>` header. Without `CRON_SECRET`, the container remains completely off (`scale: 0`).
 
-You can customize the execution time by setting `CRON_SCHEDULE` (default: `0 3 * * *`).
-
 ## Test it manually
 
 In Docker, you can run the cleanup on demand inside the running cron container:
