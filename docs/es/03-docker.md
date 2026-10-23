@@ -1,23 +1,10 @@
-# Docker para principiantes
+# Docker
 
-Esta guía inicia RapidAuth y su base PostgreSQL en tu computadora. No necesitas instalar Bun ni PostgreSQL en tu computadora. Sigue los pasos en orden.
+RapidAuth tiene dos modos con Docker. **Usar la app** con la imagen de producción y un comando, o **programar dentro de Docker** con la carpeta del código montada para recarga automática. Ambos modos inician PostgreSQL. Mailpit se inicia cuando `RESEND_API_KEY` está vacío; con una clave, la app envía por Resend y Mailpit permanece apagado.
 
-## Docker en palabras simples
+## Requisitos
 
-- Una **imagen** es un paquete con las instrucciones para una aplicación, como una maqueta dentro de su caja.
-- Un **contenedor** es una copia en funcionamiento de esa imagen, como la maqueta ya armada.
-- Un **volumen** es una caja de almacenamiento que conserva los datos cuando reemplazas un contenedor. La base usa un volumen con nombre.
-- **Compose** es una lista de contenedores e instrucciones para iniciarlos juntos. Aquí inicia la app y la base de datos con un solo comando.
-
-## 1. Instala e inicia un motor de Docker
-
-Docker necesita un motor que ejecute contenedores, Compose versión 2 y Buildx con soporte para BuildKit.
-
-- **macOS:** instala [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/), [OrbStack](https://orbstack.dev/download) o [Colima](https://github.com/abiosoft/colima). Abre Docker Desktop u OrbStack y espera a que el motor esté funcionando. Con Colima, inícialo en Terminal con `colima start`.
-- **Windows:** instala [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) y activa el motor WSL 2 cuando te lo pida. Abre Docker Desktop y espera a que indique que Docker está en funcionamiento.
-- **Linux:** instala [Docker Engine](https://docs.docker.com/engine/install/) y el [plugin Docker Compose](https://docs.docker.com/compose/install/linux/). Si el motor está detenido, inícialo con `sudo systemctl start docker`.
-
-Abre Terminal o PowerShell en la carpeta del proyecto y comprueba las tres herramientas:
+Instala Docker Engine o Docker Desktop con Docker Compose v2 y Buildx. Desde una terminal en la carpeta del proyecto, confirma que Docker esté activo:
 
 ```sh
 docker version
@@ -25,235 +12,59 @@ docker compose version
 docker buildx version
 ```
 
-`docker version` debe mostrar las secciones Client y Server. Cada comando debe imprimir una versión. Si falta la sección Server, el motor no está iniciado. Si no reconoce Compose o Buildx, instala el plugin correspondiente o actualiza Docker.
+## Usar la app
 
-## 2. Prepara `.env`
-
-Copia el archivo de ejemplo desde la carpeta del proyecto:
-
-```sh
-cp .env.example .env
-```
-
-En PowerShell de Windows, usa `Copy-Item .env.example .env`. Abre `.env` en un editor de texto y configura:
-
-- `RESEND_API_KEY`: tu clave de API de Resend. Déjala vacía en desarrollo: los correos van entonces al buzón de Mailpit en [http://localhost:8025](http://localhost:8025), que `docker compose up` arranca por ti. Con clave, los correos salen por Resend y Mailpit no se enciende.
-- `FROM_EMAIL`: un remitente aceptado por Resend. Verifica su dominio en Resend para entregar correos reales.
-- `BETTER_AUTH_SECRET`: reemplaza el ejemplo por un secreto único. En macOS o Linux, puedes generarlo con `openssl rand -hex 32`.
-
-Compose configura `DATABASE_URL` y `BETTER_AUTH_URL` para la app. Los valores de OAuth y las claves de Turnstile son opcionales: déjalos vacíos o usa las claves de prueba de Cloudflare para Turnstile; consulta [Cloudflare Turnstile](02-turnstile.md). Compose muestra un error si falta `.env`.
-
-## 3. Inicia RapidAuth
-
-Ejecuta este comando desde la raíz del proyecto. La primera vez descarga imágenes y prepara la app de desarrollo, así que puede tardar unos minutos:
+El archivo `.env` es opcional. Sin él, Compose usa valores locales predeterminados y construye la imagen de producción:
 
 ```sh
 docker compose up --build
 ```
 
-Deberías ver que PostgreSQL pasa la comprobación de salud, Prisma aplica las migraciones con `migrate deploy` y Next.js queda listo en el puerto 3000. El contenedor no crea ninguna cuenta de admin ni muestra contraseñas.
+Abre [http://localhost:3000](http://localhost:3000). En una base nueva, usa la pantalla de primer inicio para crear el primer administrador y luego entra al dashboard. La pantalla de configuración está disponible durante 15 minutos después de iniciar la app.
 
-Abre [http://localhost:3000](http://localhost:3000). Mientras no exista un admin, la app lleva el inicio, el inicio de sesión y el registro a **Create your admin account** (`/auth/setup`). Escribe tu nombre, email y una contraseña (mínimo 8 caracteres, con una mayúscula y un número), acepta los términos y envía el formulario. Después inicia sesión con esa cuenta. Como entra con contraseña, debe activar la autenticación de dos factores en **Profile → Security** antes de usar el panel de administración.
+El primer inicio construye la imagen y aplica las migraciones versionadas de Prisma antes de arrancar la app. Compose mantiene la app, la base de datos y Mailpit activos en la terminal. Presiona **Ctrl+C** para detenerlos. Inícialos de nuevo con `docker compose up`.
 
-La pantalla existe solo mientras no haya admin y se cierra 15 minutos después de que arranca la app si nadie la usó. Cuando está cerrada, lo explica en pantalla; reinicia la app para abrirla de nuevo (`docker compose restart app`). Crea el admin cuanto antes y no publiques la app en internet antes de hacerlo.
+Los valores predeterminados son para uso local:
 
-Para crear el admin sin la pantalla, define `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` en `.env` y ejecuta `docker compose exec app bun run db:seed` (consulta [Crear el admin desde la línea de comandos](#crear-el-admin-desde-la-línea-de-comandos)).
+- `BETTER_AUTH_URL=http://localhost:3000`
+- Un `BETTER_AUTH_SECRET` de ejemplo, identificado como tal
+- `SUPPORT_EMAIL=support@example.invalid`
+- PostgreSQL en el servicio `db`
+- Los correos llegan a Mailpit en [http://localhost:8025](http://localhost:8025)
 
-Si creas otro proyecto a partir de esta plantilla, cambia `name: rapidauth` en el `compose.yaml` de la raíz por el nombre del nuevo proyecto para que no comparta contenedores ni base de datos con este.
+El secreto de ejemplo solo se acepta con una URL de localhost. Si configuras un `BETTER_AUTH_URL` público y dejas el secreto de ejemplo, la app se detiene e indica cómo generar un secreto real con `openssl rand -hex 32`.
 
-Los comandos `bun run docker:up`, `bun run docker:logs`, `bun run docker:down` y `bun run docker:reset` son atajos opcionales. Requieren Bun en tu computadora; los comandos de Docker anteriores no.
+No necesitas copiar `.env.example`. Si creas un `.env` en la raíz, sus valores reemplazan los predeterminados de Compose. Los servicios de migración y de la app siempre usan la base `db` de Compose; se ignora `DATABASE_URL` del `.env`. Para desplegar en producción, configura al menos un `BETTER_AUTH_SECRET` único, el `BETTER_AUTH_URL` público y `SUPPORT_EMAIL`. Agrega `RESEND_API_KEY` y un `FROM_EMAIL` verificado para entregar correos reales. Sin una clave de Resend, Mailpit captura los correos y su bandeja se inicia en el puerto 8025; con clave, Mailpit permanece apagado.
 
-## Ejecuta la app en tu computadora y solo PostgreSQL en Docker
+Solo la app se publica en el puerto 3000. PostgreSQL y Mailpit se enlazan a `127.0.0.1`; la bandeja web de Mailpit usa el puerto 8025 y su puerto SMTP es 1025. En un VPS se usa el mismo archivo Compose y un `.env` protegido; coloca un proxy TLS delante de la app si necesitas HTTPS.
 
-Esta es una alternativa a ejecutar ambos servicios en Docker. Suele ser más rápida en macOS y Windows porque Next.js recomienda ejecutar la app directamente en la computadora en vez de montar el código fuente dentro de un contenedor.
+La base de datos y los avatares subidos sobreviven al reemplazo de contenedores y a `docker compose down`. Para borrar también todos los datos guardados, ejecuta `docker compose down -v`.
 
-También puedes elegir esta opción de base de datos en `bun run init:setup`. El asistente comprueba Docker, inicia solo la base, guarda su URL local en `.env` y luego aplica el esquema y crea el admin como parte del setup.
+## Programar dentro de Docker
 
-La base se inicia automáticamente cuando arranca el motor de Docker, salvo que la hayas detenido a propósito con `docker compose stop db`.
-
-No necesitas iniciar la base tú: lo hace `bun dev` (mira más abajo). Para iniciarla a mano, ejecuta en segundo plano este comando solo para la base; no necesita un archivo `.env`:
-
-```sh
-docker compose up -d db
-```
-
-Configura en `.env` la URL de la base local de Docker:
-
-```dotenv
-DATABASE_URL="postgresql://rapidauth:rapidauth@localhost:5432/rapidauth?sslmode=disable"
-```
-
-Si cambiaste `DB_PORT`, reemplaza `5432` en la URL por ese puerto del host. `sslmode=disable` solo se usa con esta base local de Docker. Nunca lo uses con una base de producción.
-
-Si `.env` no existe, `bun dev` lo crea con valores locales (`BETTER_AUTH_SECRET` aleatorio, `BETTER_AUTH_URL` y esta `DATABASE_URL` de Docker). `bun dev` inicia la base y espera a que esté saludable antes de ejecutar lint y Next.js solo si `DATABASE_URL` apunta a ella: host `localhost`, `127.0.0.1` o `::1`, usuario, contraseña y base `rapidauth`, y puerto `DB_PORT` (por defecto `5432`). Con cualquier otra URL, como la de Neon, `bun dev` no toca Docker.
-
-## Cambiar de base de datos (Neon ↔ Docker)
-
-Ejecuta `bun run db:switch` para elegir una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env`, sincroniza el esquema y crea el admin en la base nueva. No copia registros entre bases.
-
-Para cambiarla manualmente, edita `DATABASE_URL` en `.env`. Usa la URL de Docker de arriba para PostgreSQL local, o la de tu proveedor para una base externa. Luego ejecuta `bun run db:deploy`; crea el admin desde la pantalla de configuración o con `bun run db:seed`. Si esa base ya tiene tablas creadas con `db push`, consulta [Migraciones de la base de datos](00-manual-setup.md#migraciones-de-la-base-de-datos). Usa `sslmode=disable` solo con la base local de Docker; nunca en producción.
-
-Si aún no instalaste las dependencias, ejecuta `bun install`. Después, inicia la app en tu computadora. `bun dev` crea las tablas cuando la base local está vacía. Abre [http://localhost:3000](http://localhost:3000) y crea el admin en la pantalla **Create your admin account**. Para crearlo desde la línea de comandos, ejecuta `bun run db:seed` una vez (consulta [Crear el admin desde la línea de comandos](#crear-el-admin-desde-la-línea-de-comandos)):
+Para editar el código montado dentro del contenedor, ejecuta:
 
 ```sh
-bun dev
+bun run docker:dev
 ```
 
-`bun dev` también inicia Mailpit (`http://localhost:8025`) cuando `RESEND_API_KEY` está vacía. Las variables exportadas en tu terminal ganan a `.env` en todas estas decisiones, así que una `DATABASE_URL` de Neon exportada mantiene Docker apagado. Las tablas se crean solo si la base local no tiene ninguna; una base que ya tiene tablas nunca se toca. Para producción, ejecuta `bun run init:setup`.
+Este modo requiere Bun en la computadora. Monta el proyecto dentro del contenedor y ejecuta Next.js en modo desarrollo. El `.env` de la raíz es opcional; si existe, se usan sus valores. La app está en [http://localhost:3000](http://localhost:3000) y Mailpit en [http://localhost:8025](http://localhost:8025).
 
-Este modo usa la misma base PostgreSQL y el mismo volumen con nombre que Docker completo; puedes alternar entre ambos sin perder datos. No ejecutes este modo y la app completa de Docker a la vez: ambos usan el puerto 3000 del host.
-
-Para detener PostgreSQL y conservar sus datos, ejecuta:
+Detén el stack de desarrollo con **Ctrl+C**. Para quitar los contenedores y conservar los datos, ejecuta:
 
 ```sh
-docker compose stop db
+docker compose -f compose.dev.yaml down
 ```
 
-## 4. Trabaja en la app
+Ambos modos guardan los datos de PostgreSQL en un volumen con nombre. El modo de producción también guarda los avatares locales en un volumen montado en `/app/storage`. No uses `down -v` salvo que quieras borrar la base y los avatares guardados.
 
-- Edita los archivos en tu computadora. Compose monta el proyecto dentro del contenedor. Next.js recarga la app cuando detecta tus cambios.
-- `DOCKER_DEV_POLLING` controla el sondeo de archivos. Su valor predeterminado es `true` y revisa cambios una vez por segundo. Esto ayuda a Docker Desktop y otros motores con carpetas compartidas a detectar las ediciones. Usa un poco más de procesador. En Linux con Docker Engine nativo, puedes apagarlo:
+## Solución de problemas
 
-  ```sh
-  DOCKER_DEV_POLLING=false docker compose up --build
-  ```
-
-  Si cambias esta opción mientras la app está activa, vuelve a crear el contenedor para aplicar el nuevo valor.
-- Pueden aparecer avisos como `watch error ... NotFound` mientras se reemplazan archivos. Son inofensivos si la app se recarga y sigue funcionando.
-- Para seguir los logs, ejecuta `docker compose logs -f` en otra terminal.
-- Presiona **Ctrl+C** para detener el comando actual. El volumen con nombre de la base permanece en el disco. También puedes detener los servicios con `docker compose down`.
-- Vuelve a iniciar con `docker compose up --build`. Los cambios de código se recargan solos. La app sincroniza dependencias solo cuando cambia `bun.lock`.
-- Después de editar un Dockerfile o Compose, usa `up --build` para reconstruir la imagen de la app.
-
-## 5. Cambia los puertos de tu computadora
-
-Los puertos predeterminados son app `3000`, base `5432` y Prisma Studio `5555`. Indica otro puerto antes del comando de Compose. Por ejemplo, en macOS o Linux:
-
-```sh
-APP_PORT=3001 docker compose up --build
-```
-
-En PowerShell, configura `$env:APP_PORT = "3001"` y luego ejecuta el comando de Compose. Abre `http://localhost:3001`. También puedes usar `DB_PORT` y `STUDIO_PORT`. El número a la derecha de cada asignación no cambia dentro del contenedor. Compose también lee `APP_PORT`, `DB_PORT` y `STUDIO_PORT` del archivo `.env` de la raíz del proyecto; una variable definida en tu terminal tiene prioridad.
-
-## 6. Abre la base y usa comandos de Prisma
-
-Prisma Studio se ejecuta dentro del contenedor de la app y Compose publica su puerto. Mantén los servicios activos. En otra terminal, ejecuta:
-
-```sh
-docker compose exec app bunx prisma studio --port 5555 --browser none
-```
-
-Abre [http://localhost:5555](http://localhost:5555). Prisma Studio no tiene una opción de hostname en su línea de comandos, así que Compose define `HOST=0.0.0.0` en el contenedor. Eso permite acceder por el puerto publicado; no agregues una opción de hostname que Prisma no admite.
-
-### Crear el admin desde la línea de comandos
-
-Puedes crear el admin sin la pantalla de configuración. Si quieres, define antes `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` en `.env` y ejecuta el seed mientras la app está activa:
-
-```sh
-docker compose exec app bun run db:seed
-```
-
-El seed se puede repetir: si ya existe una cuenta con ese email, no crea otra. Sin `SEED_ADMIN_PASSWORD` genera una contraseña y la muestra una sola vez en la salida del comando. Para restablecer la contraseña de un usuario:
-
-```sh
-docker compose exec app bun run scripts/reset-password.ts <email-del-admin>
-```
-
-La nueva contraseña aparece una sola vez en el resultado del comando. Bun se ejecuta dentro del contenedor; no necesitas instalarlo en tu computadora.
-
-## 7. Borrar la base local y empezar de nuevo
-
-Para detener la app y la base, y borrar permanentemente sus datos almacenados, ejecuta:
-
-```sh
-docker compose down -v
-```
-
-**La opción `-v` borra el volumen de la base local, incluidas las cuentas y sus datos.** El siguiente `up --build` crea tablas vacías y la pantalla de configuración vuelve a aparecer para que crees un admin nuevo. Sin `-v`, la base se conserva para el próximo inicio.
-
-## Problemas comunes
-
-### “Cannot connect to the Docker daemon”
-
-El motor está detenido. Abre Docker Desktop u OrbStack y espera a que funcione. Con Colima, ejecuta `colima start`. En Linux, ejecuta `sudo systemctl start docker`.
-
-### Un puerto ya está ocupado
-
-Elige otro puerto de tu computadora. Por ejemplo, inicia la app en 3001 con `APP_PORT=3001 docker compose up --build`. Usa `DB_PORT` para la base y `STUDIO_PORT` para Studio. En PowerShell, define la variable `$env:...` correspondiente antes de Compose.
-
-### Falta `.env` o falla el correo
-
-Copia `.env.example` a `.env`. Sin `RESEND_API_KEY`, lee los correos en [http://localhost:8025](http://localhost:8025). Con clave, comprueba que sea válida y que Resend acepte `FROM_EMAIL`. Revisa los mensajes de la app con `docker compose logs app`.
-
-### No aparecen los cambios
-
-Espera un segundo y actualiza el navegador. Confirma que editaste archivos dentro de la carpeta del proyecto. Mantén `DOCKER_DEV_POLLING=true` en Docker Desktop. Si hace falta, reinicia la app con `docker compose restart app`.
-
-### Cambió una dependencia o un archivo de Docker
-
-Ejecuta `docker compose up --build`. Esto reconstruye la imagen de la app y conserva el volumen de la base. No uses `down -v` para reconstruir.
-
-## Temas, Bun y CI
-
-El repositorio fija Bun en **1.4.2** en `package.json`. Los temas nunca incluyen ni reemplazan el dashboard. Un `theme.json` v2 debe declarar un `coreVersion` compatible, por ejemplo `">=0.2.0"`; RapidAuth rechaza las versiones ausentes o incompatibles antes de cambiar archivos. Aurora y Nexus necesitan actualizarse para RapidAuth 0.2.0.
-
-Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` después de cambiar auth, landing, layout, estilos o UI compartida. Usa `bun run theme:sync-classic --check` para ver diferencias sin escribir; CI también lo comprueba.
-
-GitHub Actions comprueba lint, tipos, sincronización de Classic, compilación de producción (que debe pasar sin ninguna clave de Turnstile), la comprobación del correo de soporte, avisos de dependencias altos o críticos y Docker en desarrollo y producción, incluida la ausencia del secreto de Turnstile en la imagen. Ejecuta localmente `bun run lint`, `bun run typecheck`, `bun run theme:sync-classic --check` y `bun audit --audit-level=high`; esta guía contiene las pruebas de Docker.
-
-## Producción con Docker
-
-La imagen de producción está separada del Compose de desarrollo. No incluye una base de datos. Conéctala a una base PostgreSQL de producción y proporciona todas las variables al iniciar el contenedor. El stack de desarrollo mantiene el almacenamiento local dentro de la carpeta del proyecto montada.
-
-Con `STORAGE_DRIVER=local`, monta un volumen persistente en `/app/storage` para que las fotos sobrevivan al reemplazo del contenedor. Por ejemplo, agrega `-v rapidauth_storage:/app/storage` a `docker run` o configura un volumen con nombre en el servicio de producción de Compose. La imagen crea `/app/storage` con permisos para el usuario `nextjs`. Con S3 no necesitas ese volumen. Consulta [Almacenamiento de archivos](05-file-storage.md).
-
-El build no necesita claves de Turnstile ni de OAuth, y la imagen no contiene ninguna. Proporciona `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` (recomendado en producción), y los valores `GOOGLE_*` / `GITHUB_*` que uses, solo al iniciar el contenedor; el servidor los lee al arrancar, así que cambiarlos requiere reiniciar el contenedor, no crear otra imagen. El build usa valores ficticios para `DATABASE_URL`, `BETTER_AUTH_URL` y `BETTER_AUTH_SECRET` solo para cargar módulos. No se conecta a una base y esos valores no se guardan en la imagen final.
-
-Sentry sigue siendo opcional. `NEXT_PUBLIC_SENTRY_DSN` debe pasarse como argumento de build cuando activas los reportes del navegador y también debe estar presente en runtime para los reportes del servidor. La subida de source maps usa además los argumentos no secretos `SENTRY_ORG` y `SENTRY_PROJECT`. Monta `SENTRY_AUTH_TOKEN` únicamente como el secreto BuildKit opcional `sentry_auth_token`; nunca pases ese token como `ARG` ni `ENV`. Si falta cualquiera de los valores de source maps, la subida se omite sin avisos y el build continúa.
-
-Crea la imagen desde la raíz del proyecto:
-
-```sh
-docker build \
-  --build-arg NEXT_PUBLIC_SENTRY_DSN="$NEXT_PUBLIC_SENTRY_DSN" \
-  --build-arg SENTRY_ORG="$SENTRY_ORG" \
-  --build-arg SENTRY_PROJECT="$SENTRY_PROJECT" \
-  --secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
-  -t rapidauth .
-```
-
-Omite las cuatro líneas de Sentry cuando esté desactivado. Si activas los reportes sin source maps, pasa solo `NEXT_PUBLIC_SENTRY_DSN` y omite las líneas de organización, proyecto y token.
-
-En PowerShell, ejecuta el mismo comando en una sola línea. Si activas Sentry, define `$env:NEXT_PUBLIC_SENTRY_DSN` y las variables opcionales de source maps; agrega los `--build-arg` correspondientes y `--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN`.
-
-Crea un archivo protegido como `.env.production` con tu `DATABASE_URL` real de producción, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `RESEND_API_KEY` y `FROM_EMAIL`. Para activar Turnstile (recomendado en producción) agrega también `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY`; agrega las parejas de client ID y secret de Google o GitHub para el inicio de sesión social. Si activaste Sentry, agrega también `NEXT_PUBLIC_SENTRY_DSN` y `SENTRY_TRACES_SAMPLE_RATE`; el token de autenticación no hace falta en runtime. Luego inicia la imagen:
-
-```sh
-docker run --env-file .env.production -p 3000:3000 rapidauth
-```
-
-La imagen se ejecuta con un usuario sin privilegios. Docker comprueba la salud con `/api/auth/ok`. Nunca conectes producción a la base local de Compose.
-
-### Crear tablas de producción y el primer admin con Docker
-
-Puedes usar la imagen de desarrollo para aplicar las migraciones de Prisma y crear el admin en una base externa, sin instalar Bun en tu computadora. Primero confirma que exista `.env`; Compose lo necesita para iniciar el servicio. Sustituye la URL de ejemplo por tu cadena de conexión de producción:
-
-```sh
-docker compose run --rm \
-  -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
-  app bunx prisma migrate deploy
-```
-
-Después crea el admin con el seed. Antes define `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` en `.env` para elegir las credenciales. Hazlo antes de que la app reciba tráfico público: mientras no exista un admin, cualquiera que llegue a `/auth/setup` en los 15 minutos posteriores al arranque del servidor puede crearlo.
-
-```sh
-docker compose run --rm \
-  -e DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=verify-full" \
-  app bun run db:seed
-```
-
-**Estos comandos apuntan a la base real indicada en `DATABASE_URL` y pueden cambiar datos de producción.** Revisa con cuidado el host y el nombre de la base antes de ejecutarlos. Si no definiste `SEED_ADMIN_PASSWORD`, guarda la contraseña que imprime el seed. Para restablecer esa cuenta después, mientras la app usa la URL de producción, ejecuta `docker compose exec -e DATABASE_URL="<url-de-produccion>" app bun run scripts/reset-password.ts <email-del-admin>`.
+- **El puerto 3000 ya está ocupado:** detén la otra app que lo usa antes de iniciar RapidAuth.
+- **La app no inicia:** revisa sus registros con `docker compose logs app migrate db mailpit`. La app espera a que la base y Mailpit estén saludables y a que las migraciones terminen correctamente.
+- **Faltan correos:** sin `RESEND_API_KEY`, abre Mailpit en [http://localhost:8025](http://localhost:8025). Con una clave, revisa la configuración de Resend y el remitente verificado.
+- **Desaparecieron los datos:** `docker compose down -v` elimina los volúmenes con nombre. Inicia de nuevo y crea otro administrador.
 
 ---
 
-← [Cloudflare Turnstile](02-turnstile.md) · [Índice en español](README.md) · [Actualización de dependencias →](04-dependency-updates.md) · [Documentación del proyecto](../README.md)
+← [Turnstile](02-turnstile.md) · [Índice de documentación](README.md) · [Actualización de dependencias →](04-dependency-updates.md) · [Documentación del proyecto](../README.md)

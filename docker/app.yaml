@@ -1,0 +1,62 @@
+services:
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: migrator
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://rapidauth:rapidauth@db:5432/rapidauth?sslmode=disable
+      PRISMA_HIDE_UPDATE_MESSAGE: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bunx", "prisma", "migrate", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        SUPPORT_EMAIL: "${SUPPORT_EMAIL:-support@example.invalid}"
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://rapidauth:rapidauth@db:5432/rapidauth?sslmode=disable
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:-replace-with-a-unique-random-64-character-hex-secret}"
+      BETTER_AUTH_URL: "${BETTER_AUTH_URL:-http://localhost:3000}"
+      SUPPORT_EMAIL: "${SUPPORT_EMAIL:-support@example.invalid}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
+      TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      MAILPIT_SMTP_ADDRESS: "mailpit:1025"
+      PRISMA_HIDE_UPDATE_MESSAGE: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+        required: false
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - app_storage:/app/storage
+
+volumes:
+  app_storage:

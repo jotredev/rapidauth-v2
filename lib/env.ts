@@ -81,6 +81,7 @@ function resolveEmailProvider(env: EnvSource): EmailProvider {
 }
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1'];
+const EXAMPLE_BETTER_AUTH_SECRET = 'replace-with-a-unique-random-64-character-hex-secret';
 
 /**
  * True when DATABASE_URL is the PostgreSQL defined in docker/db.yaml: a local
@@ -109,6 +110,15 @@ function isRemoteUrl(value: string | undefined): boolean {
   if (!value?.trim()) return false;
   try {
     return !LOCAL_HOSTS.includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLocalUrl(value: string | undefined): boolean {
+  if (!value?.trim()) return false;
+  try {
+    return LOCAL_HOSTS.includes(new URL(value).hostname);
   } catch {
     return false;
   }
@@ -182,6 +192,15 @@ function resolveStorage(env: EnvSource): ResolvedEnv['storage'] {
 export function resolveEnv(env: EnvSource = process.env): EnvResolution {
   const problems: string[] = [];
   const enabled: Record<string, boolean> = {};
+
+  if (
+    env.BETTER_AUTH_SECRET === EXAMPLE_BETTER_AUTH_SECRET &&
+    !isLocalUrl(env.BETTER_AUTH_URL)
+  ) {
+    problems.push(
+      'BETTER_AUTH_SECRET is still the example value while BETTER_AUTH_URL is missing or does not use localhost. Generate a real secret with `openssl rand -hex 32` and set BETTER_AUTH_SECRET.',
+    );
+  }
 
   for (const { name, keys } of PAIRS) {
     const pair = resolvePair(env, keys);

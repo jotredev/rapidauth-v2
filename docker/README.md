@@ -1,10 +1,12 @@
 # RapidAuth Docker
 
-Compose starts the local app and PostgreSQL database. For setup, daily use, troubleshooting, and production instructions, see the [English guide](../docs/en/03-docker.md) or the [guía en español](../docs/es/03-docker.md).
+Compose offers a production-image mode for using the app and a development mode with the source mounted. For setup, daily use, troubleshooting, and production instructions, see the [English guide](../docs/en/03-docker.md) or the [guía en español](../docs/es/03-docker.md).
 
-Run `docker compose` from the project root. Files:
+Run the production mode with `docker compose up --build` from the project root. Files:
 
-- `compose.yaml` (project root): sets the project name `rapidauth` and includes the three files below.
+- `compose.yaml` (project root): sets the project name `rapidauth` and includes the service files below.
+- `compose.dev.yaml` (project root): includes the development app with the same project name, so Compose reads the root `.env`.
 - `docker/db.yaml`: the `db` service (PostgreSQL) and its data volume.
-- `docker/mail.yaml`: the `mailpit` service (local inbox at `127.0.0.1:8025`). It only starts when `RESEND_API_KEY` is empty.
-- `docker/app.dev.yaml`: the `app` service (development app) and its volumes.
+- `docker/mail.yaml`: the `mailpit` service (local inbox at `127.0.0.1:8025`).
+- `docker/app.yaml`: the production `app` and one-shot `migrate` service.
+- `docker/app.dev.yaml`: the development `app` and its source and dependency volumes, included by `compose.dev.yaml` and started with `bun run docker:dev`.

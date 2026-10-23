@@ -8,6 +8,9 @@ COPY package.json bun.lock prisma.config.ts ./
 COPY prisma ./prisma
 RUN bun install --frozen-lockfile
 
+FROM dependencies AS migrator
+CMD ["bunx", "prisma", "migrate", "deploy"]
+
 FROM dependencies AS builder
 COPY . .
 ARG NEXT_PUBLIC_SENTRY_DSN

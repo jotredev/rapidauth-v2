@@ -127,19 +127,15 @@ jobs:
       TURNSTILE_SITE_KEY: 0x4AAAAAACIBfakeCIpublicsitekey0000000000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Create a non-secret local environment file
+      - name: Verify production Compose defaults without .env
         run: |
-          cp .env.example .env
-          sed -i 's#^DATABASE_URL=.*#DATABASE_URL="postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable"#' .env
-          sed -i 's#^BETTER_AUTH_SECRET=.*#BETTER_AUTH_SECRET="0000000000000000000000000000000000000000000000000000000000000000"#' .env
-          sed -i 's#^RESEND_API_KEY=.*#RESEND_API_KEY="re_ci_not_a_secret"#' .env
-          sed -i 's#^FROM_EMAIL=.*#FROM_EMAIL="RapidAuth <ci@example.invalid>"#' .env
-          sed -i 's#^SUPPORT_EMAIL=.*#SUPPORT_EMAIL="support@example.invalid"#' .env
-          sed -i 's#^SEED_ADMIN_PASSWORD=.*#SEED_ADMIN_PASSWORD="ci-admin-password"#' .env
-      - name: Validate Compose configuration
-        run: docker compose -p rapidauth-ci config --quiet
-      - name: Start development stack and smoke test
+          rm -f .env
+          docker compose -p rapidauth-ci config --quiet
+      - name: Start production stack and smoke test
         shell: bash
         run: |
           docker compose -p rapidauth-ci up -d --build
@@ -152,8 +148,54 @@ jobs:
             sleep 2
           done
           if [ "${status:-}" != "200" ]; then
-            echo "The development app did not return HTTP 200 from /auth/setup."
-            docker compose -p rapidauth-ci logs app db
+            echo "The production app did not return HTTP 200 from /auth/setup."
+            docker compose -p rapidauth-ci logs app migrate db mailpit
+            exit 1
+          fi
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:8025/)" = "200"
+          docker compose -p rapidauth-ci exec -T db psql -U rapidauth -d rapidauth -c 'CREATE TABLE compose_persistence_probe (id integer PRIMARY KEY); INSERT INTO compose_persistence_probe VALUES (1);'
+      - name: Restart production stack with persistent volumes
+        shell: bash
+        run: |
+          docker compose -p rapidauth-ci down
+          docker compose -p rapidauth-ci up -d --build
+          for attempt in $(seq 1 120); do
+            : "$attempt"
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3000/auth/setup || true)"
+            if [ "$status" = "200" ]; then break; fi
+            sleep 2
+          done
+          if [ "${status:-}" != "200" ]; then
+            docker compose -p rapidauth-ci logs app db migrate
+            echo "The production app did not recover after down/up."
+            exit 1
+          fi
+          docker compose -p rapidauth-ci exec -T db psql -U rapidauth -d rapidauth -c 'SELECT id FROM compose_persistence_probe' | grep -F '1'
+          docker compose -p rapidauth-ci down
+      - name: Create a non-secret local environment file for Docker development
+        run: |
+          cp .env.example .env
+          sed -i 's#^DATABASE_URL=.*#DATABASE_URL="postgresql://ci:ci@127.0.0.1:5432/ci?sslmode=disable"#' .env
+          sed -i 's#^BETTER_AUTH_SECRET=.*#BETTER_AUTH_SECRET="0000000000000000000000000000000000000000000000000000000000000000"#' .env
+          sed -i 's#^RESEND_API_KEY=.*#RESEND_API_KEY="re_ci_not_a_secret"#' .env
+          sed -i 's#^FROM_EMAIL=.*#FROM_EMAIL="RapidAuth <ci@example.invalid>"#' .env
+          sed -i 's#^SUPPORT_EMAIL=.*#SUPPORT_EMAIL="support@example.invalid"#' .env
+          sed -i 's#^SEED_ADMIN_PASSWORD=.*#SEED_ADMIN_PASSWORD="ci-admin-password"#' .env
+          docker compose -f compose.dev.yaml config --quiet
+      - name: Start Docker development mode and smoke test
+        shell: bash
+        run: |
+          bun run docker:dev > /tmp/docker-dev.log 2>&1 &
+          for attempt in $(seq 1 120); do
+            : "$attempt"
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3000/auth/setup || true)"
+            if [ "$status" = "200" ]; then break; fi
+            sleep 2
+          done
+          if [ "${status:-}" != "200" ]; then
+            cat /tmp/docker-dev.log
+            docker compose -f compose.dev.yaml logs app db mailpit
+            echo "The Docker development app did not return HTTP 200 from /auth/setup."
             exit 1
           fi
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -177,7 +219,7 @@ jobs:
           SUPPORT_EMAIL: support@example.invalid
         run: |
           docker run -d --name rapidauth-ci-production \
-            --network rapidauth-ci_default -p 3001:3000 \
+            --network rapidauth_default -p 3001:3000 \
             -e DATABASE_URL -e BETTER_AUTH_URL -e BETTER_AUTH_SECRET \
             -e RESEND_API_KEY -e FROM_EMAIL \
             -e TURNSTILE_SECRET_KEY -e TURNSTILE_SITE_KEY \
@@ -197,6 +239,19 @@ jobs:
             exit 1
           fi
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3001/auth/setup)" = "200"
+      - name: Reject the example auth secret on a remote URL
+        shell: bash
+        run: |
+          if output="$(docker run --rm \
+            -e 'DATABASE_URL=postgresql://rapidauth:rapidauth@db:5432/rapidauth?sslmode=disable' \
+            -e BETTER_AUTH_URL=https://example.invalid \
+            -e BETTER_AUTH_SECRET=replace-with-a-unique-random-64-character-hex-secret \
+            -e SUPPORT_EMAIL=support@example.invalid \
+            rapidauth-ci-production:local 2>&1)"; then
+            echo "The production app unexpectedly started with the example secret and a remote URL."
+            exit 1
+          fi
+          grep -F "Generate a real secret with" <<< "$output"
       - name: Verify the build secret is absent from the image
         shell: bash
         run: |
@@ -216,9 +271,11 @@ jobs:
         if: failure()
         run: |
           docker logs rapidauth-ci-production 2>&1 || true
-          docker compose -p rapidauth-ci logs app db 2>&1 || true
+          docker compose -p rapidauth-ci logs app db migrate mailpit 2>&1 || true
+          docker compose -f compose.dev.yaml logs app db mailpit 2>&1 || true
       - name: Clean up Docker resources
         if: always()
         run: |
           docker rm -f rapidauth-ci-production 2>/dev/null || true
           docker compose -p rapidauth-ci down -v --remove-orphans 2>/dev/null || true
+          docker compose -f compose.dev.yaml down -v --remove-orphans 2>/dev/null || true
