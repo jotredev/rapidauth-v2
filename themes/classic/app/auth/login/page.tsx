@@ -1,3 +1,4 @@
+import { redirectToFirstRunIfNoAdmin } from "@/lib/first-run-admin";
 import { LoginForm } from "@/components/auth";
 import { getSession } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
@@ -13,6 +14,7 @@ interface LoginPageProps {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  await redirectToFirstRunIfNoAdmin();
   const session = await getSession();
   if (session) redirect("/dashboard");
   const { google, github } = getEnv().config;

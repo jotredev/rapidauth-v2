@@ -1,7 +1,9 @@
+import { redirectToFirstRunIfNoAdmin } from "@/lib/first-run-admin";
 import { LandingContent } from "@/components/landing-content";
 import { getSession } from "@/lib/auth";
 
 export default async function Home() {
+  await redirectToFirstRunIfNoAdmin();
   const session = await getSession();
 
   const user = session ? {
