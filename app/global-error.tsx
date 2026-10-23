@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import * as Sentry from '@sentry/nextjs';
+import { initializeSentryClient } from '@/lib/sentry-client';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getSentryRuntimeConfig } from '@/lib/sentry-config';
 import './globals.css';
 
 export default function GlobalError({
@@ -22,13 +22,9 @@ export default function GlobalError({
   retry: () => void;
 }) {
   useEffect(() => {
-    const config = getSentryRuntimeConfig({
-      NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-      NEXT_PUBLIC_SENTRY_ENVIRONMENT:
-        process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT,
-      NODE_ENV: process.env.NODE_ENV,
+    void initializeSentryClient().then((enabled) => {
+      if (enabled) Sentry.captureException(error);
     });
-    if (config.enabled) Sentry.captureException(error);
   }, [error]);
 
   return (

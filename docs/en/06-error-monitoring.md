@@ -1,6 +1,6 @@
 # Error monitoring with Sentry
 
-Sentry collects unexpected application errors so maintainers can see failures that users cannot diagnose. It is optional in RapidAuth. Without a valid `NEXT_PUBLIC_SENTRY_DSN`, Sentry is not initialized, makes no requests, and does not affect the build.
+Sentry collects unexpected application errors so maintainers can see failures that users cannot diagnose. It is optional in RapidAuth. Without a valid `SENTRY_DSN`, the SDK is not initialized and sends no events.
 
 ## 1. Create the Sentry project
 
@@ -22,11 +22,13 @@ The full `bun run init:setup` wizard offers the same optional step and skips it 
 For manual setup, add the DSN to `.env`:
 
 ```dotenv
-NEXT_PUBLIC_SENTRY_DSN="https://public-key@o0.ingest.sentry.io/project-id"
+SENTRY_DSN="https://public-key@o0.ingest.sentry.io/project-id"
 SENTRY_TRACES_SAMPLE_RATE="0"
 ```
 
-The DSN activates both server and browser reporting. `0` keeps performance monitoring off so only errors are sent. Restart development or rebuild after changing a `NEXT_PUBLIC_*` value.
+The DSN activates both server and browser reporting. The server reads `SENTRY_DSN` when each request or server process starts. Next.js does not inline private environment variables into browser code, so RapidAuth exposes only the validated public DSN through a dynamic, uncached `/api/sentry-config` route. `instrumentation-client.ts` reads that route when the browser starts and initializes Sentry. `0` keeps performance monitoring off so only errors are sent. Set or change the DSN and restart the server or container; the image does not need a rebuild.
+
+The browser receives the DSN as the page loads; an error in the first few milliseconds, before it arrives, may not reach Sentry.
 
 ## 3. Optional source maps
 
@@ -42,11 +44,11 @@ All three values must be present during `next build`; otherwise RapidAuth silent
 
 ## 4. Vercel
 
-In **Project Settings → Environment Variables**, add `NEXT_PUBLIC_SENTRY_DSN` to every environment where reporting should run. Add `SENTRY_ORG`, `SENTRY_PROJECT`, and the secret `SENTRY_AUTH_TOKEN` to build environments only when you want source maps. Set `SENTRY_TRACES_SAMPLE_RATE=0` unless performance tracing is intentional. Redeploy after changing the DSN.
+In **Project Settings → Environment Variables**, add `SENTRY_DSN` to every runtime environment where reporting should run. Add `SENTRY_ORG`, `SENTRY_PROJECT`, and the secret `SENTRY_AUTH_TOKEN` to build environments only when you want source maps. Set `SENTRY_TRACES_SAMPLE_RATE=0` unless performance tracing is intentional. Restart or redeploy after changing the DSN.
 
 ## 5. Docker
 
-Pass the public DSN as `NEXT_PUBLIC_SENTRY_DSN` during the image build because the browser bundle embeds it. If source maps are enabled, pass the organization and project as build arguments and mount the token as the `sentry_auth_token` BuildKit secret. Also provide the DSN and sample rate to the running container for server reporting. See the complete commands in [Docker](03-docker.md).
+Set `SENTRY_DSN` in the runtime `.env` used by Compose. RapidAuth reads it after the container starts and serves the public value to the browser through `/api/sentry-config`; adding or changing it requires restarting the app container, not rebuilding the image. For source maps, pass `SENTRY_ORG` and `SENTRY_PROJECT` as build arguments and mount `SENTRY_AUTH_TOKEN` as the `sentry_auth_token` BuildKit secret. Those three values are used only during `next build`.
 
 ## 6. Verify the integration
 
@@ -58,7 +60,7 @@ For a one-time manual check, temporarily call `reportError(new Error('Sentry set
 
 RapidAuth disables automatic collection of user information, cookies, headers, query parameters, HTTP bodies, local variables, database values, queues, GraphQL variables, and AI inputs/outputs. A shared filter also removes secret-looking keys at any depth, token-bearing URL parameters, and email addresses. Sentry user data is limited to an ID; names and email addresses are removed. Session Replay is not enabled.
 
-To disable Sentry, run `bun run setup:sentry` and choose **Disable**, or remove all Sentry variables and rebuild. An empty or invalid DSN keeps both server and browser reporting off.
+To disable Sentry, run `bun run setup:sentry` and choose **Disable**, or clear `SENTRY_DSN` and restart the server or container. An empty or invalid DSN keeps both server and browser reporting off.
 
 ---
 

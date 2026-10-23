@@ -1,6 +1,6 @@
 # Monitoreo de errores con Sentry
 
-Sentry reúne errores inesperados de la aplicación para que quienes la mantienen puedan ver fallos que los usuarios no pueden diagnosticar. Es opcional en RapidAuth. Sin un `NEXT_PUBLIC_SENTRY_DSN` válido, Sentry no se inicializa, no hace peticiones y no afecta el build.
+Sentry reúne errores inesperados de la aplicación para que quienes la mantienen puedan ver fallos que los usuarios no pueden diagnosticar. Es opcional en RapidAuth. Sin un `SENTRY_DSN` válido, el SDK no se inicializa ni envía eventos.
 
 ## 1. Crea el proyecto de Sentry
 
@@ -22,11 +22,13 @@ El asistente completo `bun run init:setup` ofrece el mismo paso opcional y lo om
 Para hacerlo manualmente, agrega el DSN al `.env`:
 
 ```dotenv
-NEXT_PUBLIC_SENTRY_DSN="https://public-key@o0.ingest.sentry.io/project-id"
+SENTRY_DSN="https://public-key@o0.ingest.sentry.io/project-id"
 SENTRY_TRACES_SAMPLE_RATE="0"
 ```
 
-El mismo DSN activa los reportes del servidor y del navegador. `0` mantiene apagado el monitoreo de rendimiento para enviar solo errores. Reinicia el desarrollo o vuelve a compilar después de cambiar un valor `NEXT_PUBLIC_*`.
+El DSN activa los reportes del servidor y del navegador. El servidor lee `SENTRY_DSN` al atender cada solicitud o al arrancar el proceso. Next.js no incrusta variables privadas en el código del navegador, así que RapidAuth entrega solo el DSN público validado mediante la ruta dinámica y sin caché `/api/sentry-config`. `instrumentation-client.ts` consulta esa ruta al iniciar el navegador y configura Sentry. `0` mantiene apagado el monitoreo de rendimiento para enviar solo errores. Define o cambia el DSN y reinicia el servidor o contenedor; no hace falta reconstruir la imagen.
+
+El navegador recibe el DSN al cargar la página; un error en los primeros milisegundos, antes de recibirlo, quizá no llegue a Sentry.
 
 ## 3. Source maps opcionales
 
@@ -42,11 +44,11 @@ Los tres valores deben estar presentes durante `next build`; de lo contrario Rap
 
 ## 4. Vercel
 
-En **Project Settings → Environment Variables**, agrega `NEXT_PUBLIC_SENTRY_DSN` a cada entorno donde deban funcionar los reportes. Agrega `SENTRY_ORG`, `SENTRY_PROJECT` y el secreto `SENTRY_AUTH_TOKEN` a los entornos de build solo si quieres source maps. Usa `SENTRY_TRACES_SAMPLE_RATE=0` salvo que actives el rendimiento deliberadamente. Vuelve a desplegar después de cambiar el DSN.
+En **Project Settings → Environment Variables**, agrega `SENTRY_DSN` a cada entorno de ejecución donde deban funcionar los reportes. Agrega `SENTRY_ORG`, `SENTRY_PROJECT` y el secreto `SENTRY_AUTH_TOKEN` a los entornos de build solo si quieres source maps. Usa `SENTRY_TRACES_SAMPLE_RATE=0` salvo que actives el rendimiento deliberadamente. Reinicia o vuelve a desplegar después de cambiar el DSN.
 
 ## 5. Docker
 
-Pasa el DSN público como `NEXT_PUBLIC_SENTRY_DSN` durante la construcción de la imagen porque se incrusta en el bundle del navegador. Si activas source maps, pasa la organización y el proyecto como argumentos de build y monta el token como secreto BuildKit `sentry_auth_token`. Proporciona también el DSN y la tasa de muestreo al contenedor en ejecución para los reportes del servidor. Consulta los comandos completos en [Docker](03-docker.md).
+Define `SENTRY_DSN` en el `.env` de ejecución que usa Compose. RapidAuth lo lee al arrancar el contenedor y entrega el valor público al navegador mediante `/api/sentry-config`; agregarlo o cambiarlo requiere reiniciar el contenedor de la app, no reconstruir la imagen. Para source maps, pasa `SENTRY_ORG` y `SENTRY_PROJECT` como argumentos de build y monta `SENTRY_AUTH_TOKEN` como el secreto BuildKit `sentry_auth_token`. Esos tres valores solo se usan durante `next build`.
 
 ## 6. Comprueba la integración
 
@@ -58,7 +60,7 @@ Para una prueba manual única, llama temporalmente a `reportError(new Error('Sen
 
 RapidAuth desactiva la recolección automática de datos de usuario, cookies, cabeceras, parámetros de consulta, cuerpos HTTP, variables locales, valores de base de datos, colas, variables GraphQL y entradas/salidas de IA. Un filtro compartido también borra claves que parezcan secretas a cualquier profundidad, parámetros de URL con tokens y direcciones de email. El usuario en Sentry se limita a un ID; se eliminan nombre y email. Session Replay no está habilitado.
 
-Para desactivar Sentry, ejecuta `bun run setup:sentry` y elige **Disable**, o elimina todas sus variables y vuelve a compilar. Un DSN vacío o inválido mantiene apagados los reportes del servidor y del navegador.
+Para desactivar Sentry, ejecuta `bun run setup:sentry` y elige **Disable**, o vacía `SENTRY_DSN` y reinicia el servidor o contenedor. Un DSN vacío o inválido mantiene apagados los reportes del servidor y del navegador.
 
 ---
 

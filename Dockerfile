@@ -13,7 +13,6 @@ CMD ["bunx", "prisma", "migrate", "deploy"]
 
 FROM dependencies AS builder
 COPY . .
-ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 ARG SUPPORT_EMAIL

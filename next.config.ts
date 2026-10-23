@@ -4,7 +4,6 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import {
   getSentryBuildConfig,
   getSentryEnvironment,
-  getSentryRuntimeConfig,
 } from "./lib/sentry-config";
 import {
   getSupportEmail,
@@ -64,16 +63,13 @@ const nextConfig = (phase: string): NextConfig => {
   };
 };
 
-const runtimeConfig = getSentryRuntimeConfig(process.env);
 const buildConfig = getSentryBuildConfig(process.env);
 
-export default runtimeConfig.enabled
-  ? withSentryConfig(nextConfig, {
-      authToken: buildConfig.authToken,
-      org: buildConfig.org,
-      project: buildConfig.project,
-      silent: true,
-      sourcemaps: { disable: !buildConfig.enabled },
-      telemetry: false,
-    })
-  : nextConfig;
+export default withSentryConfig(nextConfig, {
+  authToken: buildConfig.authToken,
+  org: buildConfig.org,
+  project: buildConfig.project,
+  silent: true,
+  sourcemaps: { disable: !buildConfig.enabled },
+  telemetry: false,
+});

@@ -107,14 +107,15 @@ Turnstile is optional. It turns on only when both `TURNSTILE_SITE_KEY` and `TURN
 
 ## Error monitoring (Sentry)
 
-All Sentry variables are optional. With an empty or invalid `NEXT_PUBLIC_SENTRY_DSN`, the SDK is not initialized and sends no requests. See the step-by-step [Error monitoring guide](06-error-monitoring.md).
+All Sentry variables are optional. With an empty or invalid `SENTRY_DSN`, the SDK is not initialized and sends no Sentry events. See the step-by-step [Error monitoring guide](06-error-monitoring.md).
 
-### `NEXT_PUBLIC_SENTRY_DSN`
+### `SENTRY_DSN`
 
 - **Purpose:** Activates Sentry error reporting in the server and browser.
 - **Required:** No. Leave it empty to keep Sentry fully disabled.
 - **Where to get it:** Sentry Project Settings → Client Keys (DSN).
-- **Secret:** No. A DSN is a public routing key and is embedded in the client bundle.
+- **Secret:** No. A DSN is a public routing key. The server reads it at runtime and provides it to the browser through a dynamic, uncached endpoint.
+- **When it is read:** At runtime; setting it and restarting the server or container enables Sentry without rebuilding the image.
 - **Validation:** An invalid value leaves Sentry disabled and produces one startup warning.
 
 ### `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN`

@@ -497,7 +497,7 @@ async function askSentryConfig(
   existingEnv: Record<string, string>,
 ): Promise<Record<string, string>> {
   const hasExistingValues = Boolean(
-    existingEnv.NEXT_PUBLIC_SENTRY_DSN ||
+    existingEnv.SENTRY_DSN ||
       existingEnv.SENTRY_ORG ||
       existingEnv.SENTRY_PROJECT ||
       existingEnv.SENTRY_AUTH_TOKEN,
@@ -528,7 +528,7 @@ async function askSentryConfig(
       println(`  ${colors.green}${icons.success} Keeping the current Sentry configuration${colors.reset}`);
       return createSentryEnvValues({
         authToken: existingEnv.SENTRY_AUTH_TOKEN,
-        dsn: existingEnv.NEXT_PUBLIC_SENTRY_DSN,
+        dsn: existingEnv.SENTRY_DSN,
         org: existingEnv.SENTRY_ORG,
         project: existingEnv.SENTRY_PROJECT,
         tracesSampleRate: existingEnv.SENTRY_TRACES_SAMPLE_RATE,
@@ -554,15 +554,15 @@ async function askSentryConfig(
 
   const dsn = await askVariable(
     {
-      key: 'NEXT_PUBLIC_SENTRY_DSN',
-      description: 'Public Sentry DSN used by the server and browser',
+      key: 'SENTRY_DSN',
+      description: 'Public Sentry DSN read at runtime by the server and browser',
       placeholder: 'https://public-key@o0.ingest.sentry.io/project-id',
       required: true,
       category: 'monitoring',
       helpUrl: 'https://docs.sentry.io/product/sentry-basics/dsn-explainer/',
       validate: (value) => isValidSentryDsn(value) || 'Enter a valid Sentry DSN.',
     },
-    existingEnv.NEXT_PUBLIC_SENTRY_DSN,
+    existingEnv.SENTRY_DSN,
   );
 
   const wantsSourceMaps = await question(
@@ -1217,7 +1217,7 @@ const ENV_SECTION_KEYS: Record<string, string[]> = {
   email: ['RESEND_API_KEY', 'FROM_EMAIL'],
   support: ['SUPPORT_EMAIL'],
   captcha: ['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'],
-  monitoring: ['NEXT_PUBLIC_SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'SENTRY_TRACES_SAMPLE_RATE'],
+  monitoring: ['SENTRY_DSN', 'SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN', 'SENTRY_TRACES_SAMPLE_RATE'],
   cleanup: ['CRON_SECRET'],
   proxy: ['TRUSTED_PROXY'],
   oauth: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'],
