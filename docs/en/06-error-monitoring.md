@@ -17,7 +17,7 @@ The guided option is the easiest:
 bun run setup:sentry
 ```
 
-The full `bun run init:setup` wizard offers the same optional step and skips it by default. If values already exist, the wizard lets you keep them, change them, or disable Sentry.
+The full `bun run setup:prod` wizard offers the same optional step and skips it by default. If values already exist, the wizard lets you keep them, change them, or disable Sentry.
 
 For manual setup, add the DSN to `.env`:
 

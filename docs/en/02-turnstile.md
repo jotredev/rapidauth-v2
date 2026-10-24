@@ -28,7 +28,7 @@ For Docker, pass both variables only when you start the container (for example w
 
 For example, in Vercel add both variables under **Project Settings → Environment Variables** for each environment that should run Turnstile, then redeploy or restart so they take effect. In CI, you only need them if a test starts the app with Turnstile on.
 
-The `bun run init:setup` wizard also asks for Turnstile keys and can save real or local test keys in `.env`.
+The production setup command `bun run setup:prod` can verify real Turnstile keys and save them in `.env`. Use the documented test keys only for local development.
 
 ## Cloudflare test keys
 

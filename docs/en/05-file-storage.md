@@ -61,7 +61,7 @@ S3_FORCE_PATH_STYLE="true"
 
 Replace `ACCOUNT_ID`, bucket, keys, and public domain with your values. `S3_ENDPOINT` is the API address from the R2 dashboard. `S3_PUBLIC_URL` is where a browser can open an uploaded image. These are different addresses. `S3_FORCE_PATH_STYLE=true` means the bucket name is placed in the URL path; it helps R2 and many compatible services understand the request.
 
-Run `bun run init:setup --only storage` to enter these settings interactively. The wizard uploads a small temporary object, checks that the public URL can read it, and deletes it. If that check fails, verify the bucket, keys, public access, and URL.
+Run `bun run setup:prod --only storage` to enter these settings interactively. The wizard uploads a small temporary object, checks that the public URL can read it, and deletes it. If that check fails, verify the bucket, keys, public access, and URL.
 
 ## Amazon S3 values
 

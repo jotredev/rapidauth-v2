@@ -21,12 +21,14 @@ import {
 import { createS3Storage } from '../lib/storage';
 import { getThemeChangedPaths } from './lib/theme-safety';
 import { getSupportEmail } from '../lib/support-email';
-import { isDockerDatabaseUrl } from '../lib/env';
+import { formatEnvSummary, isDockerDatabaseUrl, resolveEnv } from '../lib/env';
 import { BaselineRequiredError, baselineMessage, runMigrateDeploy } from './lib/migrations';
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
+
+const productionSetup = process.argv.includes('--production') || !process.argv.includes('--only');
 
 interface EnvVariable {
   key: string;
@@ -162,7 +164,8 @@ function printHeader() {
   println();
   println(`${colors.cyan}${colors.bold}  ┌────────────────────────────────────────────────┐${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  │                                                │${colors.reset}`);
-  println(`${colors.cyan}${colors.bold}  │${colors.reset}   ${icons.rocket} ${colors.bold}${colors.white}RAPIDAUTH - SETUP WIZARD${colors.reset}                ${colors.cyan}${colors.bold}│${colors.reset}`);
+  const title = productionSetup ? 'RAPIDAUTH - PRODUCTION SETUP' : 'RAPIDAUTH - SETUP WIZARD';
+  println(`${colors.cyan}${colors.bold}  │${colors.reset}   ${icons.rocket} ${colors.bold}${colors.white}${title}${colors.reset}          ${colors.cyan}${colors.bold}│${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  │${colors.reset}      ${colors.dim}Professional Authentication Boilerplate${colors.reset}  ${colors.cyan}${colors.bold}│${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  │                                                │${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  └────────────────────────────────────────────────┘${colors.reset}`);
@@ -369,6 +372,7 @@ async function askVariable(
 
 async function askTurnstileConfig(
   existingEnv: Record<string, string>,
+  productionOnly = false,
 ): Promise<{ siteKey: string; secretKey: string }> {
   printBox(
     'Cloudflare Turnstile (optional, recommended)',
@@ -386,12 +390,12 @@ async function askTurnstileConfig(
   );
   println('  Choose your Cloudflare Turnstile keys:');
   println('  [1] Use my Cloudflare keys');
-  println('  [2] Use Cloudflare test keys (local development only)');
+  if (!productionOnly) println('  [2] Use Cloudflare test keys (local development only)');
   if (hasExistingKeys) println('  [3] Keep existing keys');
   println('  [0] Skip for now (Turnstile stays off)');
 
   let choice = '';
-  while (!['0', '1', '2', ...(hasExistingKeys ? ['3'] : [])].includes(choice)) {
+  while (!['0', '1', ...(productionOnly ? [] : ['2']), ...(hasExistingKeys ? ['3'] : [])].includes(choice)) {
     choice = await question('  Select an option: ');
   }
 
@@ -402,7 +406,7 @@ async function askTurnstileConfig(
     return { siteKey: '', secretKey: '' };
   }
 
-  if (choice === '2') {
+  if (choice === '2' && !productionOnly) {
     println(
       `  ${colors.yellow}${icons.warning} Test keys only work locally. Create a widget using the guide before deploying.${colors.reset}`,
     );
@@ -417,6 +421,10 @@ async function askTurnstileConfig(
   if (choice === '3') {
     siteKey = existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     secretKey = existingEnv.TURNSTILE_SECRET_KEY;
+    if (productionOnly && (isTurnstileTestSiteKey(siteKey) || isTurnstileTestSecretKey(secretKey))) {
+      println(`  ${colors.red}${icons.error} Production setup requires real Turnstile keys.${colors.reset}`);
+      return askTurnstileConfig({ ...existingEnv, NEXT_PUBLIC_TURNSTILE_SITE_KEY: '', TURNSTILE_SECRET_KEY: '' }, true);
+    }
     println(`  ${colors.green}${icons.success} Keeping existing Cloudflare keys${colors.reset}`);
   } else {
     const noWhitespace = (value: string) =>
@@ -451,6 +459,10 @@ async function askTurnstileConfig(
         isTurnstileTestSiteKey(siteKey) ||
         isTurnstileTestSecretKey(secretKey)
       ) {
+        if (productionOnly) {
+          println(`  ${colors.red}${icons.error} Production setup requires real Turnstile keys.${colors.reset}`);
+          continue;
+        }
         println(
           `  ${colors.yellow}${icons.warning} These are Cloudflare test keys. They only work locally. Create a widget using the guide before deploying.${colors.reset}`,
         );
@@ -811,6 +823,7 @@ async function startLocalDatabase(
 async function askDatabaseUrl(
   existingEnv: Record<string, string>,
   allowKeepExisting = true,
+  productionOnly = false,
 ): Promise<{
   url: string;
   dockerDatabase: boolean;
@@ -818,6 +831,22 @@ async function askDatabaseUrl(
 } | undefined> {
   const databaseVariable = ENV_VARIABLES.find((variable) => variable.key === 'DATABASE_URL');
   if (!databaseVariable) throw new Error('DATABASE_URL configuration is missing.');
+
+  if (productionOnly) {
+    databaseVariable.validate = (value) => {
+      if (!value.startsWith('postgresql://') && !value.startsWith('postgres://')) {
+        return 'Must be a valid PostgreSQL connection string';
+      }
+      if (isDockerDatabaseUrl(value, existingEnv.DB_PORT)) {
+        return 'Production requires an external PostgreSQL database, not the local Docker database.';
+      }
+      return true;
+    };
+    return {
+      url: await askVariable(databaseVariable, existingEnv.DATABASE_URL),
+      dockerDatabase: false,
+    };
+  }
 
   if (existingEnv.DATABASE_URL) {
     try {
@@ -907,15 +936,15 @@ async function sendTestEmail(
       body: JSON.stringify({
         from: fromEmail,
         to: [toEmail],
-        subject: 'RapidAuth - Test Email',
+        subject: 'RapidAuth - Production Setup Test',
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #0ea5e9;">RapidAuth Setup</h1>
-            <p>This is a test email to verify your Resend configuration.</p>
+            <h1 style="color: #0ea5e9;">RapidAuth Production Setup</h1>
+            <p>This test verifies email delivery through your Resend production configuration.</p>
             <p style="color: #22c55e; font-weight: bold;">Email configuration is working correctly!</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
             <p style="color: #6b7280; font-size: 12px;">
-              This email was sent during the RapidAuth setup wizard.
+              This email was sent during RapidAuth production setup.
             </p>
           </div>
         `,
@@ -939,7 +968,25 @@ async function sendTestEmail(
   }
 }
 
-async function askEmailConfig(): Promise<{ fromEmail: string; testEmail: string }> {
+async function askEmailConfig(productionOnly = false): Promise<{ fromEmail: string; testEmail: string }> {
+  if (productionOnly) {
+    const fromEmail = await askVariable({
+      key: 'FROM_EMAIL',
+      description: 'Sender on a domain verified in your Resend account',
+      placeholder: 'RapidAuth <noreply@example.com>',
+      required: true,
+      category: 'email',
+    });
+    let testEmail = '';
+    while (!testEmail.includes('@') || !testEmail.includes('.')) {
+      testEmail = await question('  Send the Resend test email to: ');
+      if (!testEmail.includes('@') || !testEmail.includes('.')) {
+        println(`  ${colors.red}${icons.error} Enter a valid email address.${colors.reset}`);
+      }
+    }
+    return { fromEmail, testEmail };
+  }
+
   println(`  ${icons.email} ${colors.bold}FROM_EMAIL${colors.reset} ${colors.red}*${colors.reset}`);
   println(`     ${colors.dim}Email sender address${colors.reset}`);
   println();
@@ -1033,7 +1080,27 @@ async function askEmailConfig(): Promise<{ fromEmail: string; testEmail: string 
 // AUTH URL SELECTION
 // ============================================================================
 
-async function askAuthUrl(): Promise<string> {
+async function askAuthUrl(existingValue?: string, productionOnly = false): Promise<string> {
+  if (productionOnly) {
+    return askVariable({
+      key: 'BETTER_AUTH_URL',
+      description: 'Public HTTPS base URL of the deployed application',
+      placeholder: 'https://auth.example.com',
+      required: true,
+      category: 'auth',
+      validate: (value) => {
+        try {
+          const url = new URL(value);
+          return url.protocol === 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)
+            ? true
+            : 'Enter the public HTTPS URL for production.';
+        } catch {
+          return 'Enter a valid public HTTPS URL.';
+        }
+      },
+    }, existingValue);
+  }
+
   const DEFAULT_URL = 'http://localhost:3000';
   const options = ['Default (http://localhost:3000)', 'Custom URL'];
   let selectedIndex = 0;
@@ -1521,9 +1588,11 @@ async function askProviderCredentials(
   return result;
 }
 
-async function askStorageConfig(existingEnv: Record<string, string>): Promise<Record<string, string>> {
+async function askStorageConfig(existingEnv: Record<string, string>, productionOnly = false): Promise<Record<string, string>> {
   println(`  ${icons.database} ${colors.bold}File storage${colors.reset}`);
-  println('     [1] Local: on the server disk (development, or your own server with persistent disk)');
+  println(productionOnly
+    ? '     [1] Local: on your server disk (requires persistent storage)'
+    : '     [1] Local: on the server disk (development, or your own server with persistent disk)');
   println('     [2] S3-compatible: Cloudflare R2, Amazon S3, Backblaze, DigitalOcean Spaces, SeaweedFS…');
   const current = existingEnv.STORAGE_DRIVER === 's3' ? '2' : '1';
   let choice = '';
@@ -1540,7 +1609,7 @@ async function askStorageConfig(existingEnv: Record<string, string>): Promise<Re
   }
 
   const variables: EnvVariable[] = [
-    { key: 'S3_ENDPOINT', description: 'S3 API address; use http://storage:9000 in Docker or http://localhost:9000 with bun dev for local Silo. Leave empty or type none for Amazon S3.', placeholder: 'https://<account>.r2.cloudflarestorage.com', required: false, category: 'storage' },
+    { key: 'S3_ENDPOINT', description: productionOnly ? 'S3-compatible API endpoint; leave empty for Amazon S3.' : 'S3 API address; use http://storage:9000 in Docker or http://localhost:9000 with bun dev for local Silo. Leave empty or type none for Amazon S3.', placeholder: 'https://<account>.r2.cloudflarestorage.com', required: false, category: 'storage' },
     { key: 'S3_REGION', description: 'Region assigned by your storage provider.', placeholder: 'auto for Cloudflare R2', required: true, category: 'storage' },
     { key: 'S3_BUCKET', description: 'Exact name of the bucket you created.', placeholder: 'avatars', required: true, category: 'storage' },
     { key: 'S3_ACCESS_KEY_ID', description: 'Access key ID with permission to read, write, and delete objects in this bucket.', placeholder: 'Access key ID', required: true, category: 'storage', sensitive: true },
@@ -1586,7 +1655,7 @@ async function askStorageConfig(existingEnv: Record<string, string>): Promise<Re
     println(`     ${colors.dim}Check the endpoint, region, bucket, access key, public access policy, and S3_PUBLIC_URL.${colors.reset}`);
     const retry = await question('     Correct the storage values and try again? (y/n): ');
     if (!['y', 'yes'].includes(retry.toLowerCase())) {
-      throw new Error('Storage connection could not be verified. Correct the values and run bun run init:setup --only storage.');
+      throw new Error('Storage connection could not be verified. Correct the values and run bun run setup:prod --only storage.');
     }
   }
 }
@@ -1596,6 +1665,7 @@ async function askStorageConfig(existingEnv: Record<string, string>): Promise<Re
 // ============================================================================
 
 async function runSetup() {
+  const productionOnly = productionSetup;
   const onlyIndex = process.argv.indexOf('--only');
   const allowedOnly = ['database', 'email', 'support', 'turnstile', 'oauth', 'theme', 'storage', 'sentry', 'cleanup', 'proxy'] as const;
   let forcedSection: (typeof allowedOnly)[number] | undefined;
@@ -1615,12 +1685,14 @@ async function runSetup() {
   );
   let selection = forcedSection ?? '';
   if (!selection && isConfigured) {
-    println('This project is already configured. Choose what to update:');
+    println(productionOnly
+      ? 'Production settings are already configured. Choose what to update:'
+      : 'This project is already configured. Choose what to update:');
     println('  [1] Database');
     println('  [2] Email');
     println('  [3] Turnstile');
     println('  [4] OAuth');
-    println('  [5] Theme');
+    if (!productionOnly) println('  [5] Theme');
     println('  [6] Storage');
     println('  [7] Sentry');
     println('  [8] Scheduled cleanup');
@@ -1632,7 +1704,7 @@ async function runSetup() {
       '2': 'email',
       '3': 'turnstile',
       '4': 'oauth',
-      '5': 'theme',
+      ...(!productionOnly ? { '5': 'theme' } : {}),
       '6': 'storage',
       '7': 'sentry',
       '8': 'cleanup',
@@ -1648,14 +1720,14 @@ async function runSetup() {
   if (!selection) selection = 'everything';
   const selectedSections = new Set(
     selection === 'everything'
-      ? ['database', 'auth', 'email', 'support', 'captcha', 'oauth', 'theme', 'storage', 'monitoring', 'cleanup', 'proxy']
+      ? ['database', 'auth', 'email', 'support', 'captcha', 'oauth', ...(!productionOnly ? ['theme'] : []), 'storage', 'monitoring', 'cleanup', 'proxy']
       : [selection === 'turnstile' ? 'captcha' : selection === 'sentry' ? 'monitoring' : selection]
   );
   const databaseSelected = selectedSections.has('database');
   const themeSelected = selectedSections.has('theme');
   const previousDatabaseUrl = existingEnv.DATABASE_URL;
   const newEnv: Record<string, string> = {};
-  if (databaseSelected && existingEnv.DB_PORT) newEnv.DB_PORT = existingEnv.DB_PORT;
+  if (databaseSelected && !productionOnly && existingEnv.DB_PORT) newEnv.DB_PORT = existingEnv.DB_PORT;
   let databaseRunsInDocker = false;
 
   const categories = [
@@ -1673,26 +1745,41 @@ async function runSetup() {
 
   let stepNumber = 1;
   const activeCategories = categories.filter((category) => selectedSections.has(category.key));
-  const totalSteps = activeCategories.length + (databaseSelected ? 1 : 0) + (themeSelected ? 1 : 0) + 1;
+  const totalSteps = activeCategories.length + (!productionOnly && databaseSelected ? 1 : 0) + (!productionOnly && themeSelected ? 1 : 0) + 1;
 
   // Welcome screen
   printHeader();
   if (!isConfigured) printBox(
-    'Welcome to RapidAuth Setup',
+    productionOnly ? 'Prepare RapidAuth for Production' : 'Welcome to RapidAuth Setup',
     [
-      'This wizard will help you configure your application.',
+      ...(productionOnly
+        ? [
+            'This wizard prepares production',
+            'environment settings for your deployment.',
+          ]
+        : ['This wizard will help you configure your application.']),
       '',
-      'Before you start, make sure you have:',
+      productionOnly ? 'Before you start, make sure you have:' : 'Before you start, make sure you have:',
+      ...(productionOnly
+        ? [
+            '  • A production PostgreSQL database',
+            '    and public HTTPS URL',
+            '  • A Resend API key and a verified sender domain',
+            '  • Credentials for optional services you want',
+            '    to enable',
+          ]
+        : [
       '  • An external PostgreSQL database or Docker for local PostgreSQL',
       '  • A Resend account for sending emails (optional: without it, emails go to Mailpit)',
       '  • A free Cloudflare account for Turnstile',
       '  • OAuth credentials (optional)',
       '  • A Sentry account (optional)',
+        ]),
     ],
     'info',
   );
 
-  if (!isConfigured) await question(`  ${colors.cyan}Press Enter to continue...${colors.reset}`);
+  if (!isConfigured && !productionOnly) await question(`  ${colors.cyan}Press Enter to continue...${colors.reset}`);
 
   // Collect variables by category
   let firstCategory = true;
@@ -1709,6 +1796,16 @@ async function runSetup() {
 
       // First ask for BETTER_AUTH_SECRET (auto-generated)
       for (const variable of categoryVars) {
+        if (
+          productionOnly &&
+          variable.key === 'BETTER_AUTH_SECRET' &&
+          existingEnv.BETTER_AUTH_SECRET &&
+          !existingEnv.BETTER_AUTH_SECRET.startsWith('replace-with-')
+        ) {
+          newEnv[variable.key] = existingEnv.BETTER_AUTH_SECRET;
+          println(`  ${colors.green}${icons.success} Keeping the existing production secret${colors.reset}`);
+          continue;
+        }
         const value = await askVariable(variable, existingEnv[variable.key]);
         if (value) {
           newEnv[variable.key] = value;
@@ -1716,10 +1813,10 @@ async function runSetup() {
       }
 
       // Then ask for BETTER_AUTH_URL with options
-      const authUrl = await askAuthUrl();
+      const authUrl = await askAuthUrl(existingEnv.BETTER_AUTH_URL, productionOnly);
       newEnv['BETTER_AUTH_URL'] = authUrl;
     } else if (category.key === 'database') {
-      const database = await askDatabaseUrl(existingEnv, !isConfigured);
+      const database = await askDatabaseUrl(existingEnv, !isConfigured, productionOnly);
       if (!database) return;
       newEnv.DATABASE_URL = database.url;
       databaseRunsInDocker = database.dockerDatabase;
@@ -1736,7 +1833,10 @@ async function runSetup() {
 
       // First ask for RESEND_API_KEY
       for (const variable of categoryVars) {
-        const value = await askVariable(variable, existingEnv[variable.key]);
+        const value = await askVariable(
+          productionOnly ? { ...variable, required: true } : variable,
+          existingEnv[variable.key],
+        );
         if (value) {
           newEnv[variable.key] = value;
         }
@@ -1748,7 +1848,7 @@ async function runSetup() {
         println();
       } else {
         // Then ask for FROM_EMAIL with domain check
-        const { fromEmail, testEmail } = await askEmailConfig();
+        const { fromEmail, testEmail } = await askEmailConfig(productionOnly);
         newEnv['FROM_EMAIL'] = fromEmail;
 
         // Send test email
@@ -1792,7 +1892,7 @@ async function runSetup() {
                 if (retryCount < maxRetries) {
                   println();
                   println(`     ${colors.cyan}Let's try again...${colors.reset}`);
-                  const retryConfig = await askEmailConfig();
+                  const retryConfig = await askEmailConfig(productionOnly);
                   newEnv['FROM_EMAIL'] = retryConfig.fromEmail;
                 }
               }
@@ -1817,7 +1917,7 @@ async function runSetup() {
                 break;
               }
               println();
-              const retryConfig2 = await askEmailConfig();
+              const retryConfig2 = await askEmailConfig(productionOnly);
               newEnv['FROM_EMAIL'] = retryConfig2.fromEmail;
             }
           }
@@ -1825,6 +1925,10 @@ async function runSetup() {
 
         if (!emailSuccess) {
           println();
+          if (productionOnly) {
+            println(`     ${colors.red}${icons.error} Resend email verification did not succeed.${colors.reset}`);
+            throw new Error('Resend email verification did not succeed. Fix the sender or API key and run bun run setup:prod --only email.');
+          }
           println(`     ${colors.yellow}${icons.warning} Continuing without email verification${colors.reset}`);
           println(`     ${colors.dim}You may need to fix email configuration manually${colors.reset}`);
         }
@@ -1834,7 +1938,7 @@ async function runSetup() {
     } else if (category.key === 'support') {
       newEnv.SUPPORT_EMAIL = await askSupportEmail(existingEnv.SUPPORT_EMAIL);
     } else if (category.key === 'captcha') {
-      const turnstile = await askTurnstileConfig(existingEnv);
+      const turnstile = await askTurnstileConfig(existingEnv, productionOnly);
       newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = turnstile.siteKey;
       newEnv.TURNSTILE_SECRET_KEY = turnstile.secretKey;
     } else if (category.key === 'oauth') {
@@ -1847,7 +1951,7 @@ async function runSetup() {
         Object.assign(newEnv, creds);
       }
     } else if (category.key === 'storage') {
-      Object.assign(newEnv, await askStorageConfig(existingEnv));
+      Object.assign(newEnv, await askStorageConfig(existingEnv, productionOnly));
     } else if (category.key === 'monitoring') {
       Object.assign(newEnv, await askSentryConfig(existingEnv));
     } else if (category.key === 'cleanup') {
@@ -1857,6 +1961,43 @@ async function runSetup() {
     }
 
     stepNumber++;
+  }
+
+  if (productionOnly) {
+    const candidateEnv = { ...existingEnv, ...newEnv };
+    const requiredProductionKeys = [
+      'BETTER_AUTH_SECRET',
+      'BETTER_AUTH_URL',
+      'DATABASE_URL',
+      'RESEND_API_KEY',
+      'FROM_EMAIL',
+      'SUPPORT_EMAIL',
+    ];
+    const missing = requiredProductionKeys.filter((key) => !candidateEnv[key]?.trim());
+    const resolution = resolveEnv(candidateEnv);
+    const issues = [...missing.map((key) => `${key} is required for production.`), ...resolution.problems];
+    try {
+      const appUrl = new URL(candidateEnv.BETTER_AUTH_URL ?? '');
+      if (appUrl.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1', '[::1]'].includes(appUrl.hostname)) {
+        issues.push('BETTER_AUTH_URL must be a public HTTPS URL for production.');
+      }
+    } catch {
+      issues.push('BETTER_AUTH_URL must be a valid public HTTPS URL for production.');
+    }
+    if (isDockerDatabaseUrl(candidateEnv.DATABASE_URL, candidateEnv.DB_PORT)) {
+      issues.push('DATABASE_URL must point to an external production database.');
+    }
+    if (!getSupportEmail(candidateEnv)) issues.push('SUPPORT_EMAIL must be a valid email address for production.');
+    if (
+      isTurnstileTestSiteKey(candidateEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
+      isTurnstileTestSecretKey(candidateEnv.TURNSTILE_SECRET_KEY)
+    ) {
+      issues.push('Production setup requires real Turnstile keys.');
+    }
+    if (issues.length) {
+      printBox('Production settings need attention', issues, 'error');
+      return;
+    }
   }
 
   const envSections = [...selectedSections].filter((section) => section !== 'theme');
@@ -1872,7 +2013,7 @@ async function runSetup() {
     });
   }
 
-  if (databaseSelected) {
+  if (databaseSelected && !productionOnly) {
     if (previousDatabaseUrl && newEnv.DATABASE_URL !== previousDatabaseUrl) {
       println('The previous DATABASE_URL was saved as a comment in .env.');
     }
@@ -1961,31 +2102,49 @@ async function runSetup() {
 
   // Final screen
   printHeader();
-  printStep(stepNumber, totalSteps, 'Setup Complete!');
-
-  printBox(
-    'Setup Complete!',
-    [
-      'Your RapidAuth application is ready to use.',
-      '',
-      ...(databaseSelected ? ['The admin password was shown once during the database step.', 'Save it and change it after your first login.', 'If the admin already existed, its password was kept.'] : []),
-      '',
-      ...(!newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !newEnv.TURNSTILE_SECRET_KEY
+  printStep(stepNumber, totalSteps, productionOnly ? 'Production Setup Complete!' : 'Setup Complete!');
+  const finalEnv = { ...existingEnv, ...newEnv };
+  const finalResolution = productionOnly ? resolveEnv(finalEnv) : undefined;
+  const turnstileWarningLines = productionOnly
+    ? !finalResolution?.config.turnstile.enabled
+      ? [
+          'Turnstile is off. Turning it on in production is',
+          'recommended: set NEXT_PUBLIC_TURNSTILE_SITE_KEY and',
+          'TURNSTILE_SECRET_KEY on your server.',
+          '',
+        ]
+      : []
+    : !newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !newEnv.TURNSTILE_SECRET_KEY
+      ? [
+          'Turnstile is off. Turning it on in production is',
+          'recommended: set NEXT_PUBLIC_TURNSTILE_SITE_KEY and',
+          'TURNSTILE_SECRET_KEY on your server.',
+          '',
+        ]
+      : isTurnstileTestSiteKey(newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
+          isTurnstileTestSecretKey(newEnv.TURNSTILE_SECRET_KEY)
         ? [
-            'Turnstile is off. Turning it on in production is',
-            'recommended: set NEXT_PUBLIC_TURNSTILE_SITE_KEY and',
-            'TURNSTILE_SECRET_KEY on your server.',
+            'Before deploying: create a Turnstile widget',
+            'and set real keys on your server.',
             '',
           ]
-        : isTurnstileTestSiteKey(newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
-            isTurnstileTestSecretKey(newEnv.TURNSTILE_SECRET_KEY)
-          ? [
-              'Before deploying: create a Turnstile widget',
-              'and set real keys on your server.',
-              '',
-            ]
-          : []),
-      ...(databaseRunsInDocker
+        : [];
+
+  printBox(
+    productionOnly ? 'Production Setup Complete!' : 'Setup Complete!',
+    [
+      ...(productionOnly
+        ? [
+            'Production environment settings are ready.',
+            'Deploy with your hosting provider.',
+            'Follow the production deployment guide before launch.',
+          ]
+        : ['Your RapidAuth application is ready to use.']),
+      '',
+      ...(!productionOnly && databaseSelected ? ['The admin password was shown once during the database step.', 'Save it and change it after your first login.', 'If the admin already existed, its password was kept.'] : []),
+      '',
+      ...turnstileWarningLines,
+      ...(!productionOnly && databaseRunsInDocker
         ? [
             'Local PostgreSQL is running in Docker.',
             'It starts with Docker unless you stopped it on purpose.',
@@ -1994,12 +2153,17 @@ async function runSetup() {
             '',
           ]
         : []),
-      "Run 'bun dev' to start the development server.",
+      ...(productionOnly ? [] : ["Run 'bun dev' to start the development server."]),
     ],
     'success',
   );
 
-  println(`  ${colors.cyan}${icons.rocket} Happy coding!${colors.reset}`);
+  if (productionOnly) {
+    println(formatEnvSummary(finalResolution!.config));
+    println();
+  }
+
+  println(`  ${colors.cyan}${icons.rocket} ${productionOnly ? 'Ready to deploy.' : 'Happy coding!'}${colors.reset}`);
   println();
 }
 

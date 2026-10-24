@@ -1,6 +1,6 @@
 # Manual setup
 
-This guide installs and configures RapidAuth without running `bun run init:setup`. Follow the steps in order.
+This guide installs and configures RapidAuth manually. For guided production environment setup on Vercel, AWS, a VPS, or another host, run `bun run setup:prod`; it generates a real Better Auth secret and can verify Resend email and S3 storage. It does not configure local development, run database migrations, or create an admin account.
 
 ## Quick start for development
 
@@ -18,9 +18,9 @@ bun dev
 - **Tables:** on every start of the local database it runs `prisma migrate deploy`, which creates the tables when the database is empty and otherwise applies only the pending migrations. If the database already has tables but no migration history, such as one created with `prisma db push`, it stops and explains how to adopt it (see [Database migrations](#database-migrations)); it never changes that database by itself. It does not create an admin account: open the app and use the **Create your admin account** screen (see [section 9](#9-start-the-app-and-create-the-admin)), or run `bun run db:seed`.
 - **Mailpit:** it starts the local inbox at `http://localhost:8025` only when `RESEND_API_KEY` is empty.
 - **Precedence:** variables already exported in your terminal win over `.env`, as in Next.js and Prisma. All decisions above use that effective value. For example, an exported Neon `DATABASE_URL` means Docker is not started even if `.env` points to the local database.
-- **Summary:** when it finishes, it prints which services are on and the line `For production, run bun run init:setup`.
+- **Summary:** when it finishes, it prints which services are on and the line `For production, run bun run setup:prod`.
 
-The rest of this guide is for configuring everything yourself, for example before deploying.
+For production, run `bun run setup:prod` after provisioning an external PostgreSQL database, public HTTPS URL, and Resend account. The command checks optional service settings with the same rules as `lib/env.ts`.
 
 ## 1. Prepare the requirements
 
@@ -133,7 +133,7 @@ Template maintainers should run `bun run theme:sync-classic` after changing auth
 
 ## Switch databases (Neon ↔ Docker)
 
-Run `bun run db:switch` and choose an external PostgreSQL database or the local Docker database. The wizard saves the previous URL as a comment in `.env`, then runs `prisma migrate deploy` and the seed against the new database (the setup wizard still seeds). If that database already has tables created with `db push`, it stops with the message from [Database migrations](#database-migrations). Database records are not copied between the two databases.
+Run `bun run db:switch` and choose an external PostgreSQL database or the local Docker database. The command saves the previous URL as a comment in `.env`, then runs `prisma migrate deploy` and the seed against the new database. If that database already has tables created with `db push`, it stops with the message from [Database migrations](#database-migrations). Database records are not copied between the two databases.
 
 You can switch manually by changing `DATABASE_URL` in `.env`. `bun dev` starts Docker only when it points to the local Docker database. Then run:
 
@@ -147,7 +147,7 @@ Use `sslmode=disable` only with the local Docker database. Never use it for prod
 
 ## Database migrations
 
-The schema is versioned with Prisma Migrate. Every change lives in a folder under `prisma/migrations/`, and the first one, `0_init`, creates all the tables. `bun dev`, `bun run init:setup` and the Docker development container apply the pending migrations with `prisma migrate deploy`. It is safe to repeat: it only applies what is missing. Never use `prisma db push` against a database with real data; it can drop columns without warning.
+The schema is versioned with Prisma Migrate. Every change lives in a folder under `prisma/migrations/`, and the first one, `0_init`, creates all the tables. `bun dev`, `bun run db:switch` and the Docker development container apply the pending migrations with `prisma migrate deploy`. It is safe to repeat: it only applies what is missing. Run `bun run db:deploy` when deploying a schema update. Never use `prisma db push` against a database with real data; it can drop columns without warning.
 
 ### Create a new migration
 
@@ -175,7 +175,7 @@ With Docker and no Bun on your computer, see [Create production tables and the f
 
 ### Adopt an existing database created with `db push`
 
-If the database already has tables but no `_prisma_migrations` table, `prisma migrate deploy` stops with error `P3005` and changes nothing. `bun dev`, `bun run init:setup` and the Docker container show this guide when that happens. RapidAuth never resolves it automatically: **you run these commands, on your own database.**
+If the database already has tables but no `_prisma_migrations` table, `prisma migrate deploy` stops with error `P3005` and changes nothing. `bun dev`, `bun run db:switch` and the Docker container show this guide when that happens. RapidAuth never resolves it automatically: **you run these commands, on your own database.**
 
 1. Check that the database matches the schema. The command must report no difference (exit code 0):
 

@@ -110,7 +110,7 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(`\n${formatEnvSummary(resolveEnv(env).config)}\n`);
-  process.stdout.write('For production, run bun run init:setup\n\n');
+  process.stdout.write('To prepare production settings, run bun run setup:prod\n\n');
 }
 
 void main();

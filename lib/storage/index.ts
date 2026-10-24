@@ -125,7 +125,7 @@ export function createStorage(driver: StorageDriver = getStorageDriver(), localR
 
 let defaultStorage: FileStorage | undefined;
 
-// Created on first use so tools such as init:setup can start while the storage configuration is incomplete.
+// Created on first use so tools such as setup:prod can start while the storage configuration is incomplete.
 export function getStorage(): FileStorage {
   defaultStorage ??= createStorage();
   return defaultStorage;

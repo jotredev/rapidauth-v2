@@ -26,7 +26,7 @@ A production-ready Next.js 16+ authentication boilerplate with Better Auth, desi
 - Role-based access control (admin, moderator, user)
 
 ### Developer Experience
-- Interactive setup wizard (`bun run init:setup`)
+- Production environment setup (`bun run setup:prod`)
 - TypeScript strict mode
 - ESLint with zero warnings policy
 - Husky git hooks
@@ -38,18 +38,18 @@ A production-ready Next.js 16+ authentication boilerplate with Better Auth, desi
 
 The project pins Bun to **1.4.2** in `package.json`; use that version locally and in Docker.
 
-Choose **one** of these four ways to start. You do not need to follow the other setup paths.
+Choose the setup path you need. These are alternatives; you do not need to follow the other paths.
 
 | Option | What must be installed | Database | Main command |
 | --- | --- | --- | --- |
-| Setup wizard | [Bun](https://bun.sh/); Docker engine only for its local database option | External PostgreSQL or local PostgreSQL in Docker | `bun run init:setup` |
+| Production setup | [Bun](https://bun.sh/) | Production PostgreSQL, public HTTPS URL, and Resend account | `bun run setup:prod` |
 | Manual setup | [Bun](https://bun.sh/) | External PostgreSQL, such as [Neon](https://neon.tech) | `bun dev` after following the manual guide |
 | Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `docker compose up --build` |
 | Docker for the database only | [Bun](https://bun.sh/) and a Docker engine | Local PostgreSQL in Docker; no external database | `bun install`, then `bun dev` (creates `.env`, starts the database and Mailpit, creates the tables) |
 
-### Option 1: Setup wizard
+### Production environment setup
 
-**Requirements:** Bun. Choose an external PostgreSQL database or let the wizard run local PostgreSQL in Docker; the local option also requires a Docker engine. Create a [Resend](https://resend.com) account for email delivery (optional in development: without a key, emails go to Mailpit at `http://localhost:8025`); OAuth credentials are optional.
+Use this guided setup before deploying to Vercel, AWS, a VPS, or another host. It asks for production values, generates a Better Auth secret, and can verify Resend email and S3 storage. It does not configure local development, run migrations, or create an admin account. For development, use `bun dev`.
 
 ```bash
 # Clone the repository
@@ -59,32 +59,23 @@ cd rapidauth-better-auth
 # Install dependencies
 bun install
 
-# Run the interactive setup wizard
-bun run init:setup
+# Prepare production environment settings
+bun run setup:prod
 ```
 
-The setup wizard will guide you through:
-1. Database connection (external PostgreSQL or a local Docker database)
-2. Better Auth configuration
-3. Email service setup
-4. Cloudflare Turnstile
-5. OAuth providers (optional)
-6. Database setup and admin user creation
-7. Optional auth theme selection
-
-You can run `bun run init:setup` again later. It offers the sections to update; only the selected section is changed in `.env` (or choose **Everything** to revisit all sections).
+The setup checks the resulting values against the same optional integration rules used by the app in `lib/env.ts`. Optional integrations stay off unless their required values are configured. You can run the command again to update selected sections.
 
 ### Option 2: Manual setup
 
-**Requirements:** Bun and access to an external PostgreSQL database. Create a [Resend](https://resend.com) account for email delivery (optional in development: without a key, emails go to Mailpit at `http://localhost:8025`); OAuth credentials are optional.
+**Requirements:** Bun and access to an external PostgreSQL database. Create a [Resend](https://resend.com) account for email delivery; OAuth credentials are optional.
 
 To configure each step yourself, follow the [English manual setup guide](docs/en/00-manual-setup.md) or the [guía de setup manual en español](docs/es/00-manual-setup.md). Start the app with `bun dev` after completing that guide.
 
 ### Option 3: Docker
 
-**Requirements:** A Docker engine with Compose v2 and Buildx, such as Docker Desktop, OrbStack, Colima, or Docker Engine. You do not need Bun or PostgreSQL installed on your computer. Compose creates the local database and applies the schema when it starts; you create the admin account on the first-run screen (see Admin Account below). You do not need to run `bun run init:setup`.
+**Requirements:** A Docker engine with Compose v2 and Buildx, such as Docker Desktop, OrbStack, Colima, or Docker Engine. You do not need Bun or PostgreSQL installed on your computer. Compose creates the local database and applies the schema when it starts; you create the admin account on the first-run screen (see Admin Account below). You do not need to run `bun run setup:prod` for development.
 
-A `.env` file created by `bun run init:setup` also works with Docker. Compose supplies the local database URL and local app URL when starting the container. To start the app and database, follow the [English Docker guide](docs/en/03-docker.md) or the [guía de Docker en español](docs/es/03-docker.md).
+A `.env` file created by `bun run setup:prod` can provide production credentials to Docker. Compose supplies the local database URL and local app URL when starting the development container. To start the app and database, follow the [English Docker guide](docs/en/03-docker.md) or the [guía de Docker en español](docs/es/03-docker.md).
 
 ### Option 4: Docker for the database only
 
@@ -96,7 +87,7 @@ Browse all guides from the [documentation index](docs/README.md).
 
 There is no default password. While no admin exists, the home, sign-in and register pages send you to **Create your admin account** (`/auth/setup`). Enter a name, email and password, accept the terms, and sign in. The screen closes 15 minutes after the app starts if nobody used it; restart the app to open it again.
 
-To create the admin without the screen, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` (at least 8 characters) and run `bun run db:seed`; without a password the seed generates one and prints it once. `bun run init:setup` also seeds an admin. If an account with that email already exists, the seed keeps it. To reset a password, run `bun run scripts/reset-password.ts [email]` (defaults to `admin@admin.com`); the new password is printed once.
+To create the admin without the screen, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` (at least 8 characters) and run `bun run db:seed`; without a password the seed generates one and prints it once. If an account with that email already exists, the seed keeps it. To reset a password, run `bun run scripts/reset-password.ts [email]` (defaults to `admin@admin.com`); the new password is printed once.
 
 ### Themes and template maintenance
 
@@ -204,7 +195,7 @@ The server reads these variables when it starts. To change them, restart the ser
 
 ## Turnstile (Optional, recommended in production)
 
-Turnstile protects registration, verification code resends, and password reset code requests. Turnstile is optional: it turns on only when both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, and stays off (without errors) otherwise. We recommend always turning it on in production by setting both variables on the server where you deploy. `bun run init:setup` asks for the two keys and can use test keys for local development. The production build does not need them.
+Turnstile protects registration, verification code resends, and password reset code requests. Turnstile is optional: it turns on only when both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, and stays off (without errors) otherwise. We recommend always turning it on in production by setting both variables on the server where you deploy. `bun run setup:prod` accepts real production keys; use test keys only for local development. The production build does not need them.
 
 Setup guides: [English](docs/en/02-turnstile.md) · [Español](docs/es/02-turnstile.md).
 
@@ -241,7 +232,7 @@ bun run db:studio      # Open Prisma Studio
 bun run db:seed        # Seed database
 
 # Setup
-bun run init:setup     # Interactive setup wizard
+bun run setup:prod     # Guided production environment setup
 ```
 
 ## Database Schema

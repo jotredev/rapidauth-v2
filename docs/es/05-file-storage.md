@@ -61,7 +61,7 @@ S3_FORCE_PATH_STYLE="true"
 
 Reemplaza `ACCOUNT_ID`, el bucket, las llaves y el dominio por tus valores. `S3_ENDPOINT` es la dirección de API del panel R2. `S3_PUBLIC_URL` es donde el navegador puede abrir una imagen. Son direcciones distintas. `S3_FORCE_PATH_STYLE=true` significa que el nombre del bucket va en la ruta; esto ayuda a R2 y a muchos servicios compatibles a entender la petición.
 
-Ejecuta `bun run init:setup --only storage` para ingresar los valores con el asistente. El asistente sube un objeto temporal pequeño, comprueba que se pueda leer por la URL pública y lo borra. Si falla, revisa el bucket, las llaves, el acceso público y la URL.
+Ejecuta `bun run setup:prod --only storage` para ingresar los valores con el asistente. El asistente sube un objeto temporal pequeño, comprueba que se pueda leer por la URL pública y lo borra. Si falla, revisa el bucket, las llaves, el acceso público y la URL.
 
 ## Valores para Amazon S3
 

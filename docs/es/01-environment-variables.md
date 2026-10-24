@@ -1,6 +1,6 @@
 # Variables de entorno
 
-Esta referencia cubre todas las variables que leen la aplicación y los scripts de setup. El archivo `.env.example` sirve como plantilla para copiar. Nunca subas secretos reales al repositorio.
+Esta referencia cubre todas las variables que leen la aplicación y los scripts de setup. La plantilla `.env.example` tiene tres bloques breves: valores necesarios para producción, integraciones opcionales y herramientas de build o mantenimiento. Consulta aquí los detalles. Nunca subas secretos reales al repositorio.
 
 ## Base de datos
 
@@ -80,7 +80,7 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 
 - **Propósito:** Dirección de correo electrónico pública para soporte y contacto legal. Se muestra en la página `/support`, en las páginas legales (`/terms` y `/privacy`), y en los correos de aviso de seguridad y eliminación de cuenta.
 - **Obligatoria:** Obligatoria en builds de producción (`next build` falla si falta o no es válida). Opcional en desarrollo (muestra un texto indicando que la configuración está pendiente).
-- **Dónde obtenerla:** Configura la dirección de buzón de soporte (ej. `soporte@tudominio.com`). Ejecuta `bun run init:setup --only support` (o `bun run setup:support`) para configurarla.
+- **Dónde obtenerla:** Configura la dirección de buzón de soporte (ej. `soporte@tudominio.com`). Ejecuta `bun run setup:prod --only support` (o `bun run setup:support`) para configurarla.
 - **Formato de ejemplo:** `soporte@example.com`
 - **Nota de compilación:** El valor se fija durante el build para páginas estáticas (`/terms` y `/privacy`).
 - **Secreta:** No. Es una dirección de contacto pública.

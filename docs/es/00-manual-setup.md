@@ -1,6 +1,6 @@
 # Setup manual
 
-Esta guía instala y configura RapidAuth sin ejecutar `bun run init:setup`. Sigue los pasos en orden.
+Esta guía instala y configura RapidAuth manualmente. Para preparar el entorno de producción en Vercel, AWS, un VPS u otro host con el asistente, ejecuta `bun run setup:prod`: genera un secreto real de Better Auth y puede verificar el correo de Resend y el almacenamiento S3. No configura el desarrollo local, ejecuta migraciones ni crea una cuenta admin.
 
 ## Inicio rápido para desarrollo
 
@@ -18,9 +18,9 @@ bun dev
 - **Tablas:** en cada inicio de la base local ejecuta `prisma migrate deploy`, que crea las tablas si la base está vacía y, si no, aplica solo las migraciones pendientes. Si la base ya tiene tablas pero no historial de migraciones, como una creada con `prisma db push`, se detiene y explica cómo adoptarla (consulta [Migraciones de la base de datos](#migraciones-de-la-base-de-datos)); nunca modifica esa base por sí solo. No crea ninguna cuenta de admin: abre la app y usa la pantalla **Create your admin account** (consulta la [sección 9](#9-inicia-la-app-y-crea-el-admin)), o ejecuta `bun run db:seed`.
 - **Mailpit:** inicia la bandeja local en `http://localhost:8025` solo si `RESEND_API_KEY` está vacía.
 - **Prioridad:** las variables ya exportadas en tu terminal ganan a `.env`, igual que en Next.js y Prisma. Todas las decisiones anteriores usan ese valor efectivo. Por ejemplo, si exportas una `DATABASE_URL` de Neon, no se inicia Docker aunque `.env` apunte a la base local.
-- **Resumen:** al terminar muestra qué servicios están activos y la línea `For production, run bun run init:setup`.
+- **Resumen:** al terminar muestra qué servicios están activos y la línea `For production, run bun run setup:prod`.
 
-El resto de esta guía sirve para configurar todo a mano, por ejemplo antes de desplegar.
+Para producción, ejecuta `bun run setup:prod` después de preparar una base PostgreSQL externa, una URL HTTPS pública y una cuenta de Resend. El comando comprueba las opciones de servicios con las mismas reglas de `lib/env.ts`.
 
 ## 1. Prepara los requisitos
 
@@ -133,7 +133,7 @@ Quienes mantienen la plantilla deben ejecutar `bun run theme:sync-classic` despu
 
 ## Cambiar de base de datos (Neon ↔ Docker)
 
-Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El asistente guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma migrate deploy` y el seed contra la base nueva (el asistente de configuración sigue ejecutando el seed). Si esa base ya tiene tablas creadas con `db push`, se detiene con el mensaje de [Migraciones de la base de datos](#migraciones-de-la-base-de-datos). Los datos no se copian entre bases.
+Ejecuta `bun run db:switch` y elige una base PostgreSQL externa o la base local en Docker. El comando guarda la URL anterior como comentario en `.env` y luego ejecuta `prisma migrate deploy` y el seed contra la base nueva. Si esa base ya tiene tablas creadas con `db push`, se detiene con el mensaje de [Migraciones de la base de datos](#migraciones-de-la-base-de-datos). Los datos no se copian entre bases.
 
 También puedes cambiarla manualmente editando `DATABASE_URL` en `.env`. `bun dev` solo inicia Docker si apunta a la base local de Docker. Luego ejecuta:
 
@@ -147,7 +147,7 @@ Usa `sslmode=disable` solo con la base local de Docker. Nunca lo uses en producc
 
 ## Migraciones de la base de datos
 
-El esquema se versiona con Prisma Migrate. Cada cambio vive en una carpeta dentro de `prisma/migrations/`, y la primera, `0_init`, crea todas las tablas. `bun dev`, `bun run init:setup` y el contenedor de desarrollo con Docker aplican las migraciones pendientes con `prisma migrate deploy`. Es seguro repetirlo: solo aplica lo que falta. Nunca uses `prisma db push` contra una base con datos reales; puede borrar columnas sin avisar.
+El esquema se versiona con Prisma Migrate. Cada cambio vive en una carpeta dentro de `prisma/migrations/`, y la primera, `0_init`, crea todas las tablas. `bun dev`, `bun run db:switch` y el contenedor de desarrollo con Docker aplican las migraciones pendientes con `prisma migrate deploy`. Es seguro repetirlo: solo aplica lo que falta. Ejecuta `bun run db:deploy` al desplegar una actualización del esquema. Nunca uses `prisma db push` contra una base con datos reales; puede borrar columnas sin avisar.
 
 ### Crear una migración nueva
 
@@ -175,7 +175,7 @@ Con Docker y sin Bun en tu computadora, consulta [Crear tablas de producción y 
 
 ### Adoptar una base existente creada con `db push`
 
-Si la base ya tiene tablas pero no tiene la tabla `_prisma_migrations`, `prisma migrate deploy` se detiene con el error `P3005` y no cambia nada. `bun dev`, `bun run init:setup` y el contenedor de Docker muestran esta guía cuando ocurre. RapidAuth nunca lo resuelve automáticamente: **tú ejecutas estos comandos, en tu propia base.**
+Si la base ya tiene tablas pero no tiene la tabla `_prisma_migrations`, `prisma migrate deploy` se detiene con el error `P3005` y no cambia nada. `bun dev`, `bun run db:switch` y el contenedor de Docker muestran esta guía cuando ocurre. RapidAuth nunca lo resuelve automáticamente: **tú ejecutas estos comandos, en tu propia base.**
 
 1. Comprueba que la base coincide con el esquema. El comando debe informar que no hay diferencias (código de salida 0):
 

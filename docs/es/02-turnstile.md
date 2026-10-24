@@ -28,7 +28,7 @@ Con Docker, pasa ambas variables solo al iniciar el contenedor (por ejemplo con 
 
 Por ejemplo, en Vercel agrega ambas variables en **Project Settings → Environment Variables** para cada entorno que deba usar Turnstile, y vuelve a desplegar o reinicia para que surtan efecto. En CI solo las necesitas si una prueba inicia la app con Turnstile activo.
 
-El asistente `bun run init:setup` también pide las claves de Turnstile y puede guardar claves reales o de prueba para uso local en `.env`.
+El comando de configuración de producción `bun run setup:prod` puede verificar claves reales de Turnstile y guardarlas en `.env`. Usa las claves de prueba documentadas solo para desarrollo local.
 
 ## Claves de prueba de Cloudflare
 

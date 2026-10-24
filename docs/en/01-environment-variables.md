@@ -1,6 +1,6 @@
 # Environment variables
 
-This reference covers every variable read by the application and setup scripts. The `.env.example` file provides a copyable template. Never commit real secrets.
+This reference covers every variable read by the application and setup scripts. The `.env.example` template has three short sections: values required for production, optional integrations, and build or maintenance tools. Use this guide for the details. Never commit real secrets.
 
 ## Database
 
@@ -80,7 +80,7 @@ This reference covers every variable read by the application and setup scripts. 
 
 - **Purpose:** Public support and legal contact email address. Shown on the `/support` page, on legal pages (`/terms` and `/privacy`), and in account deletion and security notice emails.
 - **Required:** Required for production builds (`next build` fails if missing or invalid). Optional in development (displays a placeholder explaining configuration is pending).
-- **Where to get it:** Configure your support mailbox address (e.g., `support@yourdomain.com`). Run `bun run init:setup --only support` (or `bun run setup:support`) to configure it.
+- **Where to get it:** Configure your support mailbox address (e.g., `support@yourdomain.com`). Run `bun run setup:prod --only support` (or `bun run setup:support`) to configure it.
 - **Example format:** `support@example.com`
 - **Build note:** The value is baked in during the build for static pages (`/terms` and `/privacy`).
 - **Secret:** No. It is a public contact address.
