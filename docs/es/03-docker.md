@@ -42,7 +42,7 @@ No necesitas copiar `.env.example`. Si creas un `.env` en la raíz, sus valores 
 
 Para activar Sentry, define `NEXT_PUBLIC_SENTRY_DSN` en el `.env` raíz y reinicia el contenedor de la app. El servidor en ejecución entrega el DSN público al navegador; no hace falta reconstruir la imagen. `SENTRY_ORG`, `SENTRY_PROJECT` y `SENTRY_AUTH_TOKEN` solo se necesitan durante el build para subir source maps. El token se monta como secreto de BuildKit y nunca se pasa como argumento de build. Consulta [Monitoreo de errores](06-error-monitoring.md).
 
-Solo la app se publica en el puerto 3000. PostgreSQL y Mailpit se enlazan a `127.0.0.1`; la bandeja web de Mailpit usa el puerto 8025 y su puerto SMTP es 1025. En un VPS se usa el mismo archivo Compose y un `.env` protegido; coloca un proxy TLS delante de la app si necesitas HTTPS.
+Solo la app se publica en `127.0.0.1:3000`. PostgreSQL y Mailpit también se enlazan a `127.0.0.1`; la bandeja web de Mailpit usa el puerto 8025 y su puerto SMTP es 1025. Para desplegar en un VPS con Caddy, HTTPS automático y respaldos diarios de la base, sigue la guía [Desplegar en un VPS](08-deploy-to-a-vps.md).
 
 La base de datos y los avatares subidos sobreviven al reemplazo de contenedores y a `docker compose down`. Para borrar también todos los datos guardados, ejecuta `docker compose down -v`.
 

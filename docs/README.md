@@ -17,3 +17,8 @@
 
 - [English: Scheduled cleanup and trusted client IPs](en/07-scheduled-cleanup.md)
 - [Español: Limpieza programada e IP real del cliente](es/07-scheduled-cleanup.md)
+
+## VPS deployment
+
+- [English: Deploy to a VPS](en/08-deploy-to-a-vps.md)
+- [Español: Desplegar en un VPS](es/08-deploy-to-a-vps.md)

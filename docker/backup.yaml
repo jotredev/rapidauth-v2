@@ -1,0 +1,40 @@
+services:
+  backup:
+    image: postgres:17-alpine
+    profiles: ["vps"]
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: rapidauth
+      PGPASSWORD: rapidauth
+      PGDATABASE: rapidauth
+    volumes:
+      - db_backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        cat > /usr/local/bin/backup <<'BACKUP'
+        #!/bin/sh
+        set -eu
+        stamp=$$(date -u +%Y%m%dT%H%M%SZ)
+        dump="/backups/rapidauth-$$stamp.sql"
+        archive="$$dump.gz"
+        pg_dump --no-owner --no-privileges --file="$$dump"
+        gzip "$$dump"
+        find /backups -type f -name 'rapidauth-*.sql.gz' -mtime +6 -delete
+        echo "Backup created: $$archive"
+        BACKUP
+        chmod +x /usr/local/bin/backup
+        echo '0 2 * * * /usr/local/bin/backup' >> /etc/crontabs/root
+        /usr/local/bin/backup
+        exec crond -f -l 2
+
+volumes:
+  db_backups:

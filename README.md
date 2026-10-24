@@ -42,7 +42,7 @@ Choose the setup path you need. These are alternatives; you do not need to follo
 
 | Option | What must be installed | Database | Main command |
 | --- | --- | --- | --- |
-| Production setup | [Bun](https://bun.sh/) | Production PostgreSQL, public HTTPS URL, and Resend account | `bun run setup:prod` |
+| Production setup | [Bun](https://bun.sh/) | Choose Docker Compose for a VPS or provide external production PostgreSQL; public HTTPS URL and Resend account | `bun run setup:prod` |
 | Manual setup | [Bun](https://bun.sh/) | External PostgreSQL, such as [Neon](https://neon.tech) | `bun dev` after following the manual guide |
 | Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `docker compose up --build` |
 | Docker for the database only | [Bun](https://bun.sh/) and a Docker engine | Local PostgreSQL in Docker; no external database | `bun install`, then `bun dev` (creates `.env`, starts the database and Mailpit, creates the tables) |

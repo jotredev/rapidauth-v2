@@ -20,7 +20,7 @@ bun dev
 - **Prioridad:** las variables ya exportadas en tu terminal ganan a `.env`, igual que en Next.js y Prisma. Todas las decisiones anteriores usan ese valor efectivo. Por ejemplo, si exportas una `DATABASE_URL` de Neon, no se inicia Docker aunque `.env` apunte a la base local.
 - **Resumen:** al terminar muestra qué servicios están activos y la línea `For production, run bun run setup:prod`.
 
-Para producción, ejecuta `bun run setup:prod` después de preparar una base PostgreSQL externa, una URL HTTPS pública y una cuenta de Resend. El comando comprueba las opciones de servicios con las mismas reglas de `lib/env.ts`.
+Para producción, ejecuta `bun run setup:prod`. Elige Docker Compose para desplegar en un VPS o proporciona una base PostgreSQL externa para otro hosting. Ambas rutas necesitan una URL HTTPS pública y una cuenta de Resend. El comando comprueba las opciones de servicios con las mismas reglas de `lib/env.ts`.
 
 ## 1. Prepara los requisitos
 

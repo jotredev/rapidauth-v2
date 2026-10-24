@@ -6,3 +6,5 @@ include:
   - docker/storage.yaml
   - docker/app.yaml
   - docker/cron.yaml
+  - docker/proxy.yaml
+  - docker/backup.yaml

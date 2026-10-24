@@ -264,6 +264,15 @@ async function question(prompt: string): Promise<string> {
   });
 }
 
+async function askDockerComposeDeployment(): Promise<boolean> {
+  while (true) {
+    const answer = (await question('¿Despliegas con Docker Compose? (sí/no): ')).toLowerCase();
+    if (['sí', 'si', 's', 'yes', 'y'].includes(answer)) return true;
+    if (['no', 'n'].includes(answer)) return false;
+    println('Responde sí o no.');
+  }
+}
+
 async function askVariable(
   variable: EnvVariable,
   existingValue?: string,
@@ -1476,12 +1485,17 @@ async function runSetup() {
     forcedSection = value as (typeof allowedOnly)[number];
   }
   const existingEnv = loadExistingEnv();
-  const isConfigured = Boolean(existingEnv.DATABASE_URL && existingEnv.BETTER_AUTH_SECRET && existingEnv.BETTER_AUTH_URL);
+  const useDockerCompose = await askDockerComposeDeployment();
+  const isConfigured = Boolean((useDockerCompose || existingEnv.DATABASE_URL) && existingEnv.BETTER_AUTH_SECRET && existingEnv.BETTER_AUTH_URL);
   let selection = forcedSection ?? '';
   if (!selection && isConfigured) {
     println('Production settings are already configured. Choose what to update:');
-    println('  [1] Database\n  [2] Email\n  [3] Turnstile\n  [4] OAuth\n  [5] Storage\n  [6] Sentry\n  [7] Scheduled cleanup\n  [8] Trusted proxy\n  [9] Support email\n  [10] Everything');
-    const choices: Record<string, string> = { '1': 'database', '2': 'email', '3': 'turnstile', '4': 'oauth', '5': 'storage', '6': 'sentry', '7': 'cleanup', '8': 'proxy', '9': 'support', '10': 'everything' };
+    const choices: Record<string, string> = useDockerCompose
+      ? { '1': 'email', '2': 'turnstile', '3': 'oauth', '4': 'storage', '5': 'sentry', '6': 'cleanup', '7': 'proxy', '8': 'support', '9': 'everything' }
+      : { '1': 'database', '2': 'email', '3': 'turnstile', '4': 'oauth', '5': 'storage', '6': 'sentry', '7': 'cleanup', '8': 'proxy', '9': 'support', '10': 'everything' };
+    println(useDockerCompose
+      ? '  [1] Email\n  [2] Turnstile\n  [3] OAuth\n  [4] Storage\n  [5] Sentry\n  [6] Scheduled cleanup\n  [7] Trusted proxy\n  [8] Support email\n  [9] Everything'
+      : '  [1] Database\n  [2] Email\n  [3] Turnstile\n  [4] OAuth\n  [5] Storage\n  [6] Sentry\n  [7] Scheduled cleanup\n  [8] Trusted proxy\n  [9] Support email\n  [10] Everything');
     while (!selection) {
       selection = choices[await question('Select a section: ')] ?? '';
       if (!selection) println('Choose one of the listed options.');
@@ -1503,7 +1517,7 @@ async function runSetup() {
     { key: 'cleanup', title: 'Scheduled cleanup (optional)', icon: icons.shield },
     { key: 'proxy', title: 'Trusted client IP source', icon: icons.globe },
   ] as const;
-  const activeCategories = categories.filter((category) => selectedSections.has(category.key));
+  const activeCategories = categories.filter((category) => selectedSections.has(category.key) && !(useDockerCompose && category.key === 'database'));
   const newEnv: Record<string, string> = {};
   let stepNumber = 1;
   printHeader();
@@ -1511,7 +1525,7 @@ async function runSetup() {
     'This wizard prepares production environment settings for your deployment.',
     '',
     'Before you start, make sure you have:',
-    '  • A production PostgreSQL database and public HTTPS URL',
+    `  • ${useDockerCompose ? 'A Docker Compose deployment and public HTTPS URL' : 'A production PostgreSQL database and public HTTPS URL'}`,
     '  • A Resend API key and a verified sender domain',
     '  • Credentials for optional services you want to enable',
   ], 'info');
@@ -1571,7 +1585,8 @@ async function runSetup() {
   }
 
   const candidateEnv = { ...existingEnv, ...newEnv };
-  const requiredKeys = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'DATABASE_URL', 'RESEND_API_KEY', 'FROM_EMAIL', 'SUPPORT_EMAIL'];
+  const requiredKeys = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'RESEND_API_KEY', 'FROM_EMAIL', 'SUPPORT_EMAIL'];
+  if (!useDockerCompose) requiredKeys.push('DATABASE_URL');
   const missing = requiredKeys.filter((key) => !candidateEnv[key]?.trim());
   const resolution = resolveEnv(candidateEnv);
   const issues = [...missing.map((key) => `${key} is required for production.`), ...resolution.problems];
@@ -1579,7 +1594,7 @@ async function runSetup() {
     const appUrl = new URL(candidateEnv.BETTER_AUTH_URL ?? '');
     if (appUrl.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1', '[::1]'].includes(appUrl.hostname)) issues.push('BETTER_AUTH_URL must be a public HTTPS URL for production.');
   } catch { issues.push('BETTER_AUTH_URL must be a valid public HTTPS URL for production.'); }
-  if (isDockerDatabaseUrl(candidateEnv.DATABASE_URL, candidateEnv.DB_PORT)) issues.push('DATABASE_URL must point to an external production database.');
+  if (!useDockerCompose && isDockerDatabaseUrl(candidateEnv.DATABASE_URL, candidateEnv.DB_PORT)) issues.push('DATABASE_URL must point to an external production database.');
   if (!getSupportEmail(candidateEnv)) issues.push('SUPPORT_EMAIL must be a valid email address for production.');
   if (isTurnstileTestSiteKey(candidateEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(candidateEnv.TURNSTILE_SECRET_KEY)) issues.push('Production setup requires real Turnstile keys.');
   if (issues.length) { printBox('Production settings need attention', issues, 'error'); return; }

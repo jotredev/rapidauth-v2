@@ -20,7 +20,7 @@ bun dev
 - **Precedence:** variables already exported in your terminal win over `.env`, as in Next.js and Prisma. All decisions above use that effective value. For example, an exported Neon `DATABASE_URL` means Docker is not started even if `.env` points to the local database.
 - **Summary:** when it finishes, it prints which services are on and the line `For production, run bun run setup:prod`.
 
-For production, run `bun run setup:prod` after provisioning an external PostgreSQL database, public HTTPS URL, and Resend account. The command checks optional service settings with the same rules as `lib/env.ts`.
+For production, run `bun run setup:prod`. Choose Docker Compose for a VPS deployment, or provide an external PostgreSQL database for another host. Both paths need a public HTTPS URL and Resend account. The command checks optional service settings with the same rules as `lib/env.ts`.
 
 ## 1. Prepare the requirements
 
