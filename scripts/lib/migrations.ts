@@ -46,10 +46,18 @@ export type MigrationStatusCheck =
   | { status: 'baseline-required' }
   | { status: 'error'; reason: string };
 
+export type ConnectionCheck = { ok: true } | { ok: false; reason: string };
+
 /** Opens a read-only connection check without changing the database. */
-export async function canConnectToDatabase(databaseUrl: string): Promise<boolean> {
+export async function canConnectToDatabase(databaseUrl: string): Promise<ConnectionCheck> {
+  let url: URL;
   try {
-    const url = new URL(databaseUrl);
+    url = new URL(databaseUrl);
+  } catch {
+    // Never echo the value: the parser error may contain the URL with its password.
+    return { ok: false, reason: 'DATABASE_URL is not a valid URL' };
+  }
+  try {
     const sslMode = url.searchParams.get('sslmode');
     const pool = new Pool({
       connectionString: databaseUrl,
@@ -58,12 +66,12 @@ export async function canConnectToDatabase(databaseUrl: string): Promise<boolean
     });
     try {
       await pool.query('SELECT 1');
-      return true;
+      return { ok: true };
     } finally {
       await pool.end();
     }
-  } catch {
-    return false;
+  } catch (error) {
+    return { ok: false, reason: shortError(error) };
   }
 }
 

@@ -39,15 +39,11 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-export type DockerService = 'db' | 'mailpit';
-
-/** Starts one Compose service in the background and waits until its healthcheck passes. */
-export async function ensureDockerService(
-  service: DockerService,
-  label: string,
-  extraEnvironment: Record<string, string> = {},
-): Promise<void> {
-  const environment = { ...process.env, ...extraEnvironment };
+/** Starts the local PostgreSQL service in the background and waits until its healthcheck passes. */
+export async function ensureDockerDatabase(port?: string): Promise<void> {
+  const service = 'db';
+  const label = 'Local PostgreSQL';
+  const environment = { ...process.env, ...(port ? { DB_PORT: port } : {}) };
   const output = execFileSync(
     'docker',
     [...DOCKER_COMPOSE_ARGS, 'up', '-d', service],
@@ -85,8 +81,4 @@ export async function ensureDockerService(
   }
 
   throw new Error(`Timed out after 60 seconds waiting for the ${label} container to become healthy.`);
-}
-
-export async function ensureDockerDatabase(port?: string): Promise<void> {
-  await ensureDockerService('db', 'Local PostgreSQL', port ? { DB_PORT: port } : {});
 }

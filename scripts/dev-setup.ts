@@ -82,10 +82,12 @@ async function main(): Promise<void> {
   // Effective environment: variables already exported in the terminal win over .env, as in Next.js and Prisma.
   const env = { ...parse(readFileSync(envPath)), ...process.env };
   const databaseUrl = env.DATABASE_URL?.trim();
-  if (!databaseUrl || !(await canConnectToDatabase(databaseUrl))) {
+  const connection = databaseUrl ? await canConnectToDatabase(databaseUrl) : undefined;
+  if (!databaseUrl || !connection?.ok) {
     process.stderr.write(
       [
         'Could not connect to DATABASE_URL.',
+        `Reason: ${connection && !connection.ok ? connection.reason : 'DATABASE_URL is not set'}`,
         'Start the database and Mailpit with `docker compose up -d db mailpit`, or set an external DATABASE_URL in .env.',
         '',
       ].join('\n'),
