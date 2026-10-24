@@ -46,6 +46,23 @@ Solo la app se publica en `127.0.0.1:3000`. PostgreSQL y Mailpit también se enl
 
 La base de datos y los avatares subidos sobreviven al reemplazo de contenedores y a `docker compose down`. Para borrar también todos los datos guardados, ejecuta `docker compose down -v`.
 
+## Ejecuta la app en tu computadora y solo PostgreSQL en Docker
+
+Esta opción ejecuta Next.js con Bun en tu computadora y Compose ejecuta la base local y Mailpit. Inicia esos servicios de Docker por tu cuenta:
+
+```sh
+docker compose up -d db mailpit
+bun dev
+```
+
+Si falta el archivo, `bun dev` crea `.env` con la URL de la base local, comprueba que la base responda y aplica las migraciones pendientes a esta base local de Docker. Nunca ejecuta comandos de Docker. Si `RESEND_API_KEY` está vacía, comprueba Mailpit en `localhost:1025` y avisa si no está activo; la app sigue arrancando. Abre Mailpit en [http://localhost:8025](http://localhost:8025).
+
+Detén PostgreSQL y Mailpit sin borrar sus datos:
+
+```sh
+docker compose stop db mailpit
+```
+
 ## Programar dentro de Docker
 
 Para editar el código montado dentro del contenedor, ejecuta:

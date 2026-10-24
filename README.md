@@ -45,7 +45,7 @@ Choose the setup path you need. These are alternatives; you do not need to follo
 | Production setup | [Bun](https://bun.sh/) | Choose Docker Compose for a VPS or provide external production PostgreSQL; public HTTPS URL and Resend account | `bun run setup:prod` |
 | Manual setup | [Bun](https://bun.sh/) | External PostgreSQL, such as [Neon](https://neon.tech) | `bun dev` after following the manual guide |
 | Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `docker compose up --build` |
-| Docker for the database only | [Bun](https://bun.sh/) and a Docker engine | Local PostgreSQL in Docker; no external database | `bun install`, then `bun dev` (creates `.env`, starts the database and Mailpit, creates the tables) |
+| Docker for the database only | [Bun](https://bun.sh/) and Docker Compose | Local PostgreSQL in Docker; no external database | `docker compose up -d db mailpit`, then `bun dev` |
 
 ### Production environment setup
 
@@ -79,7 +79,7 @@ A `.env` file created by `bun run setup:prod` can provide production credentials
 
 ### Option 4: Docker for the database only
 
-**Requirements:** Bun and a Docker engine. You do not need an external database. Docker runs PostgreSQL while `bun dev` runs the app directly on your computer. Next.js recommends this approach for development on macOS and Windows because it is faster than mounting the app code into Docker. Follow the [English Docker guide](docs/en/03-docker.md#run-the-app-on-your-computer-and-only-postgresql-in-docker) or the [guía en español](docs/es/03-docker.md#ejecuta-la-app-en-tu-computadora-y-solo-postgresql-en-docker).
+**Requirements:** Bun and Docker Compose. You do not need an external database. Start PostgreSQL and Mailpit yourself with `docker compose up -d db mailpit`, then run `bun dev` to start the app on your computer and apply local database migrations. `bun dev` never runs Docker commands. Next.js recommends this approach for development on macOS and Windows because it is faster than mounting the app code into Docker. Follow the [English Docker guide](docs/en/03-docker.md#run-the-app-on-your-computer-and-only-postgresql-in-docker) or the [guía en español](docs/es/03-docker.md#ejecuta-la-app-en-tu-computadora-y-solo-postgresql-en-docker).
 
 Browse all guides from the [documentation index](docs/README.md).
 
@@ -216,7 +216,7 @@ Test keys are only for local development. Create real keys in the Cloudflare das
 
 ```bash
 # Development
-bun dev                 # Start dev server (with lint & typecheck)
+bun dev                 # Check the database, then start the app (with lint & typecheck); never starts Docker
 bun run build          # Production build
 bun run start          # Start production server
 

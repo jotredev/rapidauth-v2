@@ -46,6 +46,27 @@ export type MigrationStatusCheck =
   | { status: 'baseline-required' }
   | { status: 'error'; reason: string };
 
+/** Opens a read-only connection check without changing the database. */
+export async function canConnectToDatabase(databaseUrl: string): Promise<boolean> {
+  try {
+    const url = new URL(databaseUrl);
+    const sslMode = url.searchParams.get('sslmode');
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      ssl: sslMode === 'disable' ? false : sslMode ? { rejectUnauthorized: true } : undefined,
+      connectionTimeoutMillis: 5_000,
+    });
+    try {
+      await pool.query('SELECT 1');
+      return true;
+    } finally {
+      await pool.end();
+    }
+  } catch {
+    return false;
+  }
+}
+
 /** Checks an external database without applying migrations. */
 export async function checkMigrateStatus(databaseUrl: string): Promise<MigrationStatusCheck> {
   const result = spawnSync('bunx', ['prisma', 'migrate', 'status'], {

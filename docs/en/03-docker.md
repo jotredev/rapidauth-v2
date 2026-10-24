@@ -46,6 +46,23 @@ Only the app is published on `127.0.0.1:3000`. PostgreSQL and Mailpit also bind 
 
 The database and uploaded avatars survive container replacement and `docker compose down`. To remove all saved data too, run `docker compose down -v`.
 
+## Run the app on your computer and only PostgreSQL in Docker
+
+This setup runs Next.js with Bun on your computer while Compose runs the local database and Mailpit. Start those Docker services yourself:
+
+```sh
+docker compose up -d db mailpit
+bun dev
+```
+
+`bun dev` creates `.env` with a local database URL when the file is missing, checks that the database is reachable, and applies pending migrations to this local Docker database. It never runs Docker commands. With an empty `RESEND_API_KEY`, it checks Mailpit at `localhost:1025` and warns if it is not running; the app still starts. Open Mailpit at [http://localhost:8025](http://localhost:8025).
+
+Stop the database and Mailpit while keeping their data with:
+
+```sh
+docker compose stop db mailpit
+```
+
 ## Develop in Docker
 
 For live source edits in a container, use:

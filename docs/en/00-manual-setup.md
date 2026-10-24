@@ -4,21 +4,22 @@ This guide installs and configures RapidAuth manually. For guided production env
 
 ## Quick start for development
 
-For local development you only need Docker running, then:
+For local development with Docker PostgreSQL and Mailpit, start those services yourself, then:
 
 ```sh
 bun install
+docker compose up -d db mailpit
 bun dev
 ```
 
-`bun dev` prepares everything else, so you do not have to configure or read anything first:
+`bun dev` runs the app and never starts Docker:
 
-- **`.env`:** if it does not exist, `bun dev` creates it from `.env.example` with local values: a random `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=http://localhost:3000`, `DATABASE_URL` for the local PostgreSQL in Docker, and a local `SUPPORT_EMAIL`. An existing `.env` is never overwritten.
-- **Database:** it starts the local PostgreSQL in Docker only when `DATABASE_URL` points to it: host `localhost`, `127.0.0.1` or `::1`, user, password and database `rapidauth`, and port `DB_PORT` (default `5432`). With any other URL, such as Neon, it does not touch Docker or the database.
-- **Tables:** when `DATABASE_URL` points to the local Docker database, every start runs `prisma migrate deploy`, which creates the tables when the database is empty and otherwise applies only pending migrations. With an external database, `bun dev` checks migration status without applying anything: it warns if migrations are missing and shows the baseline instructions if tables exist without migration history. If that external database is for development, run `bun run db:deploy` yourself. A connection error is shown as a warning and does not stop startup. It does not create an admin account: open the app and use the **Create your admin account** screen (see [section 9](#9-start-the-app-and-create-the-admin)), or run `bun run db:seed`.
-- **Mailpit:** it starts the local inbox at `http://localhost:8025` only when `RESEND_API_KEY` is empty.
-- **Precedence:** variables already exported in your terminal win over `.env`, as in Next.js and Prisma. All decisions above use that effective value. For example, an exported Neon `DATABASE_URL` means Docker is not started even if `.env` points to the local database.
-- **Summary:** when it finishes, it prints which services are on and the line `For production, run bun run setup:prod`.
+- **`.env`:** if it does not exist, `bun dev` creates it from `.env.example` with local values: a random `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=http://localhost:3000`, `DATABASE_URL` for local PostgreSQL, and a local `SUPPORT_EMAIL`. An existing `.env` is never overwritten.
+- **Database:** the database in the effective `DATABASE_URL` must already be running and reachable. If it is not, `bun dev` stops and tells you to start Docker services with `docker compose up -d db mailpit` or set an external `DATABASE_URL` in `.env`.
+- **Tables:** when `DATABASE_URL` points to the local Docker database, every start runs `prisma migrate deploy`, which creates the tables when the database is empty and otherwise applies only pending migrations. With an external database, `bun dev` checks migration status without applying anything: it warns if migrations are missing and shows the baseline instructions if tables exist without migration history. If that external database is for development, run `bun run db:deploy` yourself. A connection error stops startup. It does not create an admin account: open the app and use the **Create your admin account** screen (see [section 9](#9-start-the-app-and-create-the-admin)), or run `bun run db:seed`.
+- **Mailpit:** with an empty `RESEND_API_KEY`, `bun dev` checks `localhost:1025` and warns if Mailpit is not responding. It keeps running; start the inbox with `docker compose up -d db mailpit`. Open it at `http://localhost:8025`.
+- **Precedence:** variables already exported in your terminal win over `.env`, as in Next.js and Prisma. The effective `DATABASE_URL` determines which database is checked and whether local migrations are applied.
+- **Summary:** when it finishes, it prints the app configuration and the line `For production, run bun run setup:prod`.
 
 For production, run `bun run setup:prod`. Choose Docker Compose for a VPS deployment, or provide an external PostgreSQL database for another host. Both paths need a public HTTPS URL and Resend account. The command checks optional service settings with the same rules as `lib/env.ts`.
 
@@ -135,7 +136,7 @@ Template maintainers should run `bun run theme:sync-classic` after changing auth
 
 Run `bun run db:switch` and choose an external PostgreSQL database or the local Docker database. The command saves the previous URL as a comment in `.env`, then runs `prisma migrate deploy` and the seed against the new database. If that database already has tables created with `db push`, it stops with the message from [Database migrations](#database-migrations). Database records are not copied between the two databases.
 
-You can switch manually by changing `DATABASE_URL` in `.env`. `bun dev` starts Docker only when it points to the local Docker database. Then run:
+You can switch manually by changing `DATABASE_URL` in `.env`. Start Docker PostgreSQL yourself when using the local database. Then run:
 
 ```sh
 bun run db:deploy
@@ -152,7 +153,7 @@ The schema is versioned with Prisma Migrate. Every change lives in a folder unde
 ### Create a new migration
 
 1. Edit `prisma/schema.prisma`.
-2. With the local Docker database running (`bun dev` starts it), run:
+2. With the local Docker database running, run:
 
    ```sh
    bun run db:migrate -- --name <short_name>
@@ -226,7 +227,7 @@ RapidAuth sends the account owner an email notice when their password is changed
 bun dev
 ```
 
-If Docker is running, `bun dev` also starts the local database and Mailpit when they apply (see the quick start). Open [http://localhost:3000](http://localhost:3000). If you did not run the seed, the app shows **Create your admin account**: create the admin there within 15 minutes of the app starting (restart the app if the window closed). Then sign in with that account, or with `SEED_ADMIN_EMAIL` and the password printed or configured during seeding. Open **Profile → Security**, activate two-factor authentication, and then confirm that the admin dashboard loads.
+Start the database and Mailpit first if you use Docker (`docker compose up -d db mailpit`); `bun dev` does not start them. Open [http://localhost:3000](http://localhost:3000). If you did not run the seed, the app shows **Create your admin account**: create the admin there within 15 minutes of the app starting (restart the app if the window closed). Then sign in with that account, or with `SEED_ADMIN_EMAIL` and the password printed or configured during seeding. Open **Profile → Security**, activate two-factor authentication, and then confirm that the admin dashboard loads.
 
 ## Before deploying
 
