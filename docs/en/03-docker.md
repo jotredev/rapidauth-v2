@@ -14,15 +14,15 @@ docker buildx version
 
 ## Use the app
 
-A `.env` file is optional. With no file, Compose supplies local defaults and uses the published `ghcr.io/jotredev/rapidauth-v2:0.2.0` image. If that image is unavailable, Compose builds it from the root `Dockerfile`:
+A `.env` file is optional. With no file, Compose supplies local defaults and uses the published `ghcr.io/jotredev/rapidauth-v2:2.3.0` image. If that image is unavailable, Compose builds it from the root `Dockerfile`:
 
 ```sh
 docker compose up
 ```
 
-The image version is set in `docker/app.yaml`. To use a newer release, change its image tag to the release version (for example, `0.3.0`) and run `docker compose up`. To build the app locally instead, run `docker compose up --build`.
+The image version is set in `docker/app.yaml`. To use a newer release, change its image tag to the release version (for example, `2.4.0`) and run `docker compose up`. To build the app locally instead, run `docker compose up --build`.
 
-To publish a release, create and push a version tag such as `v0.3.0`. GitHub Actions builds the root `Dockerfile` and publishes both `0.3.0` and `0` to GitHub Container Registry. After the first publication, make the `rapidauth-v2` package public in GitHub Packages so Compose can pull it without authentication.
+To publish a release, create and push a version tag such as `2.4.0`. GitHub Actions builds the root `Dockerfile` and publishes both `2.4.0` and `2` to GitHub Container Registry. After the first publication, make the `rapidauth-v2` package public in GitHub Packages so Compose can pull it without authentication.
 
 Open [http://localhost:3000](http://localhost:3000). On a new database, use the first-run screen to create the first administrator, then sign in to the dashboard. The setup screen is available for 15 minutes after the app starts.
 
