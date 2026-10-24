@@ -32,7 +32,7 @@ services:
         echo "Backup created: $$archive"
         BACKUP
         chmod +x /usr/local/bin/backup
-        echo '0 2 * * * /usr/local/bin/backup' >> /etc/crontabs/root
+        echo '0 2 * * * /usr/local/bin/backup' > /etc/crontabs/root
         /usr/local/bin/backup
         exec crond -f -l 2
 

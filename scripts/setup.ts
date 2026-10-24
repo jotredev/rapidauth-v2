@@ -266,10 +266,10 @@ async function question(prompt: string): Promise<string> {
 
 async function askDockerComposeDeployment(): Promise<boolean> {
   while (true) {
-    const answer = (await question('¿Despliegas con Docker Compose? (sí/no): ')).toLowerCase();
-    if (['sí', 'si', 's', 'yes', 'y'].includes(answer)) return true;
+    const answer = (await question('Are you deploying with Docker Compose? (y/n) ')).toLowerCase();
+    if (['yes', 'y'].includes(answer)) return true;
     if (['no', 'n'].includes(answer)) return false;
-    println('Responde sí o no.');
+    println('Please answer y/yes or n/no.');
   }
 }
 

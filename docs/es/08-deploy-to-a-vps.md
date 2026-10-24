@@ -56,7 +56,7 @@ Ejecuta la configuración de producción:
 bun run setup:prod
 ```
 
-Responde **sí** a «¿Despliegas con Docker Compose?» e ingresa tu dirección HTTPS pública, por ejemplo, `https://auth.example.com`. El asistente crea un secreto de Better Auth y guarda los ajustes en `.env`. Compose proporciona por su cuenta la conexión a la base de datos, así que no necesitas ingresar `DATABASE_URL`. Mantén `.env` privado. Las validaciones actuales siguen exigiendo una clave de Resend y un remitente verificado para el correo.
+Responde **yes** a «Are you deploying with Docker Compose? (y/n)» e ingresa tu dirección HTTPS pública, por ejemplo, `https://auth.example.com`. El asistente crea un secreto de Better Auth y guarda los ajustes en `.env`. Compose proporciona por su cuenta la conexión a la base de datos, así que no necesitas ingresar `DATABASE_URL`. Mantén `.env` privado. Cuando el asistente pregunte por el proxy de confianza, elige **Own proxy** (opción 4, `TRUSTED_PROXY=proxy`) para que la app use la IP del cliente que establece Caddy. Las validaciones actuales siguen exigiendo una clave de Resend y un remitente verificado para el correo.
 
 ## 5. Inicia el stack del VPS
 
