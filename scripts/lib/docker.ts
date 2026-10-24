@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 
-export const DOCKER_COMPOSE_ARGS = ['compose'];
+// Docker settings come only from docker/.env, never from the root .env, so Compose always uses the file inside docker/.
+export const DOCKER_COMPOSE_ARGS = ['compose', '-f', 'docker/compose.yaml'];
 
 export const DOCKER_GUIDES = [
   'Guide (English): docs/en/03-docker.md',
@@ -74,7 +75,7 @@ export async function ensureDockerDatabase(port?: string): Promise<void> {
       return;
     }
     if (health === 'unhealthy') {
-      throw new Error(`The ${label} container became unhealthy. Check it with docker compose logs ${service}.`);
+      throw new Error(`The ${label} container became unhealthy. Check it with cd docker && docker compose logs ${service}.`);
     }
 
     await wait(1_000);

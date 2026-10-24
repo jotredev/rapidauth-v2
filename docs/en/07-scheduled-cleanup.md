@@ -28,13 +28,13 @@ The included `.github/workflows/scheduled-cleanup.yml` calls the route every day
 
 ## Path C: Docker
 
-1. Add `CRON_SECRET` with at least 32 random characters to your root `.env` file (or export it in your shell):
+1. Add `CRON_SECRET` with at least 32 random characters to your root `.env` file (for Docker Compose, to `docker/.env`; or export it in your shell):
 
    ```env
    CRON_SECRET="your-secure-random-secret-at-least-32-characters"
    ```
 
-2. Start the containers with `docker compose up` (or `bun run docker:dev` for development).
+2. Start the containers with `cd docker && docker compose up` (or `bun run docker:dev` for development).
 
 When `CRON_SECRET` is present, Docker Compose automatically starts the minimal `cron` container (`docker/cron.yaml`). It calls `/api/cron/cleanup` once a day at 03:00 UTC using the required `Authorization: Bearer <CRON_SECRET>` header. Without `CRON_SECRET`, the container remains completely off (`scale: 0`).
 
@@ -43,6 +43,7 @@ When `CRON_SECRET` is present, Docker Compose automatically starts the minimal `
 In Docker, you can run the cleanup on demand inside the running cron container:
 
 ```bash
+cd docker
 docker compose exec cron cleanup
 ```
 

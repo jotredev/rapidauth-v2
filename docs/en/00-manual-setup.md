@@ -8,16 +8,18 @@ For local development with Docker PostgreSQL and Mailpit, start those services y
 
 ```sh
 bun install
+cd docker
 docker compose up -d db mailpit
+cd ..
 bun dev
 ```
 
 `bun dev` runs the app and never starts Docker:
 
 - **`.env`:** if it does not exist, `bun dev` creates it from `.env.example` with local values: a random `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL=http://localhost:3000`, `DATABASE_URL` for local PostgreSQL, and a local `SUPPORT_EMAIL`. An existing `.env` is never overwritten.
-- **Database:** the database in the effective `DATABASE_URL` must already be running and reachable. If it is not, `bun dev` stops and tells you to start Docker services with `docker compose up -d db mailpit` or set an external `DATABASE_URL` in `.env`.
+- **Database:** the database in the effective `DATABASE_URL` must already be running and reachable. If it is not, `bun dev` stops and tells you to start Docker services with `cd docker && docker compose up -d db mailpit` or set an external `DATABASE_URL` in `.env`.
 - **Tables:** when `DATABASE_URL` points to the local Docker database, every start runs `prisma migrate deploy`, which creates the tables when the database is empty and otherwise applies only pending migrations. With an external database, `bun dev` checks migration status without applying anything: it warns if migrations are missing and shows the baseline instructions if tables exist without migration history. If that external database is for development, run `bun run db:deploy` yourself. A connection error stops startup. It does not create an admin account: open the app and use the **Create your admin account** screen (see [section 9](#9-start-the-app-and-create-the-admin)), or run `bun run db:seed`.
-- **Mailpit:** with an empty `RESEND_API_KEY`, `bun dev` checks `localhost:1025` and warns if Mailpit is not responding. It keeps running; start the inbox with `docker compose up -d db mailpit`. Open it at `http://localhost:8025`.
+- **Mailpit:** with an empty `RESEND_API_KEY`, `bun dev` checks `localhost:1025` and warns if Mailpit is not responding. It keeps running; start the inbox with `cd docker && docker compose up -d db mailpit`. Open it at `http://localhost:8025`.
 - **Precedence:** variables already exported in your terminal win over `.env`, as in Next.js and Prisma. The effective `DATABASE_URL` determines which database is checked and whether local migrations are applied.
 - **Summary:** when it finishes, it prints the app configuration and the line `For production, run bun run setup:prod`.
 
@@ -194,8 +196,8 @@ If the database already has tables but no `_prisma_migrations` table, `prisma mi
    With the Docker development container, use the same URL for both commands:
 
    ```sh
-   docker compose run --rm -e DATABASE_URL="<database-url>" app bunx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
-   docker compose run --rm -e DATABASE_URL="<database-url>" app bunx prisma migrate resolve --applied 0_init
+   docker compose -f docker/compose.dev.yaml run --rm -e DATABASE_URL="<database-url>" app bunx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+   docker compose -f docker/compose.dev.yaml run --rm -e DATABASE_URL="<database-url>" app bunx prisma migrate resolve --applied 0_init
    ```
 
    For the local Docker database, omit `-e DATABASE_URL=...`; the service already points to it.
@@ -227,7 +229,7 @@ RapidAuth sends the account owner an email notice when their password is changed
 bun dev
 ```
 
-Start the database and Mailpit first if you use Docker (`docker compose up -d db mailpit`); `bun dev` does not start them. Open [http://localhost:3000](http://localhost:3000). If you did not run the seed, the app shows **Create your admin account**: create the admin there within 15 minutes of the app starting (restart the app if the window closed). Then sign in with that account, or with `SEED_ADMIN_EMAIL` and the password printed or configured during seeding. Open **Profile → Security**, activate two-factor authentication, and then confirm that the admin dashboard loads.
+Start the database and Mailpit first if you use Docker (`cd docker && docker compose up -d db mailpit`); `bun dev` does not start them. Open [http://localhost:3000](http://localhost:3000). If you did not run the seed, the app shows **Create your admin account**: create the admin there within 15 minutes of the app starting (restart the app if the window closed). Then sign in with that account, or with `SEED_ADMIN_EMAIL` and the password printed or configured during seeding. Open **Profile → Security**, activate two-factor authentication, and then confirm that the admin dashboard loads.
 
 ## Before deploying
 

@@ -3,9 +3,6 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.dev
-    env_file:
-      - path: ../.env
-        required: false
     environment:
       DATABASE_URL: postgresql://rapidauth:rapidauth@db:5432/rapidauth?sslmode=disable
       BETTER_AUTH_URL: "http://localhost:${APP_PORT:-3000}"
@@ -20,6 +17,17 @@ services:
       GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
       GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
       CRON_SECRET: "${CRON_SECRET:-}"
+      FROM_EMAIL: "${FROM_EMAIL:-RapidAuth <onboarding@resend.dev>}"
+      STORAGE_DRIVER: "${STORAGE_DRIVER:-local}"
+      S3_REGION: "${S3_REGION:-auto}"
+      S3_BUCKET: "${S3_BUCKET:-rapidauth-avatars}"
+      S3_ACCESS_KEY_ID: "${S3_ACCESS_KEY_ID:-}"
+      S3_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY:-}"
+      S3_PUBLIC_URL: "${S3_PUBLIC_URL:-}"
+      S3_FORCE_PATH_STYLE: "${S3_FORCE_PATH_STYLE:-true}"
+      TRUSTED_PROXY: "${TRUSTED_PROXY:-none}"
+      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}"
+      SENTRY_TRACES_SAMPLE_RATE: "${SENTRY_TRACES_SAMPLE_RATE:-0}"
       HOST: "0.0.0.0"
       MAILPIT_SMTP_ADDRESS: "mailpit:1025"
       DOCKER_DEV_POLLING: "${DOCKER_DEV_POLLING:-true}"

@@ -88,7 +88,7 @@ async function main(): Promise<void> {
       [
         'Could not connect to DATABASE_URL.',
         `Reason: ${connection && !connection.ok ? connection.reason : 'DATABASE_URL is not set'}`,
-        'Start the database and Mailpit with `docker compose up -d db mailpit`, or set an external DATABASE_URL in .env.',
+        'Start the database and Mailpit with `cd docker && docker compose up -d db mailpit`, or set an external DATABASE_URL in .env.',
         '',
       ].join('\n'),
     );
@@ -103,7 +103,7 @@ async function main(): Promise<void> {
   }
 
   if (!env.RESEND_API_KEY?.trim() && !(await checkMailpit())) {
-    process.stderr.write('Mailpit is not responding on localhost:1025. Start it with `docker compose up -d db mailpit`.\n');
+    process.stderr.write('Mailpit is not responding on localhost:1025. Start it with `cd docker && docker compose up -d db mailpit`.\n');
   }
 
   process.stdout.write(`\n${formatEnvSummary(resolveEnv(env).config)}\n`);

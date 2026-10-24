@@ -991,13 +991,16 @@ async function askAuthUrl(existingValue?: string): Promise<string> {
 // FILE OPERATIONS
 // ============================================================================
 
-function loadExistingEnv(): Record<string, string> {
-  const envPath = path.join(process.cwd(), '.env');
+/** Docker Compose reads only docker/.env; the root .env is for `bun dev` and production without Docker. */
+const ROOT_ENV_PATH = path.join(process.cwd(), '.env');
+const DOCKER_ENV_PATH = path.join(process.cwd(), 'docker', '.env');
+
+function loadExistingEnv(envPath = ROOT_ENV_PATH): Record<string, string> {
   const envLocalPath = path.join(process.cwd(), '.env.local');
 
   const result: Record<string, string> = {};
 
-  const paths = [envPath, envLocalPath];
+  const paths = envPath === ROOT_ENV_PATH ? [envPath, envLocalPath] : [envPath];
 
   for (const p of paths) {
     if (existsSync(p)) {
@@ -1068,8 +1071,8 @@ function updateEnvSections(
   envVars: Record<string, string>,
   sections: string[],
   previousDatabaseUrl?: string,
+  envPath = ROOT_ENV_PATH,
 ): void {
-  const envPath = path.join(process.cwd(), '.env');
   const content = existsSync(envPath) ? readFileSync(envPath, 'utf-8') : '';
   const lines = content.replace(/\r\n/g, '\n').split('\n');
   const selectedKeys = new Set(sections.flatMap((section) => ENV_SECTION_KEYS[section] ?? []));
@@ -1484,8 +1487,10 @@ async function runSetup() {
     }
     forcedSection = value as (typeof allowedOnly)[number];
   }
-  const existingEnv = loadExistingEnv();
   const useDockerCompose = await askDockerComposeDeployment();
+  const targetEnvPath = useDockerCompose ? DOCKER_ENV_PATH : ROOT_ENV_PATH;
+  const targetEnvLabel = useDockerCompose ? 'docker/.env' : '.env';
+  const existingEnv = loadExistingEnv(targetEnvPath);
   const isConfigured = Boolean((useDockerCompose || existingEnv.DATABASE_URL) && existingEnv.BETTER_AUTH_SECRET && existingEnv.BETTER_AUTH_URL);
   let selection = forcedSection ?? '';
   if (!selection && isConfigured) {
@@ -1601,15 +1606,15 @@ async function runSetup() {
 
   const envSections = [...selectedSections];
   if (selectedSections.has('storage') && (existingEnv.STORAGE_DRIVER ?? 'local') !== newEnv.STORAGE_DRIVER) println(`  ${colors.yellow}${icons.warning} The storage engine changed. Move existing avatars with: bun run storage:migrate${colors.reset}`);
-  await spinner('Updating selected .env sections...', async () => {
-    updateEnvSections(newEnv, envSections);
-    if (!isConfigured) mergeEnvLocalIntoEnv();
+  await spinner(`Updating selected ${targetEnvLabel} sections...`, async () => {
+    updateEnvSections(newEnv, envSections, undefined, targetEnvPath);
+    if (!isConfigured && !useDockerCompose) mergeEnvLocalIntoEnv();
   });
   printHeader();
   printStep(stepNumber, activeCategories.length + 1, 'Production setup complete');
   printBox('Production setup complete', [
-    'Production environment settings are ready.',
-    'Deploy with your hosting provider.',
+    `Production environment settings are saved in ${targetEnvLabel}.`,
+    useDockerCompose ? 'Start the VPS stack with `cd docker && docker compose --profile vps up -d`.' : 'Deploy with your hosting provider.',
     'Follow the production deployment guide before launch.',
     '',
     ...(!resolution.config.turnstile.enabled ? ['Turnstile is off. Enable it by setting its keys on your server.'] : []),

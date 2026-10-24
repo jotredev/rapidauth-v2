@@ -1,6 +1,6 @@
 # Environment variables
 
-This reference covers every variable read by the application and setup scripts. The `.env.example` template has three short sections: values required for production, optional integrations, and build or maintenance tools. Use this guide for the details. Never commit real secrets.
+This reference covers every variable read by the application and setup scripts. The `.env.example` template has three short sections: values required for production, optional integrations, and build or maintenance tools. Use this guide for the details. Never commit real secrets. Docker Compose does not read the root `.env`: the variables it accepts are listed in `docker/.env.example` and go in `docker/.env`.
 
 ## Database
 
@@ -60,7 +60,7 @@ This reference covers every variable read by the application and setup scripts. 
 
 ### `RESEND_API_KEY`
 
-- **Purpose:** Authenticates email requests sent through Resend. With a key, emails are sent through Resend. Without one, they go to Mailpit, a local inbox at `http://localhost:8025` that starts with `docker compose up`.
+- **Purpose:** Authenticates email requests sent through Resend. With a key, emails are sent through Resend. Without one, they go to Mailpit, a local inbox at `http://localhost:8025` that starts with `cd docker && docker compose up`.
 - **Required:** No for local development. Required in production: without it, no email reaches anyone, and the startup summary shows a warning when `BETTER_AUTH_URL` is not local.
 - **Where to get it:** Create an API key in the Resend dashboard.
 - **Example format:** `re_replace_with_your_resend_key`

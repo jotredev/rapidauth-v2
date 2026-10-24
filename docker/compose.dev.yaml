@@ -1,0 +1,8 @@
+name: rapidauth
+
+include:
+  - db.yaml
+  - mail.yaml
+  - storage.yaml
+  - app.dev.yaml
+  - cron.yaml
