@@ -19,7 +19,6 @@ import {
   ensureDockerDatabase,
 } from './lib/docker';
 import { createS3Storage } from '../lib/storage';
-import { getThemeChangedPaths } from './lib/theme-safety';
 import { getSupportEmail } from '../lib/support-email';
 import { formatEnvSummary, isDockerDatabaseUrl, resolveEnv } from '../lib/env';
 import { BaselineRequiredError, baselineMessage, runMigrateDeploy } from './lib/migrations';
@@ -27,8 +26,6 @@ import { BaselineRequiredError, baselineMessage, runMigrateDeploy } from './lib/
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
-
-const productionSetup = process.argv.includes('--production') || !process.argv.includes('--only');
 
 interface EnvVariable {
   key: string;
@@ -164,7 +161,7 @@ function printHeader() {
   println();
   println(`${colors.cyan}${colors.bold}  ┌────────────────────────────────────────────────┐${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  │                                                │${colors.reset}`);
-  const title = productionSetup ? 'RAPIDAUTH - PRODUCTION SETUP' : 'RAPIDAUTH - SETUP WIZARD';
+  const title = 'RAPIDAUTH - PRODUCTION SETUP';
   println(`${colors.cyan}${colors.bold}  │${colors.reset}   ${icons.rocket} ${colors.bold}${colors.white}${title}${colors.reset}          ${colors.cyan}${colors.bold}│${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  │${colors.reset}      ${colors.dim}Professional Authentication Boilerplate${colors.reset}  ${colors.cyan}${colors.bold}│${colors.reset}`);
   println(`${colors.cyan}${colors.bold}  │                                                │${colors.reset}`);
@@ -372,7 +369,6 @@ async function askVariable(
 
 async function askTurnstileConfig(
   existingEnv: Record<string, string>,
-  productionOnly = false,
 ): Promise<{ siteKey: string; secretKey: string }> {
   printBox(
     'Cloudflare Turnstile (optional, recommended)',
@@ -390,12 +386,11 @@ async function askTurnstileConfig(
   );
   println('  Choose your Cloudflare Turnstile keys:');
   println('  [1] Use my Cloudflare keys');
-  if (!productionOnly) println('  [2] Use Cloudflare test keys (local development only)');
   if (hasExistingKeys) println('  [3] Keep existing keys');
   println('  [0] Skip for now (Turnstile stays off)');
 
   let choice = '';
-  while (!['0', '1', ...(productionOnly ? [] : ['2']), ...(hasExistingKeys ? ['3'] : [])].includes(choice)) {
+  while (!['0', '1', ...(hasExistingKeys ? ['3'] : [])].includes(choice)) {
     choice = await question('  Select an option: ');
   }
 
@@ -406,25 +401,11 @@ async function askTurnstileConfig(
     return { siteKey: '', secretKey: '' };
   }
 
-  if (choice === '2' && !productionOnly) {
-    println(
-      `  ${colors.yellow}${icons.warning} Test keys only work locally. Create a widget using the guide before deploying.${colors.reset}`,
-    );
-    return {
-      siteKey: '1x00000000000000000000AA',
-      secretKey: '1x0000000000000000000000000000000AA',
-    };
-  }
-
   let siteKey: string;
   let secretKey: string;
   if (choice === '3') {
     siteKey = existingEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     secretKey = existingEnv.TURNSTILE_SECRET_KEY;
-    if (productionOnly && (isTurnstileTestSiteKey(siteKey) || isTurnstileTestSecretKey(secretKey))) {
-      println(`  ${colors.red}${icons.error} Production setup requires real Turnstile keys.${colors.reset}`);
-      return askTurnstileConfig({ ...existingEnv, NEXT_PUBLIC_TURNSTILE_SITE_KEY: '', TURNSTILE_SECRET_KEY: '' }, true);
-    }
     println(`  ${colors.green}${icons.success} Keeping existing Cloudflare keys${colors.reset}`);
   } else {
     const noWhitespace = (value: string) =>
@@ -454,19 +435,6 @@ async function askTurnstileConfig(
         },
         existingEnv.TURNSTILE_SECRET_KEY,
       );
-
-      if (
-        isTurnstileTestSiteKey(siteKey) ||
-        isTurnstileTestSecretKey(secretKey)
-      ) {
-        if (productionOnly) {
-          println(`  ${colors.red}${icons.error} Production setup requires real Turnstile keys.${colors.reset}`);
-          continue;
-        }
-        println(
-          `  ${colors.yellow}${icons.warning} These are Cloudflare test keys. They only work locally. Create a widget using the guide before deploying.${colors.reset}`,
-        );
-      }
 
       try {
         const response = await fetch(
@@ -820,20 +788,12 @@ async function startLocalDatabase(
   }
 }
 
-async function askDatabaseUrl(
-  existingEnv: Record<string, string>,
-  allowKeepExisting = true,
-  productionOnly = false,
-): Promise<{
-  url: string;
-  dockerDatabase: boolean;
-  port?: string;
-} | undefined> {
-  const databaseVariable = ENV_VARIABLES.find((variable) => variable.key === 'DATABASE_URL');
-  if (!databaseVariable) throw new Error('DATABASE_URL configuration is missing.');
-
-  if (productionOnly) {
-    databaseVariable.validate = (value) => {
+async function askProductionDatabaseUrl(existingEnv: Record<string, string>): Promise<string> {
+  const variable = ENV_VARIABLES.find((item) => item.key === 'DATABASE_URL');
+  if (!variable) throw new Error('DATABASE_URL configuration is missing.');
+  return askVariable({
+    ...variable,
+    validate: (value) => {
       if (!value.startsWith('postgresql://') && !value.startsWith('postgres://')) {
         return 'Must be a valid PostgreSQL connection string';
       }
@@ -841,12 +801,20 @@ async function askDatabaseUrl(
         return 'Production requires an external PostgreSQL database, not the local Docker database.';
       }
       return true;
-    };
-    return {
-      url: await askVariable(databaseVariable, existingEnv.DATABASE_URL),
-      dockerDatabase: false,
-    };
-  }
+    },
+  }, existingEnv.DATABASE_URL);
+}
+
+async function askDatabaseUrl(
+  existingEnv: Record<string, string>,
+  allowKeepExisting = true,
+): Promise<{
+  url: string;
+  dockerDatabase: boolean;
+  port?: string;
+} | undefined> {
+  const databaseVariable = ENV_VARIABLES.find((variable) => variable.key === 'DATABASE_URL');
+  if (!databaseVariable) throw new Error('DATABASE_URL configuration is missing.');
 
   if (existingEnv.DATABASE_URL) {
     try {
@@ -968,111 +936,21 @@ async function sendTestEmail(
   }
 }
 
-async function askEmailConfig(productionOnly = false): Promise<{ fromEmail: string; testEmail: string }> {
-  if (productionOnly) {
-    const fromEmail = await askVariable({
-      key: 'FROM_EMAIL',
-      description: 'Sender on a domain verified in your Resend account',
-      placeholder: 'RapidAuth <noreply@example.com>',
-      required: true,
-      category: 'email',
-    });
-    let testEmail = '';
-    while (!testEmail.includes('@') || !testEmail.includes('.')) {
-      testEmail = await question('  Send the Resend test email to: ');
-      if (!testEmail.includes('@') || !testEmail.includes('.')) {
-        println(`  ${colors.red}${icons.error} Enter a valid email address.${colors.reset}`);
-      }
-    }
-    return { fromEmail, testEmail };
-  }
-
-  println(`  ${icons.email} ${colors.bold}FROM_EMAIL${colors.reset} ${colors.red}*${colors.reset}`);
-  println(`     ${colors.dim}Email sender address${colors.reset}`);
-  println();
-
-  // Ask if user has a custom domain
-  println(`     ${colors.yellow}Do you have a custom domain configured in Resend?${colors.reset}`);
-  println(`     ${colors.dim}If not, you'll use the test email: onboarding@resend.dev${colors.reset}`);
-  println(`     ${colors.dim}(With onboarding@resend.dev you can only send to your verified email)${colors.reset}`);
-  println();
-
-  const hasDomain = await question(
-    `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}(y/n)${colors.reset}: `,
-  );
-
-  let fromEmail: string;
-
-  if (hasDomain.toLowerCase() === 'y' || hasDomain.toLowerCase() === 'yes') {
-    // User has custom domain
-    println();
-    println(`     ${colors.cyan}Enter your FROM_EMAIL:${colors.reset}`);
-    println(`     ${colors.dim}Format: Name <email@yourdomain.com>${colors.reset}`);
-
-    let validEmail = false;
-    fromEmail = '';
-
-    while (!validEmail) {
-      fromEmail = await question(
-        `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}(RapidAuth <noreply@yourdomain.com>)${colors.reset}: `,
-      );
-
-      if (!fromEmail) {
-        println(`     ${colors.red}${icons.error} This field is required${colors.reset}`);
-        continue;
-      }
-
-      validEmail = true;
-    }
-  } else {
-    // Use onboarding email
-    fromEmail = 'RapidAuth <onboarding@resend.dev>';
-    println();
-    println(`     ${colors.green}${icons.success} Using: ${fromEmail}${colors.reset}`);
-    println();
-    println(`     ${colors.yellow}${icons.warning} Important:${colors.reset}`);
-    println(`     ${colors.dim}With onboarding@resend.dev you can ONLY send emails${colors.reset}`);
-    println(`     ${colors.dim}to the email address verified in your Resend account.${colors.reset}`);
-  }
-
-  println();
-  println(`     ${colors.green}${icons.success} FROM_EMAIL set${colors.reset}`);
-  println();
-
-  // Now ask for test email
-  println(`  ${icons.email} ${colors.bold}Email Verification Test${colors.reset}`);
-  println(`     ${colors.dim}We'll send a test email to verify your configuration.${colors.reset}`);
-
-  if (hasDomain.toLowerCase() !== 'y' && hasDomain.toLowerCase() !== 'yes') {
-    println(`     ${colors.yellow}${icons.warning} Enter the email verified in your Resend account${colors.reset}`);
-  }
-
-  println();
-
+async function askEmailConfig(): Promise<{ fromEmail: string; testEmail: string }> {
+  const fromEmail = await askVariable({
+    key: 'FROM_EMAIL',
+    description: 'Sender on a domain verified in your Resend account',
+    placeholder: 'RapidAuth <noreply@example.com>',
+    required: true,
+    category: 'email',
+  });
   let testEmail = '';
-  let validTestEmail = false;
-
-  while (!validTestEmail) {
-    testEmail = await question(
-      `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Test email address${colors.reset}: `,
-    );
-
-    if (!testEmail) {
-      println(`     ${colors.red}${icons.error} Please enter an email to test${colors.reset}`);
-      continue;
-    }
-
-    // Basic email validation
+  while (!testEmail.includes('@') || !testEmail.includes('.')) {
+    testEmail = await question('  Send the Resend test email to: ');
     if (!testEmail.includes('@') || !testEmail.includes('.')) {
-      println(`     ${colors.red}${icons.error} Please enter a valid email address${colors.reset}`);
-      continue;
+      println(`  ${colors.red}${icons.error} Enter a valid email address.${colors.reset}`);
     }
-
-    validTestEmail = true;
   }
-
-  println();
-
   return { fromEmail, testEmail };
 }
 
@@ -1080,138 +958,24 @@ async function askEmailConfig(productionOnly = false): Promise<{ fromEmail: stri
 // AUTH URL SELECTION
 // ============================================================================
 
-async function askAuthUrl(existingValue?: string, productionOnly = false): Promise<string> {
-  if (productionOnly) {
-    return askVariable({
-      key: 'BETTER_AUTH_URL',
-      description: 'Public HTTPS base URL of the deployed application',
-      placeholder: 'https://auth.example.com',
-      required: true,
-      category: 'auth',
-      validate: (value) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)
-            ? true
-            : 'Enter the public HTTPS URL for production.';
-        } catch {
-          return 'Enter a valid public HTTPS URL.';
-        }
-      },
-    }, existingValue);
-  }
-
-  const DEFAULT_URL = 'http://localhost:3000';
-  const options = ['Default (http://localhost:3000)', 'Custom URL'];
-  let selectedIndex = 0;
-
-  println(`  ${icons.globe} ${colors.bold}BETTER_AUTH_URL${colors.reset} ${colors.red}*${colors.reset}`);
-  println(`     ${colors.dim}Base URL of your application${colors.reset}`);
-  println();
-
-  // Enable raw mode for arrow key input
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-  }
-  process.stdin.resume();
-
-  const renderOptions = () => {
-    // Move cursor up to rewrite options
-    process.stdout.write('\x1b[2A\x1b[J');
-    for (let i = 0; i < options.length; i++) {
-      if (i === selectedIndex) {
-        println(`     ${colors.cyan}${icons.arrow} ${options[i]}${colors.reset}`);
-      } else {
-        println(`       ${colors.dim}${options[i]}${colors.reset}`);
-      }
-    }
-  };
-
-  // Initial render
-  for (let i = 0; i < options.length; i++) {
-    if (i === selectedIndex) {
-      println(`     ${colors.cyan}${icons.arrow} ${options[i]}${colors.reset}`);
-    } else {
-      println(`       ${colors.dim}${options[i]}${colors.reset}`);
-    }
-  }
-
-  println(`     ${colors.dim}Use ↑↓ arrows to select, Enter to confirm${colors.reset}`);
-
-  const selectedOption = await new Promise<number>((resolve) => {
-    const onKeypress = (key: Buffer) => {
-      const keyStr = key.toString();
-
-      // Up arrow
-      if (keyStr === '\x1b[A' || keyStr === 'k') {
-        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : options.length - 1;
-        renderOptions();
-        println(`     ${colors.dim}Use ↑↓ arrows to select, Enter to confirm${colors.reset}`);
-      }
-      // Down arrow
-      else if (keyStr === '\x1b[B' || keyStr === 'j') {
-        selectedIndex = selectedIndex < options.length - 1 ? selectedIndex + 1 : 0;
-        renderOptions();
-        println(`     ${colors.dim}Use ↑↓ arrows to select, Enter to confirm${colors.reset}`);
-      }
-      // Enter
-      else if (keyStr === '\r' || keyStr === '\n') {
-        process.stdin.removeListener('data', onKeypress);
-        if (process.stdin.isTTY) {
-          process.stdin.setRawMode(false);
-        }
-        resolve(selectedIndex);
-      }
-      // Ctrl+C
-      else if (keyStr === '\x03') {
-        process.stdin.removeListener('data', onKeypress);
-        if (process.stdin.isTTY) {
-          process.stdin.setRawMode(false);
-        }
-        process.exit(0);
-      }
-    };
-
-    process.stdin.on('data', onKeypress);
-  });
-
-  println();
-
-  let selectedUrl = DEFAULT_URL;
-
-  if (selectedOption === 1) {
-    // Custom URL
-    println(`     ${colors.cyan}Enter your custom URL:${colors.reset}`);
-
-    // Restore normal input mode for question
-    process.stdin.pause();
-
-    let validUrl = false;
-    while (!validUrl) {
-      const customUrl = await question(
-        `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}(https://yourdomain.com)${colors.reset}: `,
-      );
-
-      if (!customUrl) {
-        println(`     ${colors.red}${icons.error} URL is required${colors.reset}`);
-        continue;
-      }
-
+async function askAuthUrl(existingValue?: string): Promise<string> {
+  return askVariable({
+    key: 'BETTER_AUTH_URL',
+    description: 'Public HTTPS base URL of the deployed application',
+    placeholder: 'https://auth.example.com',
+    required: true,
+    category: 'auth',
+    validate: (value) => {
       try {
-        new URL(customUrl);
-        selectedUrl = customUrl;
-        validUrl = true;
+        const url = new URL(value);
+        return url.protocol === 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)
+          ? true
+          : 'Enter the public HTTPS URL for production.';
       } catch {
-        println(`     ${colors.red}${icons.error} Must be a valid URL${colors.reset}`);
+        return 'Enter a valid public HTTPS URL.';
       }
-    }
-  }
-
-  println();
-  println(`     ${colors.green}${icons.success} URL set: ${selectedUrl}${colors.reset}`);
-  println();
-
-  return selectedUrl;
+    },
+  }, existingValue);
 }
 
 // ============================================================================
@@ -1588,11 +1352,9 @@ async function askProviderCredentials(
   return result;
 }
 
-async function askStorageConfig(existingEnv: Record<string, string>, productionOnly = false): Promise<Record<string, string>> {
+async function askStorageConfig(existingEnv: Record<string, string>): Promise<Record<string, string>> {
   println(`  ${icons.database} ${colors.bold}File storage${colors.reset}`);
-  println(productionOnly
-    ? '     [1] Local: on your server disk (requires persistent storage)'
-    : '     [1] Local: on the server disk (development, or your own server with persistent disk)');
+  println('     [1] Local: on your server disk (requires persistent storage)');
   println('     [2] S3-compatible: Cloudflare R2, Amazon S3, Backblaze, DigitalOcean Spaces, SeaweedFS…');
   const current = existingEnv.STORAGE_DRIVER === 's3' ? '2' : '1';
   let choice = '';
@@ -1609,7 +1371,7 @@ async function askStorageConfig(existingEnv: Record<string, string>, productionO
   }
 
   const variables: EnvVariable[] = [
-    { key: 'S3_ENDPOINT', description: productionOnly ? 'S3-compatible API endpoint; leave empty for Amazon S3.' : 'S3 API address; use http://storage:9000 in Docker or http://localhost:9000 with bun dev for local Silo. Leave empty or type none for Amazon S3.', placeholder: 'https://<account>.r2.cloudflarestorage.com', required: false, category: 'storage' },
+    { key: 'S3_ENDPOINT', description: 'S3-compatible API endpoint; leave empty for Amazon S3.', placeholder: 'https://<account>.r2.cloudflarestorage.com', required: false, category: 'storage' },
     { key: 'S3_REGION', description: 'Region assigned by your storage provider.', placeholder: 'auto for Cloudflare R2', required: true, category: 'storage' },
     { key: 'S3_BUCKET', description: 'Exact name of the bucket you created.', placeholder: 'avatars', required: true, category: 'storage' },
     { key: 'S3_ACCESS_KEY_ID', description: 'Access key ID with permission to read, write, and delete objects in this bucket.', placeholder: 'Access key ID', required: true, category: 'storage', sensitive: true },
@@ -1661,297 +1423,144 @@ async function askStorageConfig(existingEnv: Record<string, string>, productionO
 }
 
 // ============================================================================
-// MAIN SETUP FLOW
+// PRODUCTION SETUP FLOW
 // ============================================================================
 
+async function runDatabaseSwitch() {
+  const existingEnv = loadExistingEnv();
+  const configured = Boolean(existingEnv.DATABASE_URL && existingEnv.BETTER_AUTH_SECRET && existingEnv.BETTER_AUTH_URL);
+  const database = await askDatabaseUrl(existingEnv, !configured);
+  if (!database) return;
+  const newEnv: Record<string, string> = { DATABASE_URL: database.url };
+  if (existingEnv.DB_PORT) newEnv.DB_PORT = existingEnv.DB_PORT;
+  if (database.port) newEnv.DB_PORT = database.port;
+  const previousDatabaseUrl = existingEnv.DATABASE_URL;
+  updateEnvSections(newEnv, ['database'], previousDatabaseUrl && newEnv.DATABASE_URL !== previousDatabaseUrl ? previousDatabaseUrl : undefined);
+  if (!configured) mergeEnvLocalIntoEnv();
+  if (previousDatabaseUrl && newEnv.DATABASE_URL !== previousDatabaseUrl) println('The previous DATABASE_URL was saved as a comment in .env.');
+
+  const dotenv = await import('dotenv');
+  dotenv.config({ path: path.join(process.cwd(), '.env'), override: true });
+  println(`  ${colors.cyan}${icons.arrow} Running Prisma generate...${colors.reset}`);
+  await runPrismaGenerate();
+  println(`  ${colors.green}${icons.success} Prisma client generated${colors.reset}`);
+  println(`  ${colors.cyan}${icons.arrow} Applying database migrations...${colors.reset}`);
+  try {
+    await runPrismaMigrate();
+    println(`  ${colors.green}${icons.success} Database migrations applied${colors.reset}`);
+  } catch (error) {
+    if (error instanceof BaselineRequiredError) println(baselineMessage());
+    throw error;
+  }
+  println(`  ${colors.cyan}${icons.arrow} Seeding database with initial data...${colors.reset}`);
+  try {
+    await runSeed();
+    println(`  ${colors.green}${icons.success} Database seeded${colors.reset}`);
+    await question(`     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}If an admin password was shown above, save it now. Press Enter to continue${colors.reset}`);
+  } catch {
+    println(`  ${colors.yellow}${icons.warning} Seed skipped (may already exist)${colors.reset}`);
+  }
+  println('Database switch complete.');
+}
+
 async function runSetup() {
-  const productionOnly = productionSetup;
   const onlyIndex = process.argv.indexOf('--only');
-  const allowedOnly = ['database', 'email', 'support', 'turnstile', 'oauth', 'theme', 'storage', 'sentry', 'cleanup', 'proxy'] as const;
+  const allowedOnly = ['database', 'email', 'support', 'turnstile', 'oauth', 'storage', 'sentry', 'cleanup', 'proxy'] as const;
   let forcedSection: (typeof allowedOnly)[number] | undefined;
   if (onlyIndex !== -1) {
     const value = process.argv[onlyIndex + 1];
+    if (value === 'database') return runDatabaseSwitch();
     if (!value || !allowedOnly.includes(value as (typeof allowedOnly)[number])) {
-      throw new Error('Usage: bun run scripts/setup.ts --only <database|email|support|turnstile|oauth|theme|storage|sentry|cleanup|proxy>');
+      throw new Error('Usage: bun run scripts/setup.ts --only <database|email|support|turnstile|oauth|storage|sentry|cleanup|proxy>');
     }
     forcedSection = value as (typeof allowedOnly)[number];
   }
-
   const existingEnv = loadExistingEnv();
-  const isConfigured = Boolean(
-    existingEnv.DATABASE_URL &&
-    existingEnv.BETTER_AUTH_SECRET &&
-    existingEnv.BETTER_AUTH_URL
-  );
+  const isConfigured = Boolean(existingEnv.DATABASE_URL && existingEnv.BETTER_AUTH_SECRET && existingEnv.BETTER_AUTH_URL);
   let selection = forcedSection ?? '';
   if (!selection && isConfigured) {
-    println(productionOnly
-      ? 'Production settings are already configured. Choose what to update:'
-      : 'This project is already configured. Choose what to update:');
-    println('  [1] Database');
-    println('  [2] Email');
-    println('  [3] Turnstile');
-    println('  [4] OAuth');
-    if (!productionOnly) println('  [5] Theme');
-    println('  [6] Storage');
-    println('  [7] Sentry');
-    println('  [8] Scheduled cleanup');
-    println('  [9] Trusted proxy');
-    println('  [10] Support email');
-    println('  [11] Everything');
-    const choices: Record<string, string> = {
-      '1': 'database',
-      '2': 'email',
-      '3': 'turnstile',
-      '4': 'oauth',
-      ...(!productionOnly ? { '5': 'theme' } : {}),
-      '6': 'storage',
-      '7': 'sentry',
-      '8': 'cleanup',
-      '9': 'proxy',
-      '10': 'support',
-      '11': 'everything',
-    };
+    println('Production settings are already configured. Choose what to update:');
+    println('  [1] Database\n  [2] Email\n  [3] Turnstile\n  [4] OAuth\n  [5] Storage\n  [6] Sentry\n  [7] Scheduled cleanup\n  [8] Trusted proxy\n  [9] Support email\n  [10] Everything');
+    const choices: Record<string, string> = { '1': 'database', '2': 'email', '3': 'turnstile', '4': 'oauth', '5': 'storage', '6': 'sentry', '7': 'cleanup', '8': 'proxy', '9': 'support', '10': 'everything' };
     while (!selection) {
       selection = choices[await question('Select a section: ')] ?? '';
       if (!selection) println('Choose one of the listed options.');
     }
   }
   if (!selection) selection = 'everything';
-  const selectedSections = new Set(
-    selection === 'everything'
-      ? ['database', 'auth', 'email', 'support', 'captcha', 'oauth', ...(!productionOnly ? ['theme'] : []), 'storage', 'monitoring', 'cleanup', 'proxy']
-      : [selection === 'turnstile' ? 'captcha' : selection === 'sentry' ? 'monitoring' : selection]
-  );
-  const databaseSelected = selectedSections.has('database');
-  const themeSelected = selectedSections.has('theme');
-  const previousDatabaseUrl = existingEnv.DATABASE_URL;
-  const newEnv: Record<string, string> = {};
-  if (databaseSelected && !productionOnly && existingEnv.DB_PORT) newEnv.DB_PORT = existingEnv.DB_PORT;
-  let databaseRunsInDocker = false;
-
+  const selectedSections = new Set(selection === 'everything'
+    ? ['database', 'auth', 'email', 'support', 'captcha', 'oauth', 'storage', 'monitoring', 'cleanup', 'proxy']
+    : [selection === 'turnstile' ? 'captcha' : selection === 'sentry' ? 'monitoring' : selection]);
   const categories = [
-    { key: 'database', title: 'Database Configuration', icon: icons.database },
+    { key: 'database', title: 'Production database', icon: icons.database },
     { key: 'auth', title: 'Authentication', icon: icons.key },
-    { key: 'email', title: 'Email Configuration', icon: icons.email },
-    { key: 'support', title: 'Support Email', icon: icons.email },
-    { key: 'captcha', title: 'Bot Protection (Cloudflare Turnstile)', icon: icons.shield },
-    { key: 'oauth', title: 'OAuth Providers', icon: icons.globe },
-    { key: 'storage', title: 'File Storage', icon: icons.database },
-    { key: 'monitoring', title: 'Error monitoring with Sentry (optional)', icon: icons.shield },
+    { key: 'email', title: 'Email configuration', icon: icons.email },
+    { key: 'support', title: 'Support email', icon: icons.email },
+    { key: 'captcha', title: 'Cloudflare Turnstile', icon: icons.shield },
+    { key: 'oauth', title: 'OAuth providers', icon: icons.globe },
+    { key: 'storage', title: 'File storage', icon: icons.database },
+    { key: 'monitoring', title: 'Sentry monitoring (optional)', icon: icons.shield },
     { key: 'cleanup', title: 'Scheduled cleanup (optional)', icon: icons.shield },
     { key: 'proxy', title: 'Trusted client IP source', icon: icons.globe },
   ] as const;
-
-  let stepNumber = 1;
   const activeCategories = categories.filter((category) => selectedSections.has(category.key));
-  const totalSteps = activeCategories.length + (!productionOnly && databaseSelected ? 1 : 0) + (!productionOnly && themeSelected ? 1 : 0) + 1;
-
-  // Welcome screen
+  const newEnv: Record<string, string> = {};
+  let stepNumber = 1;
   printHeader();
-  if (!isConfigured) printBox(
-    productionOnly ? 'Prepare RapidAuth for Production' : 'Welcome to RapidAuth Setup',
-    [
-      ...(productionOnly
-        ? [
-            'This wizard prepares production',
-            'environment settings for your deployment.',
-          ]
-        : ['This wizard will help you configure your application.']),
-      '',
-      productionOnly ? 'Before you start, make sure you have:' : 'Before you start, make sure you have:',
-      ...(productionOnly
-        ? [
-            '  • A production PostgreSQL database',
-            '    and public HTTPS URL',
-            '  • A Resend API key and a verified sender domain',
-            '  • Credentials for optional services you want',
-            '    to enable',
-          ]
-        : [
-      '  • An external PostgreSQL database or Docker for local PostgreSQL',
-      '  • A Resend account for sending emails (optional: without it, emails go to Mailpit)',
-      '  • A free Cloudflare account for Turnstile',
-      '  • OAuth credentials (optional)',
-      '  • A Sentry account (optional)',
-        ]),
-    ],
-    'info',
-  );
+  if (!isConfigured) printBox('Prepare RapidAuth for Production', [
+    'This wizard prepares production environment settings for your deployment.',
+    '',
+    'Before you start, make sure you have:',
+    '  • A production PostgreSQL database and public HTTPS URL',
+    '  • A Resend API key and a verified sender domain',
+    '  • Credentials for optional services you want to enable',
+  ], 'info');
 
-  if (!isConfigured && !productionOnly) await question(`  ${colors.cyan}Press Enter to continue...${colors.reset}`);
-
-  // Collect variables by category
-  let firstCategory = true;
   for (const category of activeCategories) {
-    if (!firstCategory) printHeader();
-    firstCategory = false;
-    printStep(stepNumber, totalSteps, category.title);
-
+    printHeader();
+    printStep(stepNumber++, activeCategories.length + 1, category.title);
     if (category.key === 'auth') {
-      // Handle auth category specially
-      const categoryVars = ENV_VARIABLES.filter(
-        (v) => v.category === 'auth',
-      );
-
-      // First ask for BETTER_AUTH_SECRET (auto-generated)
-      for (const variable of categoryVars) {
-        if (
-          productionOnly &&
-          variable.key === 'BETTER_AUTH_SECRET' &&
-          existingEnv.BETTER_AUTH_SECRET &&
-          !existingEnv.BETTER_AUTH_SECRET.startsWith('replace-with-')
-        ) {
+      for (const variable of ENV_VARIABLES.filter((item) => item.category === 'auth')) {
+        if (variable.key === 'BETTER_AUTH_SECRET' && existingEnv.BETTER_AUTH_SECRET && !existingEnv.BETTER_AUTH_SECRET.startsWith('replace-with-')) {
           newEnv[variable.key] = existingEnv.BETTER_AUTH_SECRET;
           println(`  ${colors.green}${icons.success} Keeping the existing production secret${colors.reset}`);
           continue;
         }
         const value = await askVariable(variable, existingEnv[variable.key]);
-        if (value) {
-          newEnv[variable.key] = value;
-        }
+        if (value) newEnv[variable.key] = value;
       }
-
-      // Then ask for BETTER_AUTH_URL with options
-      const authUrl = await askAuthUrl(existingEnv.BETTER_AUTH_URL, productionOnly);
-      newEnv['BETTER_AUTH_URL'] = authUrl;
+      newEnv.BETTER_AUTH_URL = await askAuthUrl(existingEnv.BETTER_AUTH_URL);
     } else if (category.key === 'database') {
-      const database = await askDatabaseUrl(existingEnv, !isConfigured, productionOnly);
-      if (!database) return;
-      newEnv.DATABASE_URL = database.url;
-      databaseRunsInDocker = database.dockerDatabase;
-      if (database.port) newEnv.DB_PORT = database.port;
+      newEnv.DATABASE_URL = await askProductionDatabaseUrl(existingEnv);
     } else if (category.key === 'email') {
-      // Handle email category specially
-      const categoryVars = ENV_VARIABLES.filter(
-        (v) => v.category === 'email',
-      );
-
-      println(`  ${colors.dim}With a Resend API key, emails are sent through Resend.${colors.reset}`);
-      println(`  ${colors.dim}Without one, they go to Mailpit, a local inbox at http://localhost:8025.${colors.reset}`);
-      println();
-
-      // First ask for RESEND_API_KEY
-      for (const variable of categoryVars) {
-        const value = await askVariable(
-          productionOnly ? { ...variable, required: true } : variable,
-          existingEnv[variable.key],
-        );
-        if (value) {
-          newEnv[variable.key] = value;
+      const keyVariable = ENV_VARIABLES.find((item) => item.key === 'RESEND_API_KEY');
+      if (!keyVariable) throw new Error('RESEND_API_KEY configuration is missing.');
+      newEnv.RESEND_API_KEY = await askVariable({ ...keyVariable, required: true }, existingEnv.RESEND_API_KEY);
+      const { fromEmail, testEmail } = await askEmailConfig();
+      newEnv.FROM_EMAIL = fromEmail;
+      let sent = false;
+      for (let attempt = 1; attempt <= 3 && !sent; attempt++) {
+        const result = await sendTestEmail(newEnv.RESEND_API_KEY, fromEmail, testEmail);
+        if (result.success) {
+          println(`Test email sent to ${testEmail}. Check your inbox.`);
+          sent = ['y', 'yes'].includes((await question('Did you receive the email? (y/n): ')).toLowerCase());
+        } else {
+          println(`Test email failed: ${result.error}`);
+          if (attempt < 3 && !['y', 'yes'].includes((await question('Try again? (y/n): ')).toLowerCase())) break;
         }
       }
-
-      if (!newEnv['RESEND_API_KEY']) {
-        println(`     ${colors.yellow}${icons.warning} No Resend key: emails will go to Mailpit (http://localhost:8025).${colors.reset}`);
-        println(`     ${colors.dim}Set RESEND_API_KEY before deploying, or no email will reach anyone.${colors.reset}`);
-        println();
-      } else {
-        // Then ask for FROM_EMAIL with domain check
-        const { fromEmail, testEmail } = await askEmailConfig(productionOnly);
-        newEnv['FROM_EMAIL'] = fromEmail;
-
-        // Send test email
-        println(`  ${icons.email} ${colors.bold}Sending test email...${colors.reset}`);
-        println();
-
-        let emailSuccess = false;
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (!emailSuccess && retryCount < maxRetries) {
-          const result = await sendTestEmail(
-            newEnv['RESEND_API_KEY'],
-            fromEmail,
-            testEmail,
-          );
-
-          if (result.success) {
-            println(`     ${colors.green}${icons.success} Test email sent successfully to ${testEmail}${colors.reset}`);
-            println(`     ${colors.dim}Please check your inbox (and spam folder)${colors.reset}`);
-            println();
-
-            const confirmed = await question(
-              `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Did you receive the email? (y/n)${colors.reset}: `,
-            );
-
-            if (confirmed.toLowerCase() === 'y' || confirmed.toLowerCase() === 'yes') {
-              emailSuccess = true;
-              println();
-              println(`     ${colors.green}${icons.success} Email configuration verified!${colors.reset}`);
-            } else {
-              println();
-              println(`     ${colors.yellow}${icons.warning} Email might be in spam folder or delayed${colors.reset}`);
-              const continueAnyway = await question(
-                `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Continue anyway? (y/n)${colors.reset}: `,
-              );
-              if (continueAnyway.toLowerCase() === 'y' || continueAnyway.toLowerCase() === 'yes') {
-                emailSuccess = true;
-              } else {
-                retryCount++;
-                if (retryCount < maxRetries) {
-                  println();
-                  println(`     ${colors.cyan}Let's try again...${colors.reset}`);
-                  const retryConfig = await askEmailConfig(productionOnly);
-                  newEnv['FROM_EMAIL'] = retryConfig.fromEmail;
-                }
-              }
-            }
-          } else {
-            println(`     ${colors.red}${icons.error} Failed to send test email: ${result.error}${colors.reset}`);
-            println();
-
-            if (result.error?.includes('not verified') || result.error?.includes('not allowed')) {
-              println(`     ${colors.yellow}${icons.warning} This error usually means:${colors.reset}`);
-              println(`     ${colors.dim}  - The recipient email is not verified in Resend${colors.reset}`);
-              println(`     ${colors.dim}  - You're using onboarding@resend.dev with wrong recipient${colors.reset}`);
-              println();
-            }
-
-            retryCount++;
-            if (retryCount < maxRetries) {
-              const retry = await question(
-                `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Try again? (y/n)${colors.reset}: `,
-              );
-              if (retry.toLowerCase() !== 'y' && retry.toLowerCase() !== 'yes') {
-                break;
-              }
-              println();
-              const retryConfig2 = await askEmailConfig(productionOnly);
-              newEnv['FROM_EMAIL'] = retryConfig2.fromEmail;
-            }
-          }
-        }
-
-        if (!emailSuccess) {
-          println();
-          if (productionOnly) {
-            println(`     ${colors.red}${icons.error} Resend email verification did not succeed.${colors.reset}`);
-            throw new Error('Resend email verification did not succeed. Fix the sender or API key and run bun run setup:prod --only email.');
-          }
-          println(`     ${colors.yellow}${icons.warning} Continuing without email verification${colors.reset}`);
-          println(`     ${colors.dim}You may need to fix email configuration manually${colors.reset}`);
-        }
-
-        println();
-      }
+      if (!sent) throw new Error('Resend email verification did not succeed. Fix the sender or API key and run bun run setup:prod --only email.');
     } else if (category.key === 'support') {
       newEnv.SUPPORT_EMAIL = await askSupportEmail(existingEnv.SUPPORT_EMAIL);
     } else if (category.key === 'captcha') {
-      const turnstile = await askTurnstileConfig(existingEnv, productionOnly);
+      const turnstile = await askTurnstileConfig(existingEnv);
       newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = turnstile.siteKey;
       newEnv.TURNSTILE_SECRET_KEY = turnstile.secretKey;
     } else if (category.key === 'oauth') {
-      // Dynamic provider selection
       process.stdin.pause();
-      const selectedProviders = await askOAuthProviders();
-
-      for (const provider of selectedProviders) {
-        const creds = await askProviderCredentials(provider, existingEnv);
-        Object.assign(newEnv, creds);
-      }
+      for (const provider of await askOAuthProviders()) Object.assign(newEnv, await askProviderCredentials(provider, existingEnv));
     } else if (category.key === 'storage') {
-      Object.assign(newEnv, await askStorageConfig(existingEnv, productionOnly));
+      Object.assign(newEnv, await askStorageConfig(existingEnv));
     } else if (category.key === 'monitoring') {
       Object.assign(newEnv, await askSentryConfig(existingEnv));
     } else if (category.key === 'cleanup') {
@@ -1959,212 +1568,38 @@ async function runSetup() {
     } else if (category.key === 'proxy') {
       Object.assign(newEnv, await askProxyConfig(existingEnv));
     }
-
-    stepNumber++;
   }
 
-  if (productionOnly) {
-    const candidateEnv = { ...existingEnv, ...newEnv };
-    const requiredProductionKeys = [
-      'BETTER_AUTH_SECRET',
-      'BETTER_AUTH_URL',
-      'DATABASE_URL',
-      'RESEND_API_KEY',
-      'FROM_EMAIL',
-      'SUPPORT_EMAIL',
-    ];
-    const missing = requiredProductionKeys.filter((key) => !candidateEnv[key]?.trim());
-    const resolution = resolveEnv(candidateEnv);
-    const issues = [...missing.map((key) => `${key} is required for production.`), ...resolution.problems];
-    try {
-      const appUrl = new URL(candidateEnv.BETTER_AUTH_URL ?? '');
-      if (appUrl.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1', '[::1]'].includes(appUrl.hostname)) {
-        issues.push('BETTER_AUTH_URL must be a public HTTPS URL for production.');
-      }
-    } catch {
-      issues.push('BETTER_AUTH_URL must be a valid public HTTPS URL for production.');
-    }
-    if (isDockerDatabaseUrl(candidateEnv.DATABASE_URL, candidateEnv.DB_PORT)) {
-      issues.push('DATABASE_URL must point to an external production database.');
-    }
-    if (!getSupportEmail(candidateEnv)) issues.push('SUPPORT_EMAIL must be a valid email address for production.');
-    if (
-      isTurnstileTestSiteKey(candidateEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
-      isTurnstileTestSecretKey(candidateEnv.TURNSTILE_SECRET_KEY)
-    ) {
-      issues.push('Production setup requires real Turnstile keys.');
-    }
-    if (issues.length) {
-      printBox('Production settings need attention', issues, 'error');
-      return;
-    }
-  }
+  const candidateEnv = { ...existingEnv, ...newEnv };
+  const requiredKeys = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'DATABASE_URL', 'RESEND_API_KEY', 'FROM_EMAIL', 'SUPPORT_EMAIL'];
+  const missing = requiredKeys.filter((key) => !candidateEnv[key]?.trim());
+  const resolution = resolveEnv(candidateEnv);
+  const issues = [...missing.map((key) => `${key} is required for production.`), ...resolution.problems];
+  try {
+    const appUrl = new URL(candidateEnv.BETTER_AUTH_URL ?? '');
+    if (appUrl.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1', '[::1]'].includes(appUrl.hostname)) issues.push('BETTER_AUTH_URL must be a public HTTPS URL for production.');
+  } catch { issues.push('BETTER_AUTH_URL must be a valid public HTTPS URL for production.'); }
+  if (isDockerDatabaseUrl(candidateEnv.DATABASE_URL, candidateEnv.DB_PORT)) issues.push('DATABASE_URL must point to an external production database.');
+  if (!getSupportEmail(candidateEnv)) issues.push('SUPPORT_EMAIL must be a valid email address for production.');
+  if (isTurnstileTestSiteKey(candidateEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) || isTurnstileTestSecretKey(candidateEnv.TURNSTILE_SECRET_KEY)) issues.push('Production setup requires real Turnstile keys.');
+  if (issues.length) { printBox('Production settings need attention', issues, 'error'); return; }
 
-  const envSections = [...selectedSections].filter((section) => section !== 'theme');
-  if (envSections.length > 0) {
-    if (selectedSections.has('storage') && (existingEnv.STORAGE_DRIVER ?? 'local') !== newEnv.STORAGE_DRIVER) {
-      println(`  ${colors.yellow}${icons.warning} The storage engine changed. Move existing avatars with: bun run storage:migrate${colors.reset}`);
-    }
-    const changedDatabase = databaseSelected && previousDatabaseUrl && newEnv.DATABASE_URL !== previousDatabaseUrl ? previousDatabaseUrl : undefined;
-    if (changedDatabase) println('Database records are not copied when you switch databases.');
-    await spinner('Updating selected .env sections...', async () => {
-      updateEnvSections(newEnv, envSections, changedDatabase);
-      if (!isConfigured) mergeEnvLocalIntoEnv();
-    });
-  }
-
-  if (databaseSelected && !productionOnly) {
-    if (previousDatabaseUrl && newEnv.DATABASE_URL !== previousDatabaseUrl) {
-      println('The previous DATABASE_URL was saved as a comment in .env.');
-    }
-    const dotenv = await import('dotenv');
-    dotenv.config({ path: path.join(process.cwd(), '.env'), override: true });
-
-    println();
-    println(`  ${colors.cyan}${icons.arrow} Running Prisma generate...${colors.reset}`);
-    println();
-    try {
-      await runPrismaGenerate();
-      println();
-      println(`  ${colors.green}${icons.success} Prisma client generated${colors.reset}`);
-    } catch (err) {
-      println(`  ${colors.red}${icons.error} Failed to generate Prisma client${colors.reset}`);
-      throw err;
-    }
-
-    println();
-    println(`  ${colors.cyan}${icons.arrow} Applying database migrations...${colors.reset}`);
-    println();
-    try {
-      await runPrismaMigrate();
-      println();
-      println(`  ${colors.green}${icons.success} Database migrations applied${colors.reset}`);
-    } catch (err) {
-      println(`  ${colors.red}${icons.error} Failed to apply migrations${colors.reset}`);
-      if (err instanceof BaselineRequiredError) println(baselineMessage());
-      throw err;
-    }
-
-    println();
-    println(`  ${colors.cyan}${icons.arrow} Seeding database with initial data...${colors.reset}`);
-    println();
-    try {
-      await runSeed();
-      println();
-      println(`  ${colors.green}${icons.success} Database seeded${colors.reset}`);
-      await question(`     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}If an admin password was shown above, save it now. Press Enter to continue${colors.reset}`);
-    } catch {
-      println(`  ${colors.yellow}${icons.warning} Seed skipped (may already exist)${colors.reset}`);
-    }
-    stepNumber++;
-  }
-
-  // Theme selection
-  if (themeSelected) {
+  const envSections = [...selectedSections];
+  if (selectedSections.has('storage') && (existingEnv.STORAGE_DRIVER ?? 'local') !== newEnv.STORAGE_DRIVER) println(`  ${colors.yellow}${icons.warning} The storage engine changed. Move existing avatars with: bun run storage:migrate${colors.reset}`);
+  await spinner('Updating selected .env sections...', async () => {
+    updateEnvSections(newEnv, envSections);
+    if (!isConfigured) mergeEnvLocalIntoEnv();
+  });
   printHeader();
-  printStep(stepNumber, totalSteps, 'Auth Theme');
-
-  println(`  🎨 ${colors.bold}Choose your auth theme${colors.reset}`);
-  println(`     ${colors.dim}Select a visual theme for your login, register, and auth pages.${colors.reset}`);
-  println(`     ${colors.dim}You can change this later with: bun run theme:select${colors.reset}`);
-  const themeChanges = getThemeChangedPaths();
-  const conservativeThemeDefault = isConfigured || themeChanges.length > 0;
-  if (themeChanges.length > 0) println('     Changes exist in theme paths; the default is no.');
-  println();
-
-  const wantsTheme = await question(
-    `     ${colors.yellow}${icons.arrow}${colors.reset} ${colors.dim}Configure auth theme now? ${conservativeThemeDefault ? '[y/N]' : '(y/N)'}${colors.reset}: `,
-  );
-
-  if (wantsTheme.toLowerCase() === 'y' || wantsTheme.toLowerCase() === 'yes') {
-    println();
-    println(`  ${colors.cyan}${icons.arrow} Launching theme selector...${colors.reset}`);
-    println();
-
-    try {
-      rl.close();
-      showCursor();
-      execSync('bun run scripts/select-theme.ts', { stdio: 'inherit' });
-    } catch {
-      println(`  ${colors.yellow}${icons.warning} Theme selection skipped${colors.reset}`);
-    }
-  } else {
-    println();
-    println(`     ${colors.green}${icons.success} Keeping the current theme${colors.reset}`);
-    println(`     ${colors.dim}Change anytime with: bun run theme:select${colors.reset}`);
-  }
-  }
-
-  if (themeSelected) {
-    println();
-    stepNumber++;
-  }
-
-  // Final screen
-  printHeader();
-  printStep(stepNumber, totalSteps, productionOnly ? 'Production Setup Complete!' : 'Setup Complete!');
-  const finalEnv = { ...existingEnv, ...newEnv };
-  const finalResolution = productionOnly ? resolveEnv(finalEnv) : undefined;
-  const turnstileWarningLines = productionOnly
-    ? !finalResolution?.config.turnstile.enabled
-      ? [
-          'Turnstile is off. Turning it on in production is',
-          'recommended: set NEXT_PUBLIC_TURNSTILE_SITE_KEY and',
-          'TURNSTILE_SECRET_KEY on your server.',
-          '',
-        ]
-      : []
-    : !newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY || !newEnv.TURNSTILE_SECRET_KEY
-      ? [
-          'Turnstile is off. Turning it on in production is',
-          'recommended: set NEXT_PUBLIC_TURNSTILE_SITE_KEY and',
-          'TURNSTILE_SECRET_KEY on your server.',
-          '',
-        ]
-      : isTurnstileTestSiteKey(newEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ||
-          isTurnstileTestSecretKey(newEnv.TURNSTILE_SECRET_KEY)
-        ? [
-            'Before deploying: create a Turnstile widget',
-            'and set real keys on your server.',
-            '',
-          ]
-        : [];
-
-  printBox(
-    productionOnly ? 'Production Setup Complete!' : 'Setup Complete!',
-    [
-      ...(productionOnly
-        ? [
-            'Production environment settings are ready.',
-            'Deploy with your hosting provider.',
-            'Follow the production deployment guide before launch.',
-          ]
-        : ['Your RapidAuth application is ready to use.']),
-      '',
-      ...(!productionOnly && databaseSelected ? ['The admin password was shown once during the database step.', 'Save it and change it after your first login.', 'If the admin already existed, its password was kept.'] : []),
-      '',
-      ...turnstileWarningLines,
-      ...(!productionOnly && databaseRunsInDocker
-        ? [
-            'Local PostgreSQL is running in Docker.',
-            'It starts with Docker unless you stopped it on purpose.',
-            'Stop it: docker compose stop db',
-            'Start it: docker compose up -d db',
-            '',
-          ]
-        : []),
-      ...(productionOnly ? [] : ["Run 'bun dev' to start the development server."]),
-    ],
-    'success',
-  );
-
-  if (productionOnly) {
-    println(formatEnvSummary(finalResolution!.config));
-    println();
-  }
-
-  println(`  ${colors.cyan}${icons.rocket} ${productionOnly ? 'Ready to deploy.' : 'Happy coding!'}${colors.reset}`);
-  println();
+  printStep(stepNumber, activeCategories.length + 1, 'Production setup complete');
+  printBox('Production setup complete', [
+    'Production environment settings are ready.',
+    'Deploy with your hosting provider.',
+    'Follow the production deployment guide before launch.',
+    '',
+    ...(!resolution.config.turnstile.enabled ? ['Turnstile is off. Enable it by setting its keys on your server.'] : []),
+  ], 'success');
+  println(formatEnvSummary(resolution.config));
 }
 
 // ============================================================================
