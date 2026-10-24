@@ -14,15 +14,19 @@ docker buildx version
 
 ## Usar la app
 
-El archivo `.env` es opcional. Sin él, Compose usa valores locales predeterminados y construye la imagen de producción:
+El archivo `.env` es opcional. Sin él, Compose usa valores locales predeterminados y usa la imagen publicada `ghcr.io/jotredev/rapidauth-v2:0.2.0`. Si esa imagen no está disponible, Compose la construye desde el `Dockerfile` raíz:
 
 ```sh
-docker compose up --build
+docker compose up
 ```
+
+La versión de la imagen se define en `docker/app.yaml`. Para usar una versión nueva, cambia allí la etiqueta por la versión publicada (por ejemplo, `0.3.0`) y ejecuta `docker compose up`. Para construir la app localmente, ejecuta `docker compose up --build`.
+
+Para publicar una versión, crea y sube una etiqueta como `v0.3.0`. GitHub Actions construye el `Dockerfile` raíz y publica `0.3.0` y `0` en GitHub Container Registry. Después de la primera publicación, haz pública la imagen `rapidauth-v2` en GitHub Packages para que Compose pueda descargarla sin autenticación.
 
 Abre [http://localhost:3000](http://localhost:3000). En una base nueva, usa la pantalla de primer inicio para crear el primer administrador y luego entra al dashboard. La pantalla de configuración está disponible durante 15 minutos después de iniciar la app.
 
-El primer inicio construye la imagen y aplica las migraciones versionadas de Prisma antes de arrancar la app. Compose mantiene la app, la base de datos y Mailpit activos en la terminal. Presiona **Ctrl+C** para detenerlos. Inícialos de nuevo con `docker compose up`.
+El primer inicio descarga la imagen de la app (o la construye localmente si no está disponible) y aplica las migraciones versionadas de Prisma antes de arrancar la app. Compose mantiene la app, la base de datos y Mailpit activos en la terminal. Presiona **Ctrl+C** para detenerlos. Inícialos de nuevo con `docker compose up`.
 
 Los valores predeterminados son para uso local:
 
