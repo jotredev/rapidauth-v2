@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { Pool } from 'pg';
 
 export const BASELINE_COMMAND = 'bunx prisma migrate resolve --applied 0_init';
 
@@ -37,4 +38,64 @@ export function runMigrateDeploy(databaseUrl?: string): void {
   if (result.status === 0) return;
   if (/\bP3005\b/.test(`${result.stdout}${result.stderr}`)) throw new BaselineRequiredError();
   throw new Error(result.error?.message ?? `prisma migrate deploy failed with status ${result.status}`);
+}
+
+export type MigrationStatusCheck =
+  | { status: 'up-to-date' }
+  | { status: 'pending' }
+  | { status: 'baseline-required' }
+  | { status: 'error'; reason: string };
+
+/** Checks an external database without applying migrations. */
+export async function checkMigrateStatus(databaseUrl: string): Promise<MigrationStatusCheck> {
+  const result = spawnSync('bunx', ['prisma', 'migrate', 'status'], {
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
+  if (result.status === 0) return { status: 'up-to-date' };
+
+  const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+  if (/\bP3005\b/.test(output)) return { status: 'baseline-required' };
+
+  if (/Following migration(?:s)? have not yet been applied/i.test(output)) {
+    try {
+      const url = new URL(databaseUrl);
+      const sslMode = url.searchParams.get('sslmode');
+      const pool = new Pool({
+        connectionString: databaseUrl,
+        ssl: sslMode === 'disable' ? false : sslMode ? { rejectUnauthorized: true } : undefined,
+      });
+      try {
+        const tables = await pool.query<{ has_migration_history: boolean; has_application_tables: boolean }>(`
+          SELECT
+            EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema() AND table_name = '_prisma_migrations'
+            ) AS has_migration_history,
+            EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema()
+                AND table_type = 'BASE TABLE'
+                AND table_name <> '_prisma_migrations'
+            ) AS has_application_tables
+        `);
+        const { has_migration_history, has_application_tables } = tables.rows[0];
+        if (has_application_tables && !has_migration_history) return { status: 'baseline-required' };
+        return { status: 'pending' };
+      } finally {
+        await pool.end();
+      }
+    } catch (error) {
+      return { status: 'error', reason: shortError(error) };
+    }
+  }
+
+  return { status: 'error', reason: shortError(result.error ?? output) };
+}
+
+function shortError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const lines = message.split('\n').map((line) => line.trim()).filter(Boolean);
+  const errorLine = lines.find((line) => /\b(?:Error:|P\d{4}:)/.test(line));
+  return (errorLine?.replace(/^Error:\s*/, '') ?? lines.at(-1) ?? 'Unknown error').replace(/[.!?]+$/, '');
 }

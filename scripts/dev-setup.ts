@@ -9,7 +9,7 @@ import {
   ensureDockerDatabase,
   ensureDockerService,
 } from './lib/docker';
-import { BaselineRequiredError, baselineMessage, runMigrateDeploy } from './lib/migrations';
+import { BaselineRequiredError, baselineMessage, checkMigrateStatus, runMigrateDeploy } from './lib/migrations';
 
 const root = process.cwd();
 const envPath = path.resolve(root, '.env');
@@ -73,6 +73,22 @@ function applyMigrations(databaseUrl: string): boolean {
   }
 }
 
+async function checkExternalMigrations(databaseUrl: string): Promise<void> {
+  const result = await checkMigrateStatus(databaseUrl);
+  if (result.status === 'up-to-date') return;
+  if (result.status === 'baseline-required') {
+    process.stderr.write(baselineMessage());
+    return;
+  }
+  if (result.status === 'pending') {
+    process.stderr.write(
+      'Database migrations are missing. If this is a development database, run `bun run db:deploy`.\n',
+    );
+    return;
+  }
+  process.stderr.write(`Could not check database migrations: ${result.reason}.\n`);
+}
+
 async function main(): Promise<void> {
   if (!existsSync(envPath)) createLocalEnv();
 
@@ -99,6 +115,8 @@ async function main(): Promise<void> {
       () => ensureDockerDatabase(env.DB_PORT),
     );
     if (!started || !applyMigrations(env.DATABASE_URL as string)) return;
+  } else if (env.DATABASE_URL) {
+    await checkExternalMigrations(env.DATABASE_URL);
   }
 
   if (useMailpit) {
