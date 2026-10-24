@@ -44,8 +44,8 @@ Choose the setup path you need. These are alternatives; you do not need to follo
 | --- | --- | --- | --- |
 | Production setup | [Bun](https://bun.sh/) | Choose Docker Compose for a VPS or provide external production PostgreSQL; public HTTPS URL and Resend account | `bun run setup:prod` |
 | Manual setup | [Bun](https://bun.sh/) | External PostgreSQL, such as [Neon](https://neon.tech) | `bun dev` after following the manual guide |
-| Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `docker compose up --build` |
-| Docker for the database only | [Bun](https://bun.sh/) and a Docker engine | Local PostgreSQL in Docker; no external database | `bun install`, then `bun dev` (creates `.env`, starts the database and Mailpit, creates the tables) |
+| Docker | A Docker engine with Compose v2 and Buildx | Local PostgreSQL, created by Compose | `cd docker && docker compose up --build` |
+| Docker for the database only | [Bun](https://bun.sh/) and Docker Compose | Local PostgreSQL in Docker; no external database | `cd docker && docker compose up -d db mailpit`, then `bun dev` |
 
 ### Production environment setup
 
@@ -75,11 +75,11 @@ To configure each step yourself, follow the [English manual setup guide](docs/en
 
 **Requirements:** A Docker engine with Compose v2 and Buildx, such as Docker Desktop, OrbStack, Colima, or Docker Engine. You do not need Bun or PostgreSQL installed on your computer. Compose creates the local database and applies the schema when it starts; you create the admin account on the first-run screen (see Admin Account below). You do not need to run `bun run setup:prod` for development.
 
-A `.env` file created by `bun run setup:prod` can provide production credentials to Docker. Compose supplies the local database URL and local app URL when starting the development container. To start the app and database, follow the [English Docker guide](docs/en/03-docker.md) or the [guía de Docker en español](docs/es/03-docker.md).
+Docker Compose reads only `docker/.env` (optional; see `docker/.env.example`), never the root `.env`. `bun run setup:prod` writes `docker/.env` when you answer yes to Docker Compose. Compose supplies the local database URL and local app URL when starting the development container. To start the app and database, follow the [English Docker guide](docs/en/03-docker.md) or the [guía de Docker en español](docs/es/03-docker.md).
 
 ### Option 4: Docker for the database only
 
-**Requirements:** Bun and a Docker engine. You do not need an external database. Docker runs PostgreSQL while `bun dev` runs the app directly on your computer. Next.js recommends this approach for development on macOS and Windows because it is faster than mounting the app code into Docker. Follow the [English Docker guide](docs/en/03-docker.md#run-the-app-on-your-computer-and-only-postgresql-in-docker) or the [guía en español](docs/es/03-docker.md#ejecuta-la-app-en-tu-computadora-y-solo-postgresql-en-docker).
+**Requirements:** Bun and Docker Compose. You do not need an external database. Start PostgreSQL and Mailpit yourself with `cd docker && docker compose up -d db mailpit`, then run `bun dev` to start the app on your computer and apply local database migrations. `bun dev` never runs Docker commands. Next.js recommends this approach for development on macOS and Windows because it is faster than mounting the app code into Docker. Follow the [English Docker guide](docs/en/03-docker.md#run-the-app-on-your-computer-and-only-postgresql-in-docker) or the [guía en español](docs/es/03-docker.md#ejecuta-la-app-en-tu-computadora-y-solo-postgresql-en-docker).
 
 Browse all guides from the [documentation index](docs/README.md).
 
@@ -216,7 +216,7 @@ Test keys are only for local development. Create real keys in the Cloudflare das
 
 ```bash
 # Development
-bun dev                 # Start dev server (with lint & typecheck)
+bun dev                 # Check the database, then start the app (with lint & typecheck); never starts Docker
 bun run build          # Production build
 bun run start          # Start production server
 

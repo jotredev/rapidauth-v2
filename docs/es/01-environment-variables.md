@@ -1,6 +1,6 @@
 # Variables de entorno
 
-Esta referencia cubre todas las variables que leen la aplicación y los scripts de setup. La plantilla `.env.example` tiene tres bloques breves: valores necesarios para producción, integraciones opcionales y herramientas de build o mantenimiento. Consulta aquí los detalles. Nunca subas secretos reales al repositorio.
+Esta referencia cubre todas las variables que leen la aplicación y los scripts de setup. La plantilla `.env.example` tiene tres bloques breves: valores necesarios para producción, integraciones opcionales y herramientas de build o mantenimiento. Consulta aquí los detalles. Nunca subas secretos reales al repositorio. Docker Compose no lee el `.env` de la raíz: las variables que acepta están en `docker/.env.example` y van en `docker/.env`.
 
 ## Base de datos
 
@@ -60,7 +60,7 @@ Esta referencia cubre todas las variables que leen la aplicación y los scripts 
 
 ### `RESEND_API_KEY`
 
-- **Propósito:** Autoriza el envío de correo mediante Resend. Con clave, los correos se envían por Resend. Sin ella, van a Mailpit, un buzón local en `http://localhost:8025` que arranca con `docker compose up`.
+- **Propósito:** Autoriza el envío de correo mediante Resend. Con clave, los correos se envían por Resend. Sin ella, van a Mailpit, un buzón local en `http://localhost:8025` que arranca con `cd docker && docker compose up`.
 - **Obligatoria:** No en desarrollo local. Sí en producción: sin ella ningún correo llega a nadie, y el resumen de arranque muestra un aviso cuando `BETTER_AUTH_URL` no es local.
 - **Dónde obtenerla:** Crea una API key en el panel de Resend.
 - **Formato de ejemplo:** `re_reemplazar_con_tu_api_key`

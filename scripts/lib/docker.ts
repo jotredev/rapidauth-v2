@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 
-export const DOCKER_COMPOSE_ARGS = ['compose'];
+// Docker settings come only from docker/.env, never from the root .env, so Compose always uses the file inside docker/.
+export const DOCKER_COMPOSE_ARGS = ['compose', '-f', 'docker/compose.yaml'];
 
 export const DOCKER_GUIDES = [
   'Guide (English): docs/en/03-docker.md',
@@ -39,15 +40,11 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-export type DockerService = 'db' | 'mailpit';
-
-/** Starts one Compose service in the background and waits until its healthcheck passes. */
-export async function ensureDockerService(
-  service: DockerService,
-  label: string,
-  extraEnvironment: Record<string, string> = {},
-): Promise<void> {
-  const environment = { ...process.env, ...extraEnvironment };
+/** Starts the local PostgreSQL service in the background and waits until its healthcheck passes. */
+export async function ensureDockerDatabase(port?: string): Promise<void> {
+  const service = 'db';
+  const label = 'Local PostgreSQL';
+  const environment = { ...process.env, ...(port ? { DB_PORT: port } : {}) };
   const output = execFileSync(
     'docker',
     [...DOCKER_COMPOSE_ARGS, 'up', '-d', service],
@@ -78,15 +75,11 @@ export async function ensureDockerService(
       return;
     }
     if (health === 'unhealthy') {
-      throw new Error(`The ${label} container became unhealthy. Check it with docker compose logs ${service}.`);
+      throw new Error(`The ${label} container became unhealthy. Check it with cd docker && docker compose logs ${service}.`);
     }
 
     await wait(1_000);
   }
 
   throw new Error(`Timed out after 60 seconds waiting for the ${label} container to become healthy.`);
-}
-
-export async function ensureDockerDatabase(port?: string): Promise<void> {
-  await ensureDockerService('db', 'Local PostgreSQL', port ? { DB_PORT: port } : {});
 }

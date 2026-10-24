@@ -4,9 +4,6 @@ services:
     restart: unless-stopped
     # With CRON_SECRET, scale evaluates to 1; without it, scale evaluates to 0 and the container stays stopped.
     scale: 0${CRON_SECRET:+1}
-    env_file:
-      - path: ../.env
-        required: false
     environment:
       CRON_SECRET: "${CRON_SECRET:-}"
     depends_on:

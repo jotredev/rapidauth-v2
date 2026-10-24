@@ -20,7 +20,7 @@ public/uploads/avatars
 .prettierignore
 .prettierrc*
 tsconfig.tsbuildinfo
-compose.yaml
+docker/compose.yaml
 docker/db.yaml
 docker/app.dev.yaml
 docker/Dockerfile.dev

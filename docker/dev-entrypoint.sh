@@ -23,7 +23,7 @@ if ! migrate_output="$(bunx prisma migrate deploy 2>&1)"; then
 This database already has tables but no migration history (Prisma error P3005).
 It was probably created with `prisma db push`. Nothing was changed.
 If its tables match the current schema, mark the initial migration as applied yourself:
-  docker compose run --rm app bunx prisma migrate resolve --applied 0_init
+  docker compose -f docker/compose.dev.yaml run --rm app bunx prisma migrate resolve --applied 0_init
 Then start the containers again. Guide (English): docs/en/00-manual-setup.md
 Guía (español): docs/es/00-manual-setup.md
 MSG

@@ -13,7 +13,7 @@ El valor predeterminado es `STORAGE_DRIVER=local`. El build de producción muest
 
 [PGSTY Silo](https://github.com/pgsty/silo) es un fork de MinIO con licencia AGPL-3.0-or-later que ofrece un servidor compatible con S3. El perfil opcional `s3` de Compose ejecuta una versión fija de Silo, guarda sus datos en el volumen `storage_data` y, al arrancar, crea el bucket configurado con lectura pública de objetos. El bucket es público para que el navegador pueda abrir directamente los avatares del perfil. [PGSTY mcli](https://github.com/pgsty/mc), también con licencia AGPL-3.0-or-later, es el cliente de línea de comandos que crea el bucket y aplica su política de lectura pública.
 
-Configura los valores S3 existentes en `.env`:
+Configura los valores S3 existentes en `.env` (con Docker Compose, en `docker/.env`):
 
 ```dotenv
 STORAGE_DRIVER="s3"
@@ -26,9 +26,9 @@ S3_PUBLIC_URL="http://localhost:9000/rapidauth-avatars"
 S3_FORCE_PATH_STYLE="true"
 ```
 
-Inicia la app y Silo con `docker compose --profile s3 up --build`. El hostname `storage` solo está disponible para contenedores de la red Compose. Para ejecutar la app en el host, inicia solo Silo con `docker compose --profile s3 up -d storage-public-read` y luego usa `S3_ENDPOINT="http://localhost:9000" bun dev`. Para una app desplegada, configura `S3_PUBLIC_URL` con un hostname HTTPS público o un proxy inverso que sirva el bucket; el navegador no puede acceder al hostname privado de Compose. El perfil de Silo es opcional, así que `docker compose up` normal sigue usando Local.
+Inicia la app y Silo con `cd docker && docker compose --profile s3 up --build`. El hostname `storage` solo está disponible para contenedores de la red Compose. Para ejecutar la app en el host, inicia solo Silo con `cd docker && docker compose --profile s3 up -d storage-public-read` y luego usa `S3_ENDPOINT="http://localhost:9000" bun dev`. Para una app desplegada, configura `S3_PUBLIC_URL` con un hostname HTTPS público o un proxy inverso que sirva el bucket; el navegador no puede acceder al hostname privado de Compose. El perfil de Silo es opcional, así que `cd docker && docker compose up` normal sigue usando Local.
 
-Para desarrollo con Docker, ejecuta `docker compose -f compose.dev.yaml --profile s3 up --build`.
+Para desarrollo con Docker, ejecuta `docker compose -f docker/compose.dev.yaml --profile s3 up --build`.
 
 ## Cloudflare R2 (ejemplo recomendado)
 

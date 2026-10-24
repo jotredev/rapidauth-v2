@@ -2,6 +2,8 @@
 
 Esta guía ejecuta el stack de Compose de producción en un VPS Linux. Supone que nunca has usado Docker; sigue los pasos en orden. Compose inicia la app, PostgreSQL, Caddy y los respaldos diarios de la base de datos.
 
+> **Si usabas el `.env` de la raíz:** Docker Compose ya no lee el `.env` de la raíz. Si antes lo usabas con Docker, mueve esos valores a `docker/.env` (consulta `docker/.env.example`) y ejecuta Compose desde la carpeta `docker`.
+
 ## Qué necesitas
 
 - Un VPS con una versión LTS actual de Ubuntu y una dirección IPv4 pública.
@@ -56,13 +58,14 @@ Ejecuta la configuración de producción:
 bun run setup:prod
 ```
 
-Responde **yes** a «Are you deploying with Docker Compose? (y/n)» e ingresa tu dirección HTTPS pública, por ejemplo, `https://auth.example.com`. El asistente crea un secreto de Better Auth y guarda los ajustes en `.env`. Compose proporciona por su cuenta la conexión a la base de datos, así que no necesitas ingresar `DATABASE_URL`. Mantén `.env` privado. Cuando el asistente pregunte por el proxy de confianza, elige **Own proxy** (opción 4, `TRUSTED_PROXY=proxy`) para que la app use la IP del cliente que establece Caddy. Las validaciones actuales siguen exigiendo una clave de Resend y un remitente verificado para el correo.
+Responde **yes** a «Are you deploying with Docker Compose? (y/n)» e ingresa tu dirección HTTPS pública, por ejemplo, `https://auth.example.com`. El asistente crea un secreto de Better Auth y guarda los ajustes en `docker/.env`, el único archivo que lee Docker Compose. Compose proporciona por su cuenta la conexión a la base de datos, así que no necesitas ingresar `DATABASE_URL`. Mantén `docker/.env` privado. Cuando el asistente pregunte por el proxy de confianza, elige **Own proxy** (opción 4, `TRUSTED_PROXY=proxy`) para que la app use la IP del cliente que establece Caddy. Las validaciones actuales siguen exigiendo una clave de Resend y un remitente verificado para el correo.
 
 ## 5. Inicia el stack del VPS
 
 Valida los archivos de Compose e inicia la app, el proxy HTTPS y el servicio de respaldos:
 
 ```sh
+cd docker
 docker compose --profile vps config --quiet
 docker compose --profile vps up -d
 ```
@@ -72,19 +75,21 @@ El primer inicio descarga las imágenes de la app y Caddy, crea PostgreSQL, apli
 Comprueba los servicios y sus registros:
 
 ```sh
+cd docker
 docker compose --profile vps ps
 docker compose --profile vps logs -f app caddy
 ```
 
 Abre el dominio HTTPS y crea la primera cuenta administradora. Usa `Ctrl+C` para dejar de seguir los registros; eso no detiene los servicios.
 
-Para comprobar un certificado local, configura `BETTER_AUTH_URL=https://localhost` en `.env` e inicia el perfil. Caddy crea un certificado firmado por su autoridad local. El navegador lo mostrará como no confiable hasta instalar esa autoridad en la computadora; usa un dominio público para un certificado de confianza.
+Para comprobar un certificado local, configura `BETTER_AUTH_URL=https://localhost` en `docker/.env` e inicia el perfil. Caddy crea un certificado firmado por su autoridad local. El navegador lo mostrará como no confiable hasta instalar esa autoridad en la computadora; usa un dominio público para un certificado de confianza.
 
 ## 6. Actualiza RapidAuth
 
 Elige la versión del release en la línea `image` de `docker/app.yaml`, luego descarga y recrea los contenedores:
 
 ```sh
+cd docker
 docker compose --profile vps pull
 docker compose --profile vps up -d
 ```
@@ -98,6 +103,7 @@ El contenedor de respaldos guarda un dump SQL comprimido al iniciar y luego cada
 Copia el respaldo elegido a un archivo temporal y luego detén la app y el programador de respaldos. Reemplaza la base actual con una vacía y restaura el dump (cambia el nombre del archivo por uno que aparezca en el primer comando):
 
 ```sh
+cd docker
 docker compose --profile vps exec backup ls -lh /backups
 docker compose --profile vps exec -T backup sh -c 'cat "/backups/$1"' sh rapidauth-YYYYMMDDTHHMMSSZ.sql.gz > /tmp/rapidauth-restore.sql.gz
 docker compose --profile vps stop app backup
@@ -115,6 +121,7 @@ Reemplaza el nombre de ejemplo por uno de los que aparecen en `/backups`. Ejecut
 Guarda otra copia fuera del VPS. Para copiar un respaldo a tu computadora, ejecuta esto desde la carpeta del repositorio en el VPS:
 
 ```sh
+cd docker
 docker compose --profile vps exec -T backup sh -c 'cat /backups/rapidauth-YYYYMMDDTHHMMSSZ.sql.gz' > rapidauth-backup.sql.gz
 ```
 
@@ -130,9 +137,10 @@ Reemplaza `user`, la dirección del VPS y la ruta del repositorio con tus datos 
 
 [Coolify](https://github.com/coollabsio/coolify) es una plataforma autoalojada para desplegar apps y bases de datos, con licencia Apache-2.0. Instálala en un VPS y conecta tu repositorio Git.
 
-Crea una aplicación Docker Compose desde este repositorio, usa la raíz del repositorio como directorio base y selecciona `compose.yaml`. Coolify incluye su propio proxy HTTPS, así que no inicies el servicio `caddy` en esos mismos puertos. Configura este comando de inicio personalizado:
+Crea una aplicación Docker Compose desde este repositorio, usa la raíz del repositorio como directorio base y selecciona `docker/compose.yaml`. Coolify incluye su propio proxy HTTPS, así que no inicies el servicio `caddy` en esos mismos puertos. Configura este comando de inicio personalizado:
 
 ```sh
+cd docker
 docker compose --profile vps up -d app backup
 ```
 

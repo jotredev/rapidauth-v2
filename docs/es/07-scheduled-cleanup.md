@@ -28,13 +28,13 @@ El workflow `.github/workflows/scheduled-cleanup.yml` incluido llama la ruta tod
 
 ## Camino C: Docker
 
-1. Agrega `CRON_SECRET`, con al menos 32 caracteres aleatorios, a tu archivo `.env` en la raíz (o expórtalo en tu terminal):
+1. Agrega `CRON_SECRET`, con al menos 32 caracteres aleatorios, a tu archivo `.env` en la raíz (con Docker Compose, a `docker/.env`; o expórtalo en tu terminal):
 
    ```env
    CRON_SECRET="tu-secreto-aleatorio-seguro-de-al-menos-32-caracteres"
    ```
 
-2. Inicia los contenedores con `docker compose up` (o `bun run docker:dev` para desarrollo).
+2. Inicia los contenedores con `cd docker && docker compose up` (o `bun run docker:dev` para desarrollo).
 
 Cuando existe `CRON_SECRET`, Docker Compose enciende automáticamente el contenedor mínimo de `cron` (`docker/cron.yaml`). Este llama a `/api/cron/cleanup` una vez al día a las 03:00 UTC con la cabecera `Authorization: Bearer <CRON_SECRET>`. Sin `CRON_SECRET`, el contenedor permanece apagado (`scale: 0`).
 
@@ -43,6 +43,7 @@ Cuando existe `CRON_SECRET`, Docker Compose enciende automáticamente el contene
 En Docker, puedes ejecutar la limpieza a mano dentro del contenedor de cron en ejecución:
 
 ```bash
+cd docker
 docker compose exec cron cleanup
 ```
 

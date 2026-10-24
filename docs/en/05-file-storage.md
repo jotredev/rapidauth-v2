@@ -13,7 +13,7 @@ The default is `STORAGE_DRIVER=local`. The production build prints a reminder ab
 
 [PGSTY Silo](https://github.com/pgsty/silo) is an AGPL-3.0-or-later fork of MinIO that provides an S3-compatible server. The optional `s3` Compose profile runs a fixed Silo release, stores its data in the `storage_data` volume, and creates the configured bucket with public object reads when it starts. The bucket is public so profile avatars can be opened directly by browsers. [PGSTY mcli](https://github.com/pgsty/mc), also AGPL-3.0-or-later, is the command-line client that creates the bucket and applies its public-read policy.
 
-Set the existing S3 values in `.env`:
+Set the existing S3 values in `.env` (for Docker Compose, in `docker/.env`):
 
 ```dotenv
 STORAGE_DRIVER="s3"
@@ -26,9 +26,9 @@ S3_PUBLIC_URL="http://localhost:9000/rapidauth-avatars"
 S3_FORCE_PATH_STYLE="true"
 ```
 
-Start the app and Silo with `docker compose --profile s3 up --build`. The `storage` hostname is only reachable from containers on the Compose network. To run the app on the host, start only Silo with `docker compose --profile s3 up -d storage-public-read`, then use `S3_ENDPOINT="http://localhost:9000" bun dev`. For a deployed app, point `S3_PUBLIC_URL` to a public HTTPS hostname or reverse proxy that serves the bucket; browsers cannot reach the private Compose hostname. The Silo profile is opt-in, so the normal `docker compose up` continues to use Local storage.
+Start the app and Silo with `cd docker && docker compose --profile s3 up --build`. The `storage` hostname is only reachable from containers on the Compose network. To run the app on the host, start only Silo with `cd docker && docker compose --profile s3 up -d storage-public-read`, then use `S3_ENDPOINT="http://localhost:9000" bun dev`. For a deployed app, point `S3_PUBLIC_URL` to a public HTTPS hostname or reverse proxy that serves the bucket; browsers cannot reach the private Compose hostname. The Silo profile is opt-in, so the normal `cd docker && docker compose up` continues to use Local storage.
 
-For Docker development, run `docker compose -f compose.dev.yaml --profile s3 up --build`.
+For Docker development, run `docker compose -f docker/compose.dev.yaml --profile s3 up --build`.
 
 ## Cloudflare R2 (recommended example)
 
