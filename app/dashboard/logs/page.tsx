@@ -5,14 +5,11 @@ import { getAdminAccess } from '@/lib/admin-access';
 import { getOperationalLogs } from '@/actions/operational-logs';
 import { SystemLogsContent } from '@/components/dashboard';
 import { getColumnsCookieName, readHiddenColumns } from '@/lib/table-columns';
-import {
-  buildOperationalLogQueryString,
-  parseOperationalLogSearchParams,
-  type OperationalLogSearchParams,
-} from '@/lib/operational-log-query';
+import type { RawSearchParams } from '@/lib/table-query';
+import { operationalLogTableQuery } from '@/lib/operational-log-query';
 
 interface LogsPageProps {
-  searchParams: Promise<OperationalLogSearchParams>;
+  searchParams: Promise<RawSearchParams>;
 }
 
 export default async function LogsPage({ searchParams }: LogsPageProps) {
@@ -28,11 +25,10 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
 
   const cookieStore = await cookies();
   const hiddenColumns = readHiddenColumns(
-    'system-logs',
     cookieStore.get(getColumnsCookieName('system-logs'))?.value,
   );
 
-  const params = parseOperationalLogSearchParams(await searchParams);
+  const params = operationalLogTableQuery.parse(await searchParams);
   const result = await getOperationalLogs(params);
 
   if (result.response === 'error' || !result.data) {
@@ -45,7 +41,7 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
 
   if (result.data.page !== params.page) {
     redirect(
-      `/dashboard/logs?${buildOperationalLogQueryString({
+      `/dashboard/logs?${operationalLogTableQuery.toQueryString({
         ...params,
         page: result.data.page,
       })}`,
@@ -56,10 +52,8 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
     <SystemLogsContent
       logs={result.data.logs}
       total={result.data.total}
-      page={result.data.page}
-      pageSize={result.data.pageSize}
       totalPages={result.data.totalPages}
-      initialParams={params}
+      params={params}
       filterUser={result.data.filterUser}
       hiddenColumns={hiddenColumns}
     />

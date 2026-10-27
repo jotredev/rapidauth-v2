@@ -4,6 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/theme-provider';
+import { FocusModality } from '@/components/focus-modality';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 
@@ -31,6 +32,7 @@ export default function RootLayout({
       className={cn('font-sans', ibmPlexMono.variable)}
     >
       <body className='antialiased'>
+        <FocusModality />
         <NextTopLoader color='var(--link)' height={2} showSpinner={false} shadow={false} />
         <ThemeProvider
           attribute='class'

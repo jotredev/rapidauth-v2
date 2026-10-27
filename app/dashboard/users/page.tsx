@@ -5,14 +5,11 @@ import { getAdminAccess } from "@/lib/admin-access";
 import { getUsers } from "@/actions/users";
 import { UsersContent } from "@/components/dashboard";
 import { getColumnsCookieName, readHiddenColumns } from "@/lib/table-columns";
-import {
-  buildUserListQueryString,
-  parseUserListSearchParams,
-  type UserListSearchParams,
-} from "@/lib/user-list-query";
+import type { RawSearchParams } from "@/lib/table-query";
+import { userTableQuery } from "@/lib/user-list-query";
 
 interface UsersPageProps {
-  searchParams: Promise<UserListSearchParams>;
+  searchParams: Promise<RawSearchParams>;
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
@@ -28,11 +25,10 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
   const cookieStore = await cookies();
   const hiddenColumns = readHiddenColumns(
-    'users',
     cookieStore.get(getColumnsCookieName('users'))?.value,
   );
 
-  const params = parseUserListSearchParams(await searchParams);
+  const params = userTableQuery.parse(await searchParams);
   const result = await getUsers(params);
 
   if (result.response === 'error' || !result.data) {
@@ -45,7 +41,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
   if (result.data.page !== params.page) {
     redirect(
-      `/dashboard/users?${buildUserListQueryString({
+      `/dashboard/users?${userTableQuery.toQueryString({
         ...params,
         page: result.data.page,
       })}`,
@@ -56,10 +52,8 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     <UsersContent
       users={result.data.users}
       total={result.data.total}
-      page={result.data.page}
-      pageSize={result.data.pageSize}
       totalPages={result.data.totalPages}
-      initialParams={params}
+      params={params}
       isAdmin={true}
       currentUserId={session.user.id}
       hiddenColumns={hiddenColumns}

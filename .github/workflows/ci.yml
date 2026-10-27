@@ -32,6 +32,7 @@ jobs:
       - run: bun run deps:check
       - run: bun run lint
       - run: bun run typecheck
+      - run: bun run test
       - run: bun run theme:sync-classic --check
 
   build:

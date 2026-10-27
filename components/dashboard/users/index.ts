@@ -1,12 +1,7 @@
 export { UsersContent } from './users-content';
-export { UsersTable } from './users-table';
-export { SearchAndFilters } from './search-and-filters';
-export { ActiveFilters } from './active-filters';
-export { UserActions } from './user-actions';
-export { BulkActionsBar } from './bulk-actions-bar';
 export { AddUserDialog } from './add-user-dialog';
 export { EditUserDialog } from './edit-user-dialog';
 export { ChangeRoleDialog } from './change-role-dialog';
 export { ResetPasswordDialog } from './reset-password-dialog';
 export { GoogleIcon, GitHubIcon, PROVIDER_CONFIG } from './provider-icons';
-export { type Filters, USER_STATUS_MAP, ROLE_COLORS } from './types';
+export { USER_STATUS_MAP } from './types';

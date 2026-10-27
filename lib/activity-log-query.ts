@@ -1,11 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import * as z from 'zod';
-import {
-  DEFAULT_PAGE_SIZE,
-  type PageSize,
-  pageSizeSchema,
-  parsePageSize,
-} from './list-pagination';
+import { defineTableQuery, type TableParams } from './table-query';
 import type { ActivityAction } from './activity-log';
 
 export type { ActivityAction };
@@ -38,97 +33,17 @@ void allActivityActionsListed;
 
 export const activityActionSchema = z.enum(ACTIVITY_ACTIONS);
 
-export interface ActivityLogListParams {
-  page: number;
-  pageSize: PageSize;
-  q: string;
-  actions: ActivityAction[];
-}
+export type ActivityTableFilter = 'action';
 
-export type ActivityLogSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
-
-export const activityLogListParamsSchema: z.ZodType<ActivityLogListParams> = z.object({
-  page: z.number().int().min(1),
-  pageSize: pageSizeSchema,
-  q: z.string().max(ACTIVITY_SEARCH_MAX_LENGTH),
-  actions: z.array(activityActionSchema),
+export const activityLogTableQuery = defineTableQuery<ActivityTableFilter>({
+  searchMaxLength: ACTIVITY_SEARCH_MAX_LENGTH,
+  filters: {
+    action: { param: 'action', values: ACTIVITY_ACTIONS, multiple: true },
+  },
 });
-
-const rawSearchParamsSchema = z.object({
-  page: z.union([z.string(), z.array(z.string())]).optional(),
-  pageSize: z.union([z.string(), z.array(z.string())]).optional(),
-  q: z.union([z.string(), z.array(z.string())]).optional(),
-  action: z.union([z.string(), z.array(z.string())]).optional(),
-});
-
-const pageSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(1_000_000_000)
-  .catch(1);
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function allValues(value: string | string[] | undefined): string[] {
-  if (Array.isArray(value)) return value;
-  return value === undefined ? [] : [value];
-}
-
-function parseAllowedValues<T extends string>(
-  values: string[],
-  schema: z.ZodType<T>,
-): T[] {
-  const validValues = values.flatMap((value) => {
-    const result = schema.safeParse(value);
-    return result.success ? [result.data] : [];
-  });
-
-  return [...new Set(validValues)];
-}
-
-export function parseActivityLogSearchParams(
-  input: ActivityLogSearchParams,
-): ActivityLogListParams {
-  const result = rawSearchParamsSchema.safeParse(input);
-  const raw = result.success ? result.data : {};
-  const rawQ = firstValue(raw.q);
-  const q =
-    typeof rawQ === 'string'
-      ? rawQ.trim().slice(0, ACTIVITY_SEARCH_MAX_LENGTH)
-      : '';
-
-  return {
-    page: pageSchema.parse(firstValue(raw.page) ?? 1),
-    pageSize: parsePageSize(firstValue(raw.pageSize)),
-    q,
-    actions: parseAllowedValues(allValues(raw.action), activityActionSchema),
-  };
-}
-
-export function buildActivityLogQueryString(
-  params: ActivityLogListParams,
-): string {
-  const searchParams = new URLSearchParams();
-  searchParams.set('page', String(params.page));
-  if (params.pageSize !== DEFAULT_PAGE_SIZE) {
-    searchParams.set('pageSize', String(params.pageSize));
-  }
-  if (params.q.length > 0) {
-    searchParams.set('q', params.q);
-  }
-  params.actions.forEach((act) => searchParams.append('action', act));
-
-  return searchParams.toString();
-}
 
 export function buildActivityLogWhere(
-  params: ActivityLogListParams,
+  params: TableParams<ActivityTableFilter>,
 ): Prisma.ActivityLogWhereInput {
   const conditions: Prisma.ActivityLogWhereInput[] = [];
 
@@ -143,9 +58,9 @@ export function buildActivityLogWhere(
     });
   }
 
-  if (params.actions.length > 0) {
+  if (params.filters.action.length > 0) {
     conditions.push({
-      action: { in: params.actions },
+      action: { in: params.filters.action },
     });
   }
 

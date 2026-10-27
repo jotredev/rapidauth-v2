@@ -114,6 +114,7 @@ components/
 > **Always load the `shadcn` skill for UI components.**
 
 - **Page titles**: Use `PageHeader` component
+- **Lists**: Use `TableView` (search, filters, columns, pagination, row and bulk actions); `DataTable` only for small tables without those controls
 - **Tables**: Use `DataTable` component
 - **Details view**: Use `Sheet` (slides from right)
 - **Confirmations**: Use `ConfirmDialog`

@@ -8,10 +8,11 @@ import {
   getAdminAccess,
 } from '@/lib/admin-access';
 import type { PageSize } from '@/lib/list-pagination';
+import type { TableParams } from '@/lib/table-query';
 import {
+  activityLogTableQuery,
   buildActivityLogWhere,
-  activityLogListParamsSchema,
-  type ActivityLogListParams,
+  type ActivityTableFilter,
 } from '@/lib/activity-log-query';
 
 // ============================================
@@ -43,7 +44,7 @@ export interface ActivityLogPage {
 // ============================================
 
 export const getActivityLogs = async (
-  params: ActivityLogListParams,
+  params: TableParams<ActivityTableFilter>,
 ): Promise<{
   response: 'success' | 'error';
   message: string;
@@ -67,7 +68,7 @@ export const getActivityLogs = async (
       };
     }
 
-    const parsedParams = activityLogListParamsSchema.safeParse(params);
+    const parsedParams = activityLogTableQuery.schema.safeParse(params);
     if (!parsedParams.success) {
       return {
         response: 'error',

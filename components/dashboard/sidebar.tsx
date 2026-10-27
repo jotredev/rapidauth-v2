@@ -52,6 +52,8 @@ export interface SidebarProps {
   brandName?: string;
   version?: string;
   navigation?: NavSection[];
+  /** Links pinned to the bottom of the sidebar, above the user menu (e.g. Support). */
+  footerItems?: NavItem[];
   user?: UserProfile;
   onLogout?: () => void | Promise<void>;
   onOpenCommand?: () => void;
@@ -67,6 +69,7 @@ function SidebarContent({
   brandName = "rapidauth",
   version,
   navigation = [],
+  footerItems = [],
   user,
   onLogout,
   onOpenCommand,
@@ -74,6 +77,47 @@ function SidebarContent({
   inSheet = false,
 }: SidebarContentProps) {
   const pathname = usePathname();
+
+  const renderNavItem = (item: NavItem) => {
+    const isActive = pathname === item.href;
+    const Icon = item.icon;
+
+    if (collapsed) {
+      return (
+        <Tooltip key={item.href}>
+          <TooltipTrigger asChild>
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center justify-center rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isActive &&
+                  "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+              )}
+            >
+              <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+              <span className="sr-only">{item.title}</span>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">{item.title}</TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[15px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          isActive &&
+            "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+        )}
+      >
+        <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+        <span>{item.title}</span>
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -155,56 +199,19 @@ function SidebarContent({
                   </div>
                 )}
                 <div className="flex flex-col gap-1">
-                  {section.items.map((item) => {
-                    const isActive = pathname === item.href;
-                    const Icon = item.icon;
-
-                    if (collapsed) {
-                      return (
-                        <Tooltip key={item.href}>
-                          <TooltipTrigger asChild>
-                            <Link
-                              href={item.href}
-                              className={cn(
-                                "flex items-center justify-center rounded-md p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                                isActive &&
-                                  "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                              )}
-                            >
-                              <Icon
-                                className="size-4 shrink-0"
-                                strokeWidth={1.75}
-                              />
-                              <span className="sr-only">{item.title}</span>
-                            </Link>
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            {item.title}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    }
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[15px] text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          isActive &&
-                            "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                        )}
-                      >
-                        <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-                        <span>{item.title}</span>
-                      </Link>
-                    );
-                  })}
+                  {section.items.map(renderNavItem)}
                 </div>
               </div>
             ))}
         </nav>
       </div>
+
+      {/* Footer links (Support) */}
+      {footerItems.length > 0 && (
+        <div className="flex flex-col gap-1 px-2.5 pb-2.5 shrink-0">
+          {footerItems.map(renderNavItem)}
+        </div>
+      )}
 
       {/* User Profile */}
       <div

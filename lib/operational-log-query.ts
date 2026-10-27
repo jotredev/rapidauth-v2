@@ -1,11 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import * as z from 'zod';
-import {
-  DEFAULT_PAGE_SIZE,
-  type PageSize,
-  pageSizeSchema,
-  parsePageSize,
-} from './list-pagination';
+import { defineTableQuery, type TableParams } from './table-query';
 import type {
   OperationalLogLevel,
   OperationalLogSource,
@@ -28,132 +22,39 @@ export const OPERATIONAL_LOG_CODES = [
   'email.delivery.failed',
 ] as const satisfies readonly OperationalLogCode[];
 
-export const operationalLogLevelSchema = z.enum(OPERATIONAL_LOG_LEVELS);
-export const operationalLogSourceSchema = z.enum(OPERATIONAL_LOG_SOURCES);
-export const operationalLogCodeSchema = z.enum(OPERATIONAL_LOG_CODES);
-
-export interface OperationalLogListParams {
-  page: number;
-  pageSize: PageSize;
-  levels: OperationalLogLevel[];
-  source: OperationalLogSource | null;
-  code: OperationalLogCode | null;
-  userId: string | null;
-}
-
-export type OperationalLogSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
+export type OperationalLogTableFilter = 'level' | 'source' | 'code' | 'user';
 
 const USER_ID_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
 
-export const operationalLogListParamsSchema = z.object({
-  page: z.number().int().min(1),
-  pageSize: pageSizeSchema,
-  levels: z.array(operationalLogLevelSchema),
-  source: operationalLogSourceSchema.nullable(),
-  code: operationalLogCodeSchema.nullable(),
-  userId: z.string().regex(USER_ID_REGEX).nullable(),
+export const operationalLogTableQuery = defineTableQuery<OperationalLogTableFilter>({
+  filters: {
+    level: { param: 'level', values: OPERATIONAL_LOG_LEVELS, multiple: true },
+    source: { param: 'source', values: OPERATIONAL_LOG_SOURCES, multiple: false },
+    code: { param: 'code', values: OPERATIONAL_LOG_CODES, multiple: false },
+    user: { param: 'userId', pattern: USER_ID_REGEX, multiple: false },
+  },
 });
-
-const rawSearchParamsSchema = z.object({
-  page: z.union([z.string(), z.array(z.string())]).optional(),
-  pageSize: z.union([z.string(), z.array(z.string())]).optional(),
-  level: z.union([z.string(), z.array(z.string())]).optional(),
-  source: z.union([z.string(), z.array(z.string())]).optional(),
-  code: z.union([z.string(), z.array(z.string())]).optional(),
-  userId: z.union([z.string(), z.array(z.string())]).optional(),
-});
-
-const pageSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(1_000_000_000)
-  .catch(1);
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function allValues(value: string | string[] | undefined): string[] {
-  if (Array.isArray(value)) return value;
-  return value === undefined ? [] : [value];
-}
-
-function parseAllowedValues<T extends string>(
-  values: string[],
-  schema: z.ZodType<T>,
-): T[] {
-  const validValues = values.flatMap((value) => {
-    const result = schema.safeParse(value);
-    return result.success ? [result.data] : [];
-  });
-
-  return [...new Set(validValues)];
-}
-
-export function parseOperationalLogSearchParams(
-  input: OperationalLogSearchParams,
-): OperationalLogListParams {
-  const result = rawSearchParamsSchema.safeParse(input);
-  const raw = result.success ? result.data : {};
-
-  const sourceParsed = operationalLogSourceSchema.safeParse(
-    firstValue(raw.source),
-  );
-  const codeParsed = operationalLogCodeSchema.safeParse(firstValue(raw.code));
-  const rawUserId = firstValue(raw.userId);
-  const validUserId =
-    typeof rawUserId === 'string' && USER_ID_REGEX.test(rawUserId)
-      ? rawUserId
-      : null;
-
-  return {
-    page: pageSchema.parse(firstValue(raw.page) ?? 1),
-    pageSize: parsePageSize(firstValue(raw.pageSize)),
-    levels: parseAllowedValues(allValues(raw.level), operationalLogLevelSchema),
-    source: sourceParsed.success ? sourceParsed.data : null,
-    code: codeParsed.success ? codeParsed.data : null,
-    userId: validUserId,
-  };
-}
-
-export function buildOperationalLogQueryString(
-  params: OperationalLogListParams,
-): string {
-  const searchParams = new URLSearchParams();
-  searchParams.set('page', String(params.page));
-  if (params.pageSize !== DEFAULT_PAGE_SIZE) searchParams.set('pageSize', String(params.pageSize));
-
-  params.levels.forEach((lvl) => searchParams.append('level', lvl));
-  if (params.source) searchParams.set('source', params.source);
-  if (params.code) searchParams.set('code', params.code);
-  if (params.userId) searchParams.set('userId', params.userId);
-
-  return searchParams.toString();
-}
 
 export function buildOperationalLogsWhere(
-  params: OperationalLogListParams,
+  params: TableParams<OperationalLogTableFilter>,
 ): Prisma.OperationalLogWhereInput {
   const conditions: Prisma.OperationalLogWhereInput[] = [];
+  const { level: levels, source: sources, code: codes, user: userIds } = params.filters;
 
-  if (params.levels.length > 0) {
-    conditions.push({ level: { in: params.levels } });
+  if (levels.length > 0) {
+    conditions.push({ level: { in: levels } });
   }
 
-  if (params.source) {
-    conditions.push({ source: params.source });
+  if (sources.length > 0) {
+    conditions.push({ source: sources[0] });
   }
 
-  if (params.code) {
-    conditions.push({ code: params.code });
+  if (codes.length > 0) {
+    conditions.push({ code: codes[0] });
   }
 
-  if (params.userId) {
-    conditions.push({ userId: params.userId });
+  if (userIds.length > 0) {
+    conditions.push({ userId: userIds[0] });
   }
 
   return conditions.length > 0 ? { AND: conditions } : {};

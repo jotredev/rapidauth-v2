@@ -19,6 +19,24 @@ import {
 } from 'lucide-react';
 import { PAGE_SIZE_OPTIONS, type PageSize } from '@/lib/list-pagination';
 
+export interface TableFooterLabels {
+  rowsPerPage: string;
+  page: (page: number, totalPages: number) => string;
+  firstPage: string;
+  previousPage: string;
+  nextPage: string;
+  lastPage: string;
+}
+
+const DEFAULT_LABELS: TableFooterLabels = {
+  rowsPerPage: 'Rows per page',
+  page: (page, totalPages) => `Page ${page} of ${totalPages}`,
+  firstPage: 'Go to first page',
+  previousPage: 'Go to previous page',
+  nextPage: 'Go to next page',
+  lastPage: 'Go to last page',
+};
+
 export interface TableFooterProps {
   page: number;
   totalPages: number;
@@ -27,6 +45,10 @@ export interface TableFooterProps {
   getPageHref: (page: number) => string;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: PageSize) => void;
+  labels?: Partial<TableFooterLabels>;
+  /** Shown on the left, e.g. "Showing 1–20 of 45". */
+  summary?: React.ReactNode;
+  className?: string;
 }
 
 export function TableFooter({
@@ -37,7 +59,11 @@ export function TableFooter({
   getPageHref,
   onPageChange,
   onPageSizeChange,
+  labels: labelsProp,
+  summary,
+  className,
 }: TableFooterProps): React.JSX.Element {
+  const labels: TableFooterLabels = { ...DEFAULT_LABELS, ...labelsProp };
   const safeTotalPages = Math.max(1, totalPages);
   const firstDisabled = page <= 1;
   const prevDisabled = page <= 1;
@@ -57,16 +83,24 @@ export function TableFooter({
 
   return (
     <div
-      className="flex flex-wrap items-center justify-end gap-3.5 border-t border-border px-5 py-2.5 text-sm"
+      className={cn(
+        'flex flex-wrap items-center justify-end gap-3.5 border-t border-border px-5 py-2.5 text-sm',
+        className,
+      )}
       aria-busy={isPending}
     >
+      {summary !== undefined && (
+        <span className="mr-auto text-muted-foreground" aria-live="polite">
+          {summary}
+        </span>
+      )}
       <div className="flex items-center gap-2 text-muted-foreground">
-        <span>Rows per page</span>
+        <span>{labels.rowsPerPage}</span>
         <Select
           value={String(pageSize)}
           onValueChange={(value) => onPageSizeChange(Number(value) as PageSize)}
         >
-          <SelectTrigger size="sm" aria-label="Rows per page" className="w-[76px]">
+          <SelectTrigger size="sm" aria-label={labels.rowsPerPage} className="w-[76px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -80,14 +114,14 @@ export function TableFooter({
       </div>
 
       <span className="text-muted-foreground" aria-live="polite">
-        Page {page} of {totalPages}
+        {labels.page(page, totalPages)}
       </span>
 
       <div className="flex items-center gap-1">
         <Button variant="outline" size="icon-sm" asChild>
           <a
             href={getPageHref(1)}
-            aria-label="Go to first page"
+            aria-label={labels.firstPage}
             aria-disabled={firstDisabled}
             tabIndex={firstDisabled ? -1 : undefined}
             className={cn(firstDisabled && 'pointer-events-none opacity-50')}
@@ -99,7 +133,7 @@ export function TableFooter({
         <Button variant="outline" size="icon-sm" asChild>
           <a
             href={getPageHref(prevPage)}
-            aria-label="Go to previous page"
+            aria-label={labels.previousPage}
             aria-disabled={prevDisabled}
             tabIndex={prevDisabled ? -1 : undefined}
             className={cn(prevDisabled && 'pointer-events-none opacity-50')}
@@ -111,7 +145,7 @@ export function TableFooter({
         <Button variant="outline" size="icon-sm" asChild>
           <a
             href={getPageHref(nextPage)}
-            aria-label="Go to next page"
+            aria-label={labels.nextPage}
             aria-disabled={nextDisabled}
             tabIndex={nextDisabled ? -1 : undefined}
             className={cn(nextDisabled && 'pointer-events-none opacity-50')}
@@ -123,7 +157,7 @@ export function TableFooter({
         <Button variant="outline" size="icon-sm" asChild>
           <a
             href={getPageHref(lastPage)}
-            aria-label="Go to last page"
+            aria-label={labels.lastPage}
             aria-disabled={lastDisabled}
             tabIndex={lastDisabled ? -1 : undefined}
             className={cn(lastDisabled && 'pointer-events-none opacity-50')}

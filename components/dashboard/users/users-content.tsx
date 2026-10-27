@@ -1,31 +1,145 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { PageHeader, ColumnPicker } from '@/components/dashboard';
+import {
+  PageHeader,
+  StatusBadge,
+  TableView,
+  type RowAction,
+  type StatusType,
+  type TableViewColumn,
+  type TableViewFilter,
+  type BulkAction,
+} from '@/components/dashboard';
 import { ConfirmDialog } from '@/components/dashboard/confirm-dialog';
-import { TableFooter } from '@/components/dashboard/table-footer';
 import { Button } from '@/components/ui/button';
 import type { User } from '@/actions/users';
-import { cn } from '@/lib/utils';
-import type { UserListParams } from '@/lib/user-list-query';
-import { useUsersFilters, useUserDialogs, useUserActions } from './hooks';
-import { SearchAndFilters } from './search-and-filters';
-import { ActiveFilters } from './active-filters';
-import { UsersTable } from './users-table';
-import { BulkActionsBar } from './bulk-actions-bar';
+import type { TableParams } from '@/lib/table-query';
+import {
+  USER_PROVIDERS,
+  USER_ROLES,
+  USER_STATUSES,
+  userTableQuery,
+  type UserTableFilter,
+} from '@/lib/user-list-query';
+import { useUserDialogs, useUserActions } from './hooks';
 import { AddUserDialog } from './add-user-dialog';
 import { EditUserDialog } from './edit-user-dialog';
 import { ChangeRoleDialog } from './change-role-dialog';
 import { ResetPasswordDialog } from './reset-password-dialog';
-import { UserPlus } from 'lucide-react';
+import { USER_STATUS_MAP } from './types';
+import { PROVIDER_CONFIG } from './provider-icons';
+import {
+  Ban,
+  KeyRound,
+  Mail,
+  MailPlus,
+  Pencil,
+  Shield,
+  Trash2,
+  UserCheck,
+  UserPlus,
+} from 'lucide-react';
+
+const ROLE_LABELS: Record<(typeof USER_ROLES)[number], string> = {
+  admin: 'Admin',
+  moderator: 'Moderator',
+  user: 'User',
+};
+
+const USER_FILTERS: TableViewFilter<UserTableFilter>[] = [
+  {
+    key: 'role',
+    label: 'Role',
+    options: USER_ROLES.map((role) => ({
+      value: role,
+      label: ROLE_LABELS[role],
+    })),
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    options: USER_STATUSES.map((status) => ({
+      value: status,
+      label: USER_STATUS_MAP[status].label,
+    })),
+  },
+  {
+    key: 'provider',
+    label: 'Auth Provider',
+    options: USER_PROVIDERS.map((provider) => ({
+      value: provider,
+      label: PROVIDER_CONFIG[provider].label,
+      icon: PROVIDER_CONFIG[provider].icon,
+    })),
+  },
+];
+
+const USER_COLUMNS: TableViewColumn<User>[] = [
+  {
+    id: 'name',
+    header: 'User',
+    required: true,
+    render: (item) => {
+      const provider = PROVIDER_CONFIG[item.provider];
+      const ProviderIcon = provider.icon;
+      return (
+        <div className='flex items-center gap-3'>
+          <div className='flex flex-col'>
+            <div className='flex items-center gap-2'>
+              <span className='text-foreground font-normal'>{item.name}</span>
+              <span
+                className={`${provider.color}`}
+                title={`Signed in with ${provider.label}`}
+              >
+                <ProviderIcon className='h-3.5 w-3.5' />
+              </span>
+            </div>
+            <span className='text-xs text-muted-foreground'>{item.email}</span>
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    id: 'role',
+    header: 'Role',
+    render: (item) => (
+      <span className='rounded bg-muted px-2 py-0.5 font-mono text-[13px] text-foreground/80'>{item.role}</span>
+    ),
+  },
+  {
+    id: 'status',
+    header: 'Status',
+    render: (item) => {
+      const config = USER_STATUS_MAP[item.status] || {
+        status: 'neutral' as StatusType,
+        label: item.status,
+      };
+      return <StatusBadge status={config.status} label={config.label} />;
+    },
+  },
+  {
+    id: 'createdAt',
+    header: 'Joined',
+    render: (item) => (
+      <span className='font-mono text-[13px] text-muted-foreground'>{item.createdAt}</span>
+    ),
+  },
+  {
+    id: 'lastActive',
+    header: 'Last Active',
+    render: (item) => (
+      <span className='text-muted-foreground'>{item.lastActive}</span>
+    ),
+  },
+];
 
 interface UsersContentProps {
   users: User[];
   total: number;
-  page: number;
-  pageSize: number;
   totalPages: number;
-  initialParams: UserListParams;
+  params: TableParams<UserTableFilter>;
   isAdmin?: boolean;
   currentUserId: string;
   hiddenColumns: string[];
@@ -34,37 +148,14 @@ interface UsersContentProps {
 export function UsersContent({
   users,
   total,
-  page,
-  pageSize,
   totalPages,
-  initialParams,
+  params,
   isAdmin = true,
   currentUserId,
   hiddenColumns,
 }: UsersContentProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const clearSelection = useCallback(() => setSelectedIds([]), []);
-  const [hidden, setHidden] = useState<string[]>(hiddenColumns);
-  const [prevHiddenColumns, setPrevHiddenColumns] = useState<string[]>(hiddenColumns);
-
-  if (hiddenColumns.join('.') !== prevHiddenColumns.join('.')) {
-    setPrevHiddenColumns(hiddenColumns);
-    setHidden(hiddenColumns);
-  }
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    filters,
-    setFilters,
-    activeFilterCount,
-    removeFilter,
-    clearAllFilters,
-    goToPage,
-    setPageSize,
-    getPageHref,
-    isPending,
-  } = useUsersFilters({ initialParams, onParamsChange: clearSelection });
 
   const {
     selectedUser,
@@ -120,6 +211,135 @@ export function UsersContent({
     onCloseBulkDeleteDialog: () => setBulkDeleteDialogOpen(false),
   });
 
+  const rowActions = (user: User): RowAction<User>[] => {
+    const isOAuthUser = user.provider !== 'email';
+    const isCurrentUser = user.id === currentUserId;
+    const isActive = user.status === 'active';
+
+    const actions: RowAction<User>[] = [
+      isOAuthUser
+        ? {
+            id: 'edit',
+            label: 'Edit User',
+            icon: Pencil,
+            disabled: true,
+            hint: 'OAuth',
+          }
+        : {
+            id: 'edit',
+            label: 'Edit User',
+            icon: Pencil,
+            onSelect: openEditDialog,
+          },
+    ];
+
+    if (isAdmin && !isCurrentUser) {
+      actions.push({
+        id: 'change-role',
+        label: 'Change Role',
+        icon: Shield,
+        onSelect: openRoleDialog,
+      });
+    }
+
+    if (isAdmin && !user.emailVerified && !user.hasCredentialAccount) {
+      actions.push({
+        id: 'resend-invitation',
+        label: 'Resend Invitation',
+        icon: MailPlus,
+        onSelect: handleResendInvitation,
+      });
+    }
+
+    if (!isOAuthUser) {
+      actions.push({
+        id: 'reset-password',
+        label: 'Reset Password',
+        icon: KeyRound,
+        onSelect: openResetPasswordDialog,
+      });
+    }
+
+    if (isAdmin) {
+      actions.push({
+        id: 'email-logs',
+        label: 'Email logs',
+        icon: Mail,
+        href: `/dashboard/logs?userId=${user.id}&source=emails`,
+      });
+    }
+
+    actions.push({
+      id: 'toggle-status',
+      label: isActive ? 'Deactivate' : 'Activate',
+      icon: isActive ? Ban : UserCheck,
+      onSelect: openStatusDialog,
+      separatorBefore: true,
+    });
+
+    if (isAdmin) {
+      actions.push({
+        id: 'delete',
+        label: 'Delete User',
+        icon: Trash2,
+        onSelect: openDeleteDialog,
+        destructive: true,
+        separatorBefore: true,
+      });
+    }
+
+    return actions;
+  };
+
+  // The dialogs read `selectedIds`: store the ids TableView hands over before opening them.
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'activate',
+      label: 'Activate',
+      icon: UserCheck,
+      onSelect: (ids) => {
+        setSelectedIds(ids);
+        openBulkActivateDialog();
+      },
+    },
+    {
+      id: 'deactivate',
+      label: 'Deactivate',
+      icon: Ban,
+      onSelect: (ids) => {
+        setSelectedIds(ids);
+        openBulkDeactivateDialog();
+      },
+    },
+    ...(isAdmin
+      ? [
+          {
+            id: 'change-role',
+            label: 'Change Role',
+            icon: Shield,
+            items: USER_ROLES.map((role) => ({
+              id: role,
+              label: ROLE_LABELS[role],
+              onSelect: (ids: string[]) => {
+                setSelectedIds(ids);
+                openBulkRoleDialog(role);
+              },
+            })),
+          },
+          {
+            id: 'delete',
+            label: 'Delete',
+            icon: Trash2,
+            destructive: true,
+            onSelect: (ids: string[]) => {
+              setSelectedIds(ids);
+              openBulkDeleteDialog();
+            },
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
       <PageHeader
@@ -134,84 +354,29 @@ export function UsersContent({
         )}
       </PageHeader>
 
-      <div className='flex flex-col'>
-        <div className='flex flex-col gap-2.5 px-5 py-2.5'>
-          <div className='flex flex-col gap-2.5 sm:flex-row'>
-            <div className='flex-1'>
-              <SearchAndFilters
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                filters={filters}
-                onFiltersChange={setFilters}
-                activeFilterCount={activeFilterCount}
-              />
-            </div>
-            <ColumnPicker
-              tableId='users'
-              hidden={hidden}
-              onHiddenChange={setHidden}
-            />
-          </div>
-          <div className='flex flex-wrap items-center justify-between gap-2'>
-            <div>
-              {(searchQuery || activeFilterCount > 0) && (
-                <ActiveFilters
-                  filters={filters}
-                  onRemoveFilter={removeFilter}
-                  onClearAll={clearAllFilters}
-                />
-              )}
-            </div>
-            <p className='text-sm text-muted-foreground' aria-live='polite'>
-              {total === 0
-                ? 'Showing 0 of 0 users'
-                : `Showing ${(page - 1) * pageSize + 1}–${Math.min(
-                    page * pageSize,
-                    total,
-                  )} of ${total} users`}
-            </p>
-          </div>
-        </div>
-        <div
-          className={cn('border-t border-border transition-opacity', isPending && 'opacity-50')}
-          aria-busy={isPending}
-        >
-          <UsersTable
-            users={users}
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
-            isAdmin={isAdmin}
-            currentUserId={currentUserId}
-            onEdit={openEditDialog}
-            onDelete={openDeleteDialog}
-            onChangeRole={openRoleDialog}
-            onResetPassword={openResetPasswordDialog}
-            onResendInvitation={handleResendInvitation}
-            onToggleStatus={openStatusDialog}
-            hiddenColumns={hidden}
-          />
-        </div>
-        <TableFooter
-          page={page}
-          totalPages={totalPages}
-          pageSize={initialParams.pageSize}
-          isPending={isPending}
-          getPageHref={getPageHref}
-          onPageChange={goToPage}
-          onPageSizeChange={setPageSize}
-        />
-
-      {selectedIds.length > 0 && (
-        <BulkActionsBar
-          selectedCount={selectedIds.length}
-          onClearSelection={clearSelection}
-          onBulkActivate={openBulkActivateDialog}
-          onBulkDeactivate={openBulkDeactivateDialog}
-          onBulkChangeRole={openBulkRoleDialog}
-          onBulkDelete={openBulkDeleteDialog}
-          isAdmin={isAdmin}
-        />
-      )}
+      <TableView
+        tableId='users'
+        basePath='/dashboard/users'
+        query={userTableQuery}
+        params={params}
+        rows={users}
+        total={total}
+        totalPages={totalPages}
+        columns={USER_COLUMNS}
+        hiddenColumns={hiddenColumns}
+        filters={USER_FILTERS}
+        rowActions={rowActions}
+        bulkActions={bulkActions}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        labels={{
+          searchPlaceholder: 'Search by name or email...',
+          results: ({ from, to, total: count }) =>
+            count === 0
+              ? 'Showing 0 of 0 users'
+              : `Showing ${from}–${to} of ${count} users`,
+        }}
+      />
 
       {/* Dialogs */}
       {isAdmin && (
@@ -295,18 +460,17 @@ export function UsersContent({
         onConfirm={handleBulkChangeRole}
       />
 
-        {isAdmin && (
-          <ConfirmDialog
-            open={bulkDeleteDialogOpen}
-            onOpenChange={setBulkDeleteDialogOpen}
-            title='Delete Users'
-            description={`Are you sure you want to delete ${selectedIds.length} users? This action cannot be undone.`}
-            confirmLabel='Delete All'
-            variant='destructive'
-            onConfirm={handleBulkDelete}
-          />
-        )}
-      </div>
+      {isAdmin && (
+        <ConfirmDialog
+          open={bulkDeleteDialogOpen}
+          onOpenChange={setBulkDeleteDialogOpen}
+          title='Delete Users'
+          description={`Are you sure you want to delete ${selectedIds.length} users? This action cannot be undone.`}
+          confirmLabel='Delete All'
+          variant='destructive'
+          onConfirm={handleBulkDelete}
+        />
+      )}
     </>
   );
 }

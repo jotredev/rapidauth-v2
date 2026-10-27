@@ -4,9 +4,12 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { reportError } from '@/lib/report-error';
 import type { PageSize } from '@/lib/list-pagination';
+import type { TableParams } from '@/lib/table-query';
 import {
-  type ProfileListParams,
-  profileListParamsSchema,
+  type ProfileActivityFilter,
+  type ProfileSessionsFilter,
+  profileActivityTableQuery,
+  profileSessionsTableQuery,
 } from '@/lib/profile-query';
 
 // ============================================
@@ -29,6 +32,14 @@ export interface ActivityLogEntry {
   createdAt: string;
 }
 
+export interface ActivityLogEntryPage {
+  logs: ActivityLogEntry[];
+  total: number;
+  page: number;
+  pageSize: PageSize;
+  totalPages: number;
+}
+
 export interface SessionData {
   id: string;
   userAgent: string | null;
@@ -38,29 +49,26 @@ export interface SessionData {
   isCurrent: boolean;
 }
 
+export interface SessionPage {
+  sessions: SessionData[];
+  total: number;
+  page: number;
+  pageSize: PageSize;
+  totalPages: number;
+}
+
 export interface ProfilePageData {
   profile: ProfileData;
   twoFactorEnabled: boolean;
   isOAuthUser: boolean;
   hasPassword: boolean;
-  activityLogs: ActivityLogEntry[];
-  sessions: SessionData[];
-  activityTotal: number;
-  activityPage: number;
-  activityTotalPages: number;
-  sessionsTotal: number;
-  sessionsPage: number;
-  sessionsTotalPages: number;
-  pageSize: PageSize;
 }
 
 // ============================================
 // GET PROFILE DATA ACTION
 // ============================================
 
-export const getProfileData = async (
-  params: ProfileListParams,
-): Promise<{
+export const getProfileData = async (): Promise<{
   response: 'success' | 'error';
   message: string;
   data: ProfilePageData | null;
@@ -71,30 +79,10 @@ export const getProfileData = async (
       return { response: 'error', message: 'Unauthorized', data: null };
     }
 
-    const validation = profileListParamsSchema.safeParse(params);
-    if (!validation.success) {
-      return {
-        response: 'error',
-        message: 'Invalid profile parameters',
-        data: null,
-      };
-    }
-
-    const { activityPage, sessionsPage, pageSize } = validation.data;
     const userId = session.user.id;
-    const currentSessionId = session.session.id;
-    const now = new Date();
 
-    // Get user's 2FA status, image, activity logs, and sessions from database
-    const [
-      user,
-      oauthAccounts,
-      credentialAccount,
-      activityTotal,
-      activityLogs,
-      sessionsTotal,
-      sessions,
-    ] = await Promise.all([
+    // Get user's 2FA status, image and sign-in methods from database
+    const [user, oauthAccounts, credentialAccount] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: { name: true, email: true, twoFactorEnabled: true, image: true },
@@ -106,31 +94,6 @@ export const getProfileData = async (
       prisma.account.findFirst({
         where: { userId, providerId: 'credential', password: { not: null } },
         select: { id: true },
-      }),
-      prisma.activityLog.count({
-        where: { userId },
-      }),
-      prisma.activityLog.findMany({
-        where: { userId },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (activityPage - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.session.count({
-        where: {
-          userId,
-          expiresAt: { gt: now },
-        },
-      }),
-      prisma.session.findMany({
-        where: {
-          userId,
-          expiresAt: { gt: now },
-        },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (sessionsPage - 1) * pageSize,
-        take: pageSize,
-        select: { id: true, userAgent: true, ipAddress: true, createdAt: true, expiresAt: true },
       }),
     ]);
 
@@ -148,33 +111,6 @@ export const getProfileData = async (
       avatar: user.image ?? undefined,
     };
 
-    // Parse JSON details for activity logs and serialize dates
-    const parsedActivityLogs: ActivityLogEntry[] = activityLogs.map((log) => ({
-      id: log.id,
-      userId: log.userId,
-      action: log.action,
-      details: log.details ? JSON.parse(log.details) : null,
-      ipAddress: log.ipAddress,
-      userAgent: log.userAgent,
-      createdAt: log.createdAt.toISOString(),
-    }));
-
-    // Format sessions with current session flag and serialize dates
-    const formattedSessions: SessionData[] = sessions.map((s) => ({
-      id: s.id,
-      userAgent: s.userAgent,
-      ipAddress: s.ipAddress,
-      createdAt: s.createdAt.toISOString(),
-      expiresAt: s.expiresAt.toISOString(),
-      isCurrent: s.id === currentSessionId,
-    }));
-
-    const activityTotalPages = Math.max(1, Math.ceil(activityTotal / pageSize));
-    const resolvedActivityPage = Math.min(activityPage, activityTotalPages);
-
-    const sessionsTotalPages = Math.max(1, Math.ceil(sessionsTotal / pageSize));
-    const resolvedSessionsPage = Math.min(sessionsPage, sessionsTotalPages);
-
     return {
       response: 'success',
       message: 'Profile data fetched successfully',
@@ -183,15 +119,6 @@ export const getProfileData = async (
         twoFactorEnabled: user.twoFactorEnabled ?? false,
         isOAuthUser: oauthAccounts.length > 0,
         hasPassword: credentialAccount !== null,
-        activityLogs: parsedActivityLogs,
-        sessions: formattedSessions,
-        activityTotal,
-        activityPage: resolvedActivityPage,
-        activityTotalPages,
-        sessionsTotal,
-        sessionsPage: resolvedSessionsPage,
-        sessionsTotalPages,
-        pageSize,
       },
     };
   } catch (error) {
@@ -199,6 +126,173 @@ export const getProfileData = async (
     return {
       response: 'error',
       message: 'Failed to fetch profile data',
+      data: null,
+    };
+  }
+};
+
+// ============================================
+// GET MY ACTIVITY LOGS ACTION
+// ============================================
+
+function parseDetails(details: string | null): Record<string, unknown> | null {
+  if (!details) return null;
+  try {
+    const parsed: unknown = JSON.parse(details);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export const getMyActivityLogs = async (
+  params: TableParams<ProfileActivityFilter>,
+): Promise<{
+  response: 'success' | 'error';
+  message: string;
+  data: ActivityLogEntryPage | null;
+}> => {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { response: 'error', message: 'Unauthorized', data: null };
+    }
+
+    const parsedParams = profileActivityTableQuery.schema.safeParse(params);
+    if (!parsedParams.success) {
+      return {
+        response: 'error',
+        message: 'Invalid activity parameters',
+        data: null,
+      };
+    }
+
+    const { page, pageSize, filters } = parsedParams.data;
+    // Always the signed-in user's own activity, never an id sent by the client.
+    const where = {
+      userId: session.user.id,
+      ...(filters.action.length > 0 ? { action: { in: filters.action } } : {}),
+    };
+
+    const [total, logs] = await prisma.$transaction([
+      prisma.activityLog.count({ where }),
+      prisma.activityLog.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    return {
+      response: 'success',
+      message: 'Activity fetched successfully',
+      data: {
+        logs: logs.map((log) => ({
+          id: log.id,
+          userId: log.userId,
+          action: log.action,
+          details: parseDetails(log.details),
+          ipAddress: log.ipAddress,
+          userAgent: log.userAgent,
+          createdAt: log.createdAt.toISOString(),
+        })),
+        total,
+        page: Math.min(page, totalPages),
+        pageSize,
+        totalPages,
+      },
+    };
+  } catch (error) {
+    reportError(error, { area: 'profile.activity' });
+    return {
+      response: 'error',
+      message: 'Failed to fetch activity',
+      data: null,
+    };
+  }
+};
+
+// ============================================
+// GET MY SESSIONS ACTION
+// ============================================
+
+export const getMySessions = async (
+  params: TableParams<ProfileSessionsFilter>,
+): Promise<{
+  response: 'success' | 'error';
+  message: string;
+  data: SessionPage | null;
+}> => {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { response: 'error', message: 'Unauthorized', data: null };
+    }
+
+    const parsedParams = profileSessionsTableQuery.schema.safeParse(params);
+    if (!parsedParams.success) {
+      return {
+        response: 'error',
+        message: 'Invalid session parameters',
+        data: null,
+      };
+    }
+
+    const { page, pageSize } = parsedParams.data;
+    const currentSessionId = session.session.id;
+    // Always the signed-in user's own sessions, never an id sent by the client.
+    const where = {
+      userId: session.user.id,
+      expiresAt: { gt: new Date() },
+    };
+
+    const [total, sessions] = await prisma.$transaction([
+      prisma.session.count({ where }),
+      prisma.session.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          userAgent: true,
+          ipAddress: true,
+          createdAt: true,
+          expiresAt: true,
+        },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    return {
+      response: 'success',
+      message: 'Sessions fetched successfully',
+      data: {
+        sessions: sessions.map((s) => ({
+          id: s.id,
+          userAgent: s.userAgent,
+          ipAddress: s.ipAddress,
+          createdAt: s.createdAt.toISOString(),
+          expiresAt: s.expiresAt.toISOString(),
+          isCurrent: s.id === currentSessionId,
+        })),
+        total,
+        page: Math.min(page, totalPages),
+        pageSize,
+        totalPages,
+      },
+    };
+  } catch (error) {
+    reportError(error, { area: 'profile.sessions' });
+    return {
+      response: 'error',
+      message: 'Failed to fetch sessions',
       data: null,
     };
   }

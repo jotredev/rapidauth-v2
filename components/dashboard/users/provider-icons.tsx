@@ -22,7 +22,11 @@ export function GitHubIcon({ className }: { className?: string }) {
 
 export const PROVIDER_CONFIG: Record<
   AuthProvider,
-  { icon: React.ElementType; label: string; color: string }
+  {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    color: string;
+  }
 > = {
   email: {
     icon: Mail,

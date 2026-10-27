@@ -11,7 +11,12 @@ import {
   Moon,
   PanelLeft,
 } from 'lucide-react';
-import { MobileSidebar, type NavSection, type UserProfile } from './sidebar';
+import {
+  MobileSidebar,
+  type NavItem,
+  type NavSection,
+  type UserProfile,
+} from './sidebar';
 import { DateRangePicker } from './date-range-picker';
 
 interface HeaderProps {
@@ -19,17 +24,19 @@ interface HeaderProps {
     brandName?: string;
     version?: string;
     navigation?: NavSection[];
+    footerItems?: NavItem[];
     user?: UserProfile;
     onLogout?: () => void;
   };
+  /** Every page the title can come from, including those outside the sidebar (Profile). */
+  pages?: NavItem[];
   collapsed: boolean;
   onToggleSidebar: () => void;
   showDateRange?: boolean;
   className?: string;
 }
 
-function getPageTitle(pathname: string, navigation?: NavSection[]): string {
-  const items = navigation?.flatMap((section) => section.items) ?? [];
+function getPageTitle(pathname: string, items: NavItem[]): string {
 
   const exactMatch = items.find((item) => item.href === pathname);
   if (exactMatch) {
@@ -55,6 +62,7 @@ function getPageTitle(pathname: string, navigation?: NavSection[]): string {
 
 export function Header({
   sidebarProps,
+  pages,
   collapsed,
   onToggleSidebar,
   showDateRange,
@@ -64,7 +72,10 @@ export function Header({
   const mounted = useMounted();
   const { theme, setTheme } = useTheme();
 
-  const pageTitle = getPageTitle(pathname, sidebarProps?.navigation);
+  const pageTitle = getPageTitle(
+    pathname,
+    pages ?? sidebarProps?.navigation?.flatMap((section) => section.items) ?? [],
+  );
 
   return (
     <header

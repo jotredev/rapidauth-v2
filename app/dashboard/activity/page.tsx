@@ -5,14 +5,11 @@ import { getAdminAccess } from '@/lib/admin-access';
 import { getActivityLogs } from '@/actions/activity';
 import { ActivityLogsContent } from '@/components/dashboard/activity-logs-content';
 import { getColumnsCookieName, readHiddenColumns } from '@/lib/table-columns';
-import {
-  buildActivityLogQueryString,
-  parseActivityLogSearchParams,
-  type ActivityLogSearchParams,
-} from '@/lib/activity-log-query';
+import type { RawSearchParams } from '@/lib/table-query';
+import { activityLogTableQuery } from '@/lib/activity-log-query';
 
 interface ActivityPageProps {
-  searchParams: Promise<ActivityLogSearchParams>;
+  searchParams: Promise<RawSearchParams>;
 }
 
 export default async function ActivityPage({ searchParams }: ActivityPageProps) {
@@ -28,11 +25,10 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
 
   const cookieStore = await cookies();
   const hiddenColumns = readHiddenColumns(
-    'activity',
     cookieStore.get(getColumnsCookieName('activity'))?.value,
   );
 
-  const params = parseActivityLogSearchParams(await searchParams);
+  const params = activityLogTableQuery.parse(await searchParams);
   const result = await getActivityLogs(params);
 
   if (result.response === 'error' || !result.data) {
@@ -45,7 +41,7 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
 
   if (result.data.page !== params.page) {
     redirect(
-      `/dashboard/activity?${buildActivityLogQueryString({
+      `/dashboard/activity?${activityLogTableQuery.toQueryString({
         ...params,
         page: result.data.page,
       })}`,
@@ -56,10 +52,8 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
     <ActivityLogsContent
       logs={result.data.logs}
       total={result.data.total}
-      page={result.data.page}
-      pageSize={result.data.pageSize}
       totalPages={result.data.totalPages}
-      initialParams={params}
+      params={params}
       hiddenColumns={hiddenColumns}
     />
   );

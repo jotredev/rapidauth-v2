@@ -19,11 +19,12 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { reportError } from '@/lib/report-error';
 import { getTemporaryPasswordExpiration } from '@/lib/temporary-password';
 import { deleteUserRecord } from '@/lib/user-deletion';
+import type { TableParams } from '@/lib/table-query';
 import {
   buildUsersWhere,
   getDisplayedAuthProvider,
-  userListParamsSchema,
-  type UserListParams,
+  userTableQuery,
+  type UserTableFilter,
 } from '@/lib/user-list-query';
 import {
   getInvitationUrl,
@@ -1283,7 +1284,9 @@ function generateTemporaryPassword(): string {
   return password.join('');
 }
 
-export async function getUsers(params: UserListParams): Promise<{
+export async function getUsers(
+  params: TableParams<UserTableFilter>,
+): Promise<{
   response: 'success' | 'error';
   message: string;
   data: UserPage | null;
@@ -1306,7 +1309,7 @@ export async function getUsers(params: UserListParams): Promise<{
       };
     }
 
-    const parsedParams = userListParamsSchema.safeParse(params);
+    const parsedParams = userTableQuery.schema.safeParse(params);
     if (!parsedParams.success) {
       return {
         response: 'error',

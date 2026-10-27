@@ -30,11 +30,15 @@ export interface DataTableProps<T extends { id: string }> {
   selectable?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
+  /** Rows that return false get a disabled checkbox and are skipped by "select all". */
+  isRowSelectable?: (item: T) => boolean;
   viewAllHref?: string;
   viewAllLabel?: string;
   onRowClick?: (item: T) => void;
   className?: string;
   tableClassName?: string;
+  /** Shown in a single full-width row when `data` is empty. Without it, an empty table renders no rows. */
+  emptyMessage?: React.ReactNode;
 }
 
 export function DataTable<T extends { id: string }>({
@@ -45,18 +49,27 @@ export function DataTable<T extends { id: string }>({
   selectable = false,
   selectedIds = [],
   onSelectionChange,
+  isRowSelectable,
   viewAllHref,
   viewAllLabel = "View All",
   onRowClick,
   className,
   tableClassName,
+  emptyMessage,
 }: DataTableProps<T>) {
-  const allSelected = data.length > 0 && selectedIds.length === data.length;
-  const someSelected = selectedIds.length > 0 && selectedIds.length < data.length;
+  const selectableIds = data
+    .filter((item) => isRowSelectable?.(item) ?? true)
+    .map((item) => item.id);
+  const selectedCount = selectableIds.filter((id) =>
+    selectedIds.includes(id),
+  ).length;
+  const allSelected =
+    selectableIds.length > 0 && selectedCount === selectableIds.length;
+  const someSelected = selectedCount > 0 && selectedCount < selectableIds.length;
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      onSelectionChange?.(data.map((item) => item.id));
+      onSelectionChange?.(selectableIds);
     } else {
       onSelectionChange?.([]);
     }
@@ -102,6 +115,7 @@ export function DataTable<T extends { id: string }>({
                         (ref as HTMLButtonElement & { indeterminate?: boolean }).indeterminate = someSelected;
                       }
                     }}
+                    disabled={selectableIds.length === 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -120,8 +134,19 @@ export function DataTable<T extends { id: string }>({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {data.length === 0 && emptyMessage !== undefined && (
+              <TableRow className="border-b-0 hover:bg-transparent">
+                <TableCell
+                  colSpan={Math.max(1, columns.length + (selectable ? 1 : 0))}
+                  className="h-24 text-center text-sm text-muted-foreground"
+                >
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            )}
             {data.map((item, rowIndex) => {
-              const isSelected = selectedIds.includes(item.id);
+              const rowSelectable = isRowSelectable?.(item) ?? true;
+              const isSelected = rowSelectable && selectedIds.includes(item.id);
               return (
                 <TableRow
                   key={item.id}
@@ -136,6 +161,7 @@ export function DataTable<T extends { id: string }>({
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={isSelected}
+                        disabled={!rowSelectable}
                         onCheckedChange={(checked) =>
                           handleSelectRow(item.id, checked as boolean)
                         }

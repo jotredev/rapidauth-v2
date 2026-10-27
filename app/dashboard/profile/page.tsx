@@ -1,12 +1,19 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
-import { getProfileData } from "@/actions/profile";
+import {
+  getMyActivityLogs,
+  getMySessions,
+  getProfileData,
+} from "@/actions/profile";
 import { ProfileContent } from "@/components/dashboard";
+import { getColumnsCookieName, readHiddenColumns } from "@/lib/table-columns";
 import {
   parseProfileSearchParams,
   buildProfileQueryString,
+  profileActivityTableQuery,
+  profileSessionsTableQuery,
   type ProfileSearchParams,
-  type ProfileListParams,
 } from "@/lib/profile-query";
 
 interface ProfilePageProps {
@@ -22,7 +29,22 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
   const rawSearchParams = await searchParams;
   const params = parseProfileSearchParams(rawSearchParams);
-  const result = await getProfileData(params);
+  const activityParams = profileActivityTableQuery.parse(rawSearchParams);
+  const sessionsParams = profileSessionsTableQuery.parse(rawSearchParams);
+
+  const cookieStore = await cookies();
+  const activityHiddenColumns = readHiddenColumns(
+    cookieStore.get(getColumnsCookieName("profile-activity"))?.value,
+  );
+  const sessionsHiddenColumns = readHiddenColumns(
+    cookieStore.get(getColumnsCookieName("profile-sessions"))?.value,
+  );
+
+  const [result, activityResult, sessionsResult] = await Promise.all([
+    getProfileData(),
+    getMyActivityLogs(activityParams),
+    getMySessions(sessionsParams),
+  ]);
 
   if (result.response === 'error' || !result.data) {
     return (
@@ -32,17 +54,32 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     );
   }
 
+  if (activityResult.response === 'error' || !activityResult.data) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground">{activityResult.message}</p>
+      </div>
+    );
+  }
+
+  if (sessionsResult.response === 'error' || !sessionsResult.data) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground">{sessionsResult.message}</p>
+      </div>
+    );
+  }
+
   if (
-    result.data.activityPage !== params.activityPage ||
-    result.data.sessionsPage !== params.sessionsPage
+    activityResult.data.page !== activityParams.page ||
+    sessionsResult.data.page !== sessionsParams.page
   ) {
-    const correctedParams: ProfileListParams = {
-      ...params,
-      activityPage: result.data.activityPage,
-      sessionsPage: result.data.sessionsPage,
-    };
-    const qs = buildProfileQueryString(correctedParams);
-    redirect(qs ? `/dashboard/profile?${qs}` : '/dashboard/profile');
+    const query = buildProfileQueryString(
+      params.tab,
+      { ...activityParams, page: activityResult.data.page },
+      { ...sessionsParams, page: sessionsResult.data.page },
+    );
+    redirect(query ? `/dashboard/profile?${query}` : '/dashboard/profile');
   }
 
   return (
@@ -51,15 +88,17 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       twoFactorEnabled={result.data.twoFactorEnabled}
       isOAuthUser={result.data.isOAuthUser}
       hasPassword={result.data.hasPassword}
-      activityLogs={result.data.activityLogs}
-      sessions={result.data.sessions}
+      activityLogs={activityResult.data.logs}
+      activityTotal={activityResult.data.total}
+      activityTotalPages={activityResult.data.totalPages}
+      activityParams={activityParams}
+      activityHiddenColumns={activityHiddenColumns}
+      sessions={sessionsResult.data.sessions}
+      sessionsTotal={sessionsResult.data.total}
+      sessionsTotalPages={sessionsResult.data.totalPages}
+      sessionsParams={sessionsParams}
+      sessionsHiddenColumns={sessionsHiddenColumns}
       initialParams={params}
-      activityPage={result.data.activityPage}
-      activityTotalPages={result.data.activityTotalPages}
-      sessionsTotal={result.data.sessionsTotal}
-      sessionsPage={result.data.sessionsPage}
-      sessionsTotalPages={result.data.sessionsTotalPages}
-      pageSize={result.data.pageSize}
     />
   );
 }

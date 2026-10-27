@@ -1,10 +1,6 @@
 import * as z from 'zod';
-import {
-  DEFAULT_PAGE_SIZE,
-  type PageSize,
-  pageSizeSchema,
-  parsePageSize,
-} from './list-pagination';
+import { ACTIVITY_ACTIONS } from './activity-log-query';
+import { defineTableQuery, type TableParams } from './table-query';
 
 export const PROFILE_TABS = [
   'general',
@@ -15,11 +11,8 @@ export const PROFILE_TABS = [
 
 export type ProfileTab = (typeof PROFILE_TABS)[number];
 
-export interface ProfileListParams {
+export interface ProfileParams {
   tab: ProfileTab;
-  activityPage: number;
-  sessionsPage: number;
-  pageSize: PageSize;
 }
 
 export type ProfileSearchParams = Record<
@@ -27,52 +20,69 @@ export type ProfileSearchParams = Record<
   string | string[] | undefined
 >;
 
-export const profileListParamsSchema: z.ZodType<ProfileListParams> = z.object({
-  tab: z.enum(PROFILE_TABS),
-  activityPage: z.number().int().min(1),
-  sessionsPage: z.number().int().min(1),
-  pageSize: pageSizeSchema,
-});
-
-const pageSchema = z.coerce
-  .number()
-  .int()
-  .min(1)
-  .max(1_000_000_000)
-  .catch(1);
-
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
 export function parseProfileSearchParams(
   input: ProfileSearchParams,
-): ProfileListParams {
-  const rawTab = firstValue(input?.tab);
-  const tabParsed = z.enum(PROFILE_TABS).safeParse(rawTab);
+): ProfileParams {
+  const tabParsed = z.enum(PROFILE_TABS).safeParse(firstValue(input?.tab));
 
-  return {
-    tab: tabParsed.success ? tabParsed.data : 'general',
-    activityPage: pageSchema.parse(firstValue(input?.activityPage) ?? 1),
-    sessionsPage: pageSchema.parse(firstValue(input?.sessionsPage) ?? 1),
-    pageSize: parsePageSize(firstValue(input?.pageSize)),
-  };
+  return { tab: tabParsed.success ? tabParsed.data : 'general' };
 }
 
-export function buildProfileQueryString(params: ProfileListParams): string {
-  const searchParams = new URLSearchParams();
+export type ProfileActivityFilter = 'action';
 
-  if (params.tab !== 'general') {
-    searchParams.set('tab', params.tab);
-  }
-  if (params.activityPage !== 1) {
-    searchParams.set('activityPage', String(params.activityPage));
-  }
-  if (params.sessionsPage !== 1) {
-    searchParams.set('sessionsPage', String(params.sessionsPage));
-  }
-  if (params.pageSize !== DEFAULT_PAGE_SIZE) {
-    searchParams.set('pageSize', String(params.pageSize));
+// The page number lives in `activityPage`; `pageSize` is shared with the sessions tab.
+export const profileActivityTableQuery = defineTableQuery<ProfileActivityFilter>({
+  paramNames: { page: 'activityPage' },
+  filters: {
+    action: { param: 'action', values: ACTIVITY_ACTIONS, multiple: true },
+  },
+});
+
+// Sessions have no search or filters; the page number lives in `sessionsPage`.
+export type ProfileSessionsFilter = never;
+
+export const profileSessionsTableQuery =
+  defineTableQuery<ProfileSessionsFilter>({
+    paramNames: { page: 'sessionsPage' },
+    filters: {},
+  });
+
+/**
+ * The profile URL for a tab with the page of each list. `pageSize` is shared by both
+ * lists and the `action` filter belongs to the activity list.
+ */
+export function buildProfileQueryString(
+  tab: ProfileTab,
+  activity: TableParams<ProfileActivityFilter>,
+  sessions: TableParams<ProfileSessionsFilter>,
+): string {
+  const searchParams = new URLSearchParams();
+  if (tab !== 'general') searchParams.set('tab', tab);
+
+  const lists = [
+    {
+      queryString: profileActivityTableQuery.toQueryString(activity),
+      pageParam: profileActivityTableQuery.paramNames.page,
+      page: activity.page,
+    },
+    {
+      queryString: profileSessionsTableQuery.toQueryString(sessions),
+      pageParam: profileSessionsTableQuery.paramNames.page,
+      page: sessions.page,
+    },
+  ];
+
+  for (const list of lists) {
+    new URLSearchParams(list.queryString).forEach((value, key) => {
+      if (key === list.pageParam && list.page === 1) return;
+      // `pageSize` is shared: both lists write the same value.
+      if (key === 'pageSize') searchParams.set(key, value);
+      else searchParams.append(key, value);
+    });
   }
 
   return searchParams.toString();

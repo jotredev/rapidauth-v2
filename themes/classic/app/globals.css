@@ -172,6 +172,24 @@
   }
 }
 
+/* No focus ring after a mouse or touch interaction; it stays for keyboard users (see FocusModality).
+   Unlayered on purpose so it wins over the focus-visible:ring-* and outline-* utilities. */
+[data-input='pointer'] :focus-visible {
+  outline: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+}
+/* Buttons also tint their border on focus-visible: give them back their own border. */
+[data-input='pointer'] [data-slot='button']:focus-visible {
+  border-color: transparent;
+}
+[data-input='pointer'] [data-slot='button'][data-variant='outline']:focus-visible {
+  border-color: var(--color-border);
+}
+[data-input='pointer'].dark [data-slot='button'][data-variant='outline']:focus-visible {
+  border-color: var(--color-input);
+}
+
 /* ─── Landing Page Animations ─── */
 @keyframes marquee {
   0% {

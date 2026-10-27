@@ -13,6 +13,7 @@
     "docker:reset": "docker compose -f docker/compose.dev.yaml down -v",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "test": "bun test lib",
     "deps:check": "bun run scripts/check-exact-versions.ts",
     "email:preview": "email dev --dir emails --port 3200",
     "storage:migrate": "bun run scripts/migrate-storage.ts",

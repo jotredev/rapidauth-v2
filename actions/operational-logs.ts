@@ -7,10 +7,11 @@ import {
 } from '@/lib/admin-access';
 import { prisma } from '@/lib/prisma';
 import { reportError } from '@/lib/report-error';
+import type { TableParams } from '@/lib/table-query';
 import {
   buildOperationalLogsWhere,
-  operationalLogListParamsSchema,
-  type OperationalLogListParams,
+  operationalLogTableQuery,
+  type OperationalLogTableFilter,
 } from '@/lib/operational-log-query';
 import type {
   OperationalLogLevel,
@@ -69,7 +70,7 @@ function extractMetadata(raw: unknown): OperationalLogMetadata | null {
 }
 
 export async function getOperationalLogs(
-  params: OperationalLogListParams,
+  params: TableParams<OperationalLogTableFilter>,
 ): Promise<{
   response: 'success' | 'error';
   message: string;
@@ -93,7 +94,7 @@ export async function getOperationalLogs(
       };
     }
 
-    const parsedParams = operationalLogListParamsSchema.safeParse(params);
+    const parsedParams = operationalLogTableQuery.schema.safeParse(params);
     if (!parsedParams.success) {
       return {
         response: 'error',
@@ -121,10 +122,10 @@ export async function getOperationalLogs(
           },
         },
       }),
-      ...(parsedParams.data.userId
+      ...(parsedParams.data.filters.user.length > 0
         ? [
             prisma.user.findUnique({
-              where: { id: parsedParams.data.userId },
+              where: { id: parsedParams.data.filters.user[0] },
               select: { id: true, name: true, email: true },
             }),
           ]

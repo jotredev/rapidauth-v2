@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { Sidebar, type NavSection, type UserProfile } from "./sidebar";
+import {
+  Sidebar,
+  type NavItem,
+  type NavSection,
+  type UserProfile,
+} from "./sidebar";
 import { Header } from "./header";
 import { CommandPalette } from "./command-palette";
 import { signOut } from "@/actions/auth";
@@ -16,33 +21,40 @@ import {
 } from "lucide-react";
 
 function getNavigation(isAdmin: boolean): NavSection[] {
-  const menuItems = isAdmin
-    ? [
-        { title: "Users", href: "/dashboard/users", icon: Users },
-        { title: "Activity", href: "/dashboard/activity", icon: Activity },
-        { title: "System logs", href: "/dashboard/logs", icon: ScrollText },
-      ]
-    : [];
-
-  return [
+  const sections: NavSection[] = [
     {
       items: [
         { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       ],
     },
-    {
-      title: "Menu",
-      items: menuItems,
-    },
-    {
-      title: "Account",
-      items: [
-        { title: "Profile", href: "/dashboard/profile", icon: UserCircle },
-        { title: "Support", href: "/support", icon: LifeBuoy },
-      ],
-    },
   ];
+
+  // Only admins get this section; its title is the indicator.
+  if (isAdmin) {
+    sections.push({
+      title: "Admin",
+      items: [
+        { title: "Users", href: "/dashboard/users", icon: Users },
+        { title: "Activity", href: "/dashboard/activity", icon: Activity },
+        { title: "System logs", href: "/dashboard/logs", icon: ScrollText },
+      ],
+    });
+  }
+
+  return sections;
 }
+
+// Pinned above the user menu, which already links to Profile.
+const FOOTER_ITEMS: NavItem[] = [
+  { title: "Support", href: "/support", icon: LifeBuoy },
+];
+
+// Profile stays reachable from the command palette (⌘K).
+const PROFILE_PAGE: NavItem = {
+  title: "Profile",
+  href: "/dashboard/profile",
+  icon: UserCircle,
+};
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -71,12 +83,17 @@ export function DashboardShell({
   };
 
   const navigation = getNavigation(hasAdminAccess);
-  const pages = navigation.flatMap((s) => s.items);
+  const pages = [
+    ...navigation.flatMap((s) => s.items),
+    PROFILE_PAGE,
+    ...FOOTER_ITEMS,
+  ];
 
   const sidebarProps = {
     brandName,
     version,
     navigation,
+    footerItems: FOOTER_ITEMS,
     user,
     onLogout: handleLogout,
     onOpenCommand: () => setCommandOpen(true),
@@ -97,6 +114,7 @@ export function DashboardShell({
       <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           sidebarProps={sidebarProps}
+          pages={pages}
           collapsed={collapsed}
           onToggleSidebar={() => setCollapsed((value) => !value)}
           showDateRange={showDateRange}

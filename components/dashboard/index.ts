@@ -29,24 +29,18 @@ export { UserWelcome } from "./user-welcome";
 export { ProfileContent } from "./profile-content";
 export { AccountDeletionDialog } from "./account-deletion-dialog";
 export { TwoFactorStatus } from "./two-factor-setup";
-export { ActivityLog, type ActivityLogEntry } from "./activity-log";
-export { ActiveSessions, type SessionData } from "./active-sessions";
+export { ProfileSessionsContent } from "./profile-sessions-content";
 export { ActivityLogsContent } from "./activity-logs-content";
+export { ProfileActivityContent } from "./profile-activity-content";
 export { SystemLogsContent } from "./system-logs-content";
 
 // User Management (from users folder)
 export {
   UsersContent,
-  UsersTable,
-  SearchAndFilters,
-  ActiveFilters,
-  UserActions,
-  BulkActionsBar,
   AddUserDialog,
   EditUserDialog,
   ChangeRoleDialog,
   ResetPasswordDialog,
-  type Filters,
 } from "./users";
 export type { User, AuthProvider } from "@/actions/users";
 
@@ -72,8 +66,29 @@ export {
   type Column,
   type DataTableProps,
 } from "./data-table";
-export { TableFooter, type TableFooterProps } from "./table-footer";
-export { ColumnPicker, type ColumnPickerProps } from "./column-picker";
+export {
+  TableFooter,
+  type TableFooterLabels,
+  type TableFooterProps,
+} from "./table-footer";
+export {
+  ColumnPicker,
+  type ColumnPickerColumn,
+  type ColumnPickerLabels,
+  type ColumnPickerProps,
+} from "./column-picker";
+
+export {
+  TableView,
+  type BulkAction,
+  type BulkActionHelpers,
+  type RowAction,
+  type TableViewColumn,
+  type TableViewFilter,
+  type TableViewFilterOption,
+  type TableViewLabels,
+  type TableViewProps,
+} from "./table-view";
 
 export {
   StatusBadge,

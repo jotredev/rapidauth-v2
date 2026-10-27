@@ -10,27 +10,46 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  TABLE_COLUMNS,
-  type TableId,
-  writeHiddenColumnsCookie,
-} from '@/lib/table-columns';
+import { writeHiddenColumnsCookie } from '@/lib/table-columns';
 import { cn } from '@/lib/utils';
 
+export interface ColumnPickerColumn {
+  id: string;
+  label: string;
+  required?: boolean;
+}
+
+export interface ColumnPickerLabels {
+  columns: string;
+  toggleColumns: string;
+}
+
 export interface ColumnPickerProps {
-  tableId: TableId;
+  tableId: string;
+  columns: readonly ColumnPickerColumn[];
   hidden: string[];
   onHiddenChange: (hidden: string[]) => void;
+  labels?: Partial<ColumnPickerLabels>;
   className?: string;
 }
 
 export function ColumnPicker({
   tableId,
-  hidden,
+  columns,
+  hidden: hiddenProp,
   onHiddenChange,
+  labels: labelsProp,
   className,
 }: ColumnPickerProps): React.JSX.Element {
-  const columns = TABLE_COLUMNS[tableId];
+  const labels: ColumnPickerLabels = {
+    columns: 'Columns',
+    toggleColumns: 'Toggle columns',
+    ...labelsProp,
+  };
+  // Unknown and required columns can never be hidden.
+  const hidden = columns
+    .filter((col) => !col.required && hiddenProp.includes(col.id))
+    .map((col) => col.id);
   const total = columns.length;
   const visibles = total - hidden.length;
 
@@ -58,14 +77,14 @@ export function ColumnPicker({
           size="sm"
           className={cn('gap-2 shrink-0', className)}
         >
-          Columns
+          {labels.columns}
           <span className="rounded bg-muted px-1.5 text-[13px]">
             {visibles}/{total}
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48 bg-card border-border">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{labels.toggleColumns}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {columns.map((column) => {
           const isChecked = !hidden.includes(column.id);

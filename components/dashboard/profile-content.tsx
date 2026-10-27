@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { PageHeader } from "@/components/dashboard";
-import { TableFooter } from "@/components/dashboard/table-footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,16 +11,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { User, Mail, Lock, Camera, Save, Shield, History, Monitor } from "lucide-react";
 import { TwoFactorStatus } from "./two-factor-setup";
-import { ActivityLog, type ActivityLogEntry } from "./activity-log";
-import { ActiveSessions, type SessionData } from "./active-sessions";
+import { ProfileActivityContent } from "./profile-activity-content";
+import { ProfileSessionsContent } from "./profile-sessions-content";
 import { AccountDeletionDialog } from "./account-deletion-dialog";
 import { changePasswordAction, updateProfileAction, uploadAvatarAction } from "@/actions/auth";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import type { PageSize } from "@/lib/list-pagination";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { ActivityLogEntry, SessionData } from "@/actions/profile";
+import type { TableParams } from "@/lib/table-query";
 import {
-  buildProfileQueryString,
-  type ProfileListParams,
+  type ProfileActivityFilter,
+  type ProfileParams,
+  type ProfileSessionsFilter,
   type ProfileTab,
 } from "@/lib/profile-query";
 
@@ -38,13 +39,15 @@ interface ProfileContentProps {
   hasPassword?: boolean;
   activityLogs?: ActivityLogEntry[];
   sessions?: SessionData[];
-  initialParams: ProfileListParams;
-  activityPage: number;
+  initialParams: ProfileParams;
+  activityTotal: number;
   activityTotalPages: number;
+  activityParams: TableParams<ProfileActivityFilter>;
+  activityHiddenColumns: string[];
   sessionsTotal: number;
-  sessionsPage: number;
   sessionsTotalPages: number;
-  pageSize: PageSize;
+  sessionsParams: TableParams<ProfileSessionsFilter>;
+  sessionsHiddenColumns: string[];
 }
 
 export function ProfileContent({
@@ -55,16 +58,18 @@ export function ProfileContent({
   activityLogs = [],
   sessions = [],
   initialParams,
-  activityPage,
+  activityTotal,
   activityTotalPages,
+  activityParams,
+  activityHiddenColumns,
   sessionsTotal,
-  sessionsPage,
   sessionsTotalPages,
-  pageSize,
+  sessionsParams,
+  sessionsHiddenColumns,
 }: ProfileContentProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = React.useState(twoFactorEnabled);
-  const [isPending, startTransition] = React.useTransition();
+  const [, startTransition] = React.useTransition();
   const [tab, setTab] = React.useState<ProfileTab>(initialParams.tab);
   const [prevTab, setPrevTab] = React.useState<ProfileTab>(initialParams.tab);
 
@@ -75,19 +80,20 @@ export function ProfileContent({
 
   const router = useRouter();
 
-  const href = React.useCallback((next: ProfileListParams) => {
-    const qs = buildProfileQueryString(next);
-    return qs ? `/dashboard/profile?${qs}` : '/dashboard/profile';
-  }, []);
+  const searchParams = useSearchParams();
 
-  const navigate = React.useCallback(
-    (next: ProfileListParams) => {
-      startTransition(() => {
-        router.replace(href(next), { scroll: false });
+  // Only the tab changes: the page, page size and filters of each list stay in the URL.
+  const changeTab = (next: ProfileTab) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (next === 'general') nextParams.delete('tab');
+    else nextParams.set('tab', next);
+    const qs = nextParams.toString();
+    startTransition(() => {
+      router.replace(qs ? `/dashboard/profile?${qs}` : '/dashboard/profile', {
+        scroll: false,
       });
-    },
-    [href, router],
-  );
+    });
+  };
 
   const [profile, setProfile] = React.useState(initialProfile);
 
@@ -141,17 +147,17 @@ export function ProfileContent({
         description="Manage your account settings and preferences."
       />
 
-      <div className="flex flex-col gap-6 p-5">
-        <Tabs
-          value={tab}
-          onValueChange={(value) => {
-            const next = value as ProfileTab;
-            setTab(next);
-            navigate({ ...initialParams, tab: next });
-          }}
-          className="w-full"
-        >
-        <TabsList variant="line" className="mb-6">
+      {/* The tabs are the page's sub-navigation: full width under the header, text aligned with the title (px-5). */}
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          const next = value as ProfileTab;
+          setTab(next);
+          changeTab(next);
+        }}
+        className="w-full gap-0"
+      >
+        <TabsList variant="line" className="px-1">
           <TabsTrigger value="general" className="gap-2">
             <User className="h-4 w-4" strokeWidth={1.5} />
             General
@@ -170,7 +176,7 @@ export function ProfileContent({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general" className="space-y-6">
+        <TabsContent value="general" className="space-y-6 p-5">
           <Card className="gap-y-0 p-6">
             <h3 className="text-lg font-medium mb-1">Profile Information</h3>
             <p className="text-sm text-muted-foreground mb-6">
@@ -284,7 +290,7 @@ export function ProfileContent({
           </Card>
         </TabsContent>
 
-        <TabsContent value="security" className="space-y-6">
+        <TabsContent value="security" className="space-y-6 p-5">
           {hasPassword && <>
           <Card className="gap-y-0 p-6">
               <h3 className="text-lg font-medium mb-1">Change Password</h3>
@@ -363,61 +369,27 @@ export function ProfileContent({
           <AccountDeletionDialog hasPassword={hasPassword} />
         </TabsContent>
 
-        <TabsContent value="sessions" className="space-y-6">
-          <ActiveSessions
+        {/* Lists run edge to edge, like every other TableView page. */}
+        <TabsContent value="sessions">
+          <ProfileSessionsContent
             sessions={sessions}
             total={sessionsTotal}
-            onSessionRevoked={() => router.refresh()}
-          />
-          <TableFooter
-            page={sessionsPage}
             totalPages={sessionsTotalPages}
-            pageSize={pageSize}
-            isPending={isPending}
-            getPageHref={(p) =>
-              href({ ...initialParams, tab: 'sessions', sessionsPage: p })
-            }
-            onPageChange={(p) =>
-              navigate({ ...initialParams, tab: 'sessions', sessionsPage: p })
-            }
-            onPageSizeChange={(s) =>
-              navigate({
-                ...initialParams,
-                tab: 'sessions',
-                pageSize: s,
-                activityPage: 1,
-                sessionsPage: 1,
-              })
-            }
+            params={sessionsParams}
+            hiddenColumns={sessionsHiddenColumns}
           />
         </TabsContent>
 
-        <TabsContent value="activity" className="space-y-6">
-          <ActivityLog activities={activityLogs} />
-          <TableFooter
-            page={activityPage}
+        <TabsContent value="activity">
+          <ProfileActivityContent
+            logs={activityLogs}
+            total={activityTotal}
             totalPages={activityTotalPages}
-            pageSize={pageSize}
-            isPending={isPending}
-            getPageHref={(p) =>
-              href({ ...initialParams, tab: 'activity', activityPage: p })
-            }
-            onPageChange={(p) =>
-              navigate({ ...initialParams, tab: 'activity', activityPage: p })
-            }
-            onPageSizeChange={(s) =>
-              navigate({
-                ...initialParams,
-                tab: 'activity',
-                pageSize: s,
-                activityPage: 1,
-                sessionsPage: 1,
-              })
-            }
+            params={activityParams}
+            hiddenColumns={activityHiddenColumns}
           />
         </TabsContent>
       </Tabs>
-      </div>
     </>
   );
 }
