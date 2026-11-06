@@ -63,7 +63,7 @@ const CLOSE_MARKER = '>>>>>>> template ';
 const MAX_SCANNED_BYTES = 4 * 1024 * 1024;
 
 /** Fails when an earlier pull left conflicts: side files, or text files with the markers this command writes. */
-function assertNoLeftoverConflicts(root: string, git: GitRunner): void {
+export function assertNoLeftoverConflicts(root: string, git: GitRunner): void {
   const listed = git(['ls-files', '-z', '--cached', '--others', '--exclude-standard']);
   if (!listed.ok) throw new PullError(`Could not list the project files.\n${listed.stderr.trim()}`);
   const found: string[] = [];

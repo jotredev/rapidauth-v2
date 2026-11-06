@@ -82,6 +82,8 @@ describe('what the init changes', () => {
     expect(readme).toContain('He said "hi" <b>{now}</b>');
     expect(readme).toContain('bun dev');
     expect(readme).toContain('docs/en/README.md');
+    expect(readme).toContain('bun run template:pull');
+    expect(readme).toContain('docs/en/10-template-updates.md');
     expect(readme).not.toContain('fastest way');
 
     const landing = read(root, 'components/landing-content.tsx');
@@ -365,6 +367,7 @@ describe('ways to start', () => {
     expect(existsSync(path.join(kit.root, '.env'))).toBe(false);
     expect(kit.commands.some((command) => command.line.startsWith('docker'))).toBe(false);
     expect(kit.terminal.said('warn')).toContain('Docker is not installed');
+    expect(kit.terminal.said('warn')).toMatch(/no \.env file yet[\s\S]*SUPPORT_EMAIL[\s\S]*setup:prod/);
     expect(kit.terminal.said('info')).toContain('cd docker && docker compose up -d db mailpit');
   });
 
@@ -406,5 +409,11 @@ describe('ways to start', () => {
     expect(info).toContain('docker compose up -d db mailpit');
     expect(info).toContain('bun run setup:prod');
     expect(kit.commands.map((command) => command.line)).not.toContain('bun run setup:prod');
+    expect(kit.terminal.said('warn')).toMatch(/no \.env file yet[\s\S]*SUPPORT_EMAIL/);
+  });
+
+  test('no final .env warning when the start created one', async () => {
+    const kit = await initialize({ flags: { ...DEFAULT_FLAGS, start: 'docker' } });
+    expect(kit.terminal.said('warn')).not.toMatch(/no \.env file yet/);
   });
 });

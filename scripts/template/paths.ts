@@ -2,7 +2,7 @@
  * Paths that only make sense inside the template: `project:init` deletes them and `template:pull` never brings them.
  * Directories end with a slash and cover everything below them.
  */
-export const TEMPLATE_ONLY_PATHS: readonly string[] = ['.forge614/', 'docs/superpowers/', 'scripts/project-init/'];
+export const TEMPLATE_ONLY_PATHS: readonly string[] = ['.forge614/', 'docs/superpowers/', 'scripts/project-init/', 'docs/en/09-project-init.md', 'docs/es/09-project-init.md'];
 
 /** True when the repository path is one of the template-only paths or lives below one. */
 export function isTemplateOnlyPath(file: string): boolean {

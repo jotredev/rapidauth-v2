@@ -21,6 +21,10 @@ export function renderReadme(project: ProjectText): string {
     '',
     'Open http://localhost:3000. To prepare production settings, run `bun run setup:prod`.',
     '',
+    '## Template updates',
+    '',
+    'This project was made from a template. To bring in the latest published template version, commit your work and run `bun run template:pull`. It merges file by file, marks real conflicts and never commits. See [the guide](docs/en/10-template-updates.md).',
+    '',
     '## Documentation',
     '',
     '- [English](docs/en/README.md)',
@@ -33,6 +37,7 @@ export function renderReadme(project: ProjectText): string {
     'bun run build    # production build',
     'bun run lint     # lint (zero warnings allowed)',
     'bun run test     # tests',
+    'bun run template:pull   # bring in the latest template version',
     '```',
     '',
   );

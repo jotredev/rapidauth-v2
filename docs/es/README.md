@@ -11,3 +11,4 @@ Para desarrollo local, usa la guía de setup manual o Docker. Para desplegar, us
 7. [Limpieza programada e IP real del cliente](07-scheduled-cleanup.md) — activa la limpieza diaria con Vercel o GitHub Actions y configura cabeceras de proxy seguras.
 8. [Actualización de dependencias](04-dependency-updates.md) — revisa Dependabot, actualiza dependencias por etapas probadas y respeta los límites de herramientas.
 9. [Desplegar en un VPS](08-deploy-to-a-vps.md) — despliega con HTTPS y respaldos diarios usando Docker Compose o Coolify.
+10. [Actualizaciones de la plantilla](10-template-updates.md) — trae a tu proyecto las mejoras de las versiones nuevas de la plantilla con `bun run template:pull`.

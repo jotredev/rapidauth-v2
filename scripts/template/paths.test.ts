@@ -3,7 +3,13 @@ import { TEMPLATE_ONLY_PATHS, classifyPath, isThemeSyncedPath, isTemplateOnlyPat
 
 describe('template-only paths', () => {
   test('lists the folders the init deletes and template:pull never brings', () => {
-    expect([...TEMPLATE_ONLY_PATHS]).toEqual(['.forge614/', 'docs/superpowers/', 'scripts/project-init/']);
+    expect([...TEMPLATE_ONLY_PATHS]).toEqual([
+      '.forge614/',
+      'docs/superpowers/',
+      'scripts/project-init/',
+      'docs/en/09-project-init.md',
+      'docs/es/09-project-init.md',
+    ]);
   });
 
   test('matches files below them and nothing else', () => {
@@ -11,6 +17,9 @@ describe('template-only paths', () => {
     expect(isTemplateOnlyPath('scripts/project-init/index.ts')).toBe(true);
     expect(isTemplateOnlyPath('docs/superpowers/plans/a.md')).toBe(true);
     expect(isTemplateOnlyPath('scripts/project-init-notes.md')).toBe(false);
+    expect(isTemplateOnlyPath('docs/en/09-project-init.md')).toBe(true);
+    expect(isTemplateOnlyPath('docs/es/09-project-init.md')).toBe(true);
+    expect(isTemplateOnlyPath('docs/en/10-template-updates.md')).toBe(false);
     expect(isTemplateOnlyPath('docs/en/README.md')).toBe(false);
   });
 });

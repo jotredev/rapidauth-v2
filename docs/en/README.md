@@ -11,3 +11,4 @@ For local development, use the manual setup guide or Docker. For a deployed envi
 7. [Scheduled cleanup and trusted client IPs](07-scheduled-cleanup.md) — enable daily cleanup on Vercel or GitHub Actions and configure safe proxy headers.
 8. [Dependency updates](04-dependency-updates.md) — review Dependabot, upgrade dependencies in tested stages, and follow toolchain limits.
 9. [Deploy to a VPS](08-deploy-to-a-vps.md) — deploy with HTTPS and daily backups using Docker Compose or Coolify.
+10. [Template updates](10-template-updates.md) — bring the improvements of new template versions into your project with `bun run template:pull`.

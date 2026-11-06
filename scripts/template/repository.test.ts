@@ -4,10 +4,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'bun:test';
 import { decodeText, type SourceFile } from './files';
+import { createGitRunner } from './git';
 import { findMentions, formatMentions } from './mentions';
 import { readProjectMetadata, templateIdentityOf, type TemplateIdentity } from './metadata';
 import { renameLockWorkspace } from './lockfile';
 import { isTemplateOnlyPath } from './paths';
+import { assertNoLeftoverConflicts } from './pull-run';
 import { planRename } from './rename';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -113,5 +115,9 @@ if (templateIdentity) describe('rename over the versioned files of this reposito
     expect(JSON.parse(text('package.json')).name).toBe('acme-portal');
     expect(text('docker/app.yaml')).toContain('image: ghcr.io/acme/acme-portal:');
     expect(text('config/site.ts')).toContain("appName: 'Acme Portal'");
+  });
+
+  test('no versioned file looks like a pending pull conflict (the real detector finds nothing)', () => {
+    expect(() => assertNoLeftoverConflicts(root, createGitRunner(root))).not.toThrow();
   });
 });

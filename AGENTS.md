@@ -147,6 +147,7 @@ bunx shadcn add [name]         # Add shadcn component with the pinned local CLI
 bunx prisma generate           # Generate Prisma client
 bun run db:deploy              # Apply pending migrations (migrate deploy)
 bun run db:migrate -- --name x  # Create a new migration (local Docker database only)
+bun run template:pull          # Bring the latest published template version into this project (never commits)
 ```
 
 ## Git Workflow

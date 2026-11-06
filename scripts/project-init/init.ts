@@ -1,4 +1,4 @@
-import { readFileSync, lstatSync, readlinkSync } from 'node:fs';
+import { existsSync, readFileSync, lstatSync, readlinkSync } from 'node:fs';
 import path from 'node:path';
 import type { SourceFile } from '../template/files';
 import { buildMentionPattern, parseGitHubRepo } from '../template/forms';
@@ -201,6 +201,12 @@ export async function runInit(context: InitContext): Promise<InitResult> {
     }));
   const start = await startProject(context, mode, answers);
   if (!start.ready) warnings.push(`The "${mode}" start did not finish.`);
+
+  if (!existsSync(path.join(root, '.env'))) {
+    terminal.warn(
+      'There is no .env file yet. Every commit runs the pre-commit build, which needs SUPPORT_EMAIL and the other required variables, so the first commit will fail until you have them. Start with Docker (cd docker && docker compose up -d db mailpit, then bun dev creates .env), run `bun run setup:prod`, or create .env yourself from .env.example.',
+    );
+  }
 
   if (originIs(context.git, template.origin)) {
     terminal.warn(
