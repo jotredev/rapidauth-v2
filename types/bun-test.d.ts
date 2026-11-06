@@ -15,7 +15,9 @@ declare module 'bun:test' {
     toEqual(expected: unknown): void;
     toHaveLength(expected: number): void;
     toContain(expected: unknown): void;
-    toThrow(expected?: string | RegExp): void;
+    toThrow(expected?: string | RegExp | (new (...args: never[]) => Error)): void;
+    toMatch(expected: string | RegExp): void;
+    toBeGreaterThan(expected: number): void;
     toMatchObject(expected: Record<string, unknown>): void;
     readonly not: Matchers;
     readonly rejects: Matchers;
