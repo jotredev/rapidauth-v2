@@ -158,14 +158,21 @@ function println(text: string = '') {
 
 function printHeader() {
   clearScreen();
-  println();
-  println(`${colors.cyan}${colors.bold}  ┌────────────────────────────────────────────────┐${colors.reset}`);
-  println(`${colors.cyan}${colors.bold}  │                                                │${colors.reset}`);
   const title = 'RAPIDAUTH - PRODUCTION SETUP';
-  println(`${colors.cyan}${colors.bold}  │${colors.reset}   ${icons.rocket} ${colors.bold}${colors.white}${title}${colors.reset}          ${colors.cyan}${colors.bold}│${colors.reset}`);
-  println(`${colors.cyan}${colors.bold}  │${colors.reset}      ${colors.dim}Professional Authentication Boilerplate${colors.reset}  ${colors.cyan}${colors.bold}│${colors.reset}`);
-  println(`${colors.cyan}${colors.bold}  │                                                │${colors.reset}`);
-  println(`${colors.cyan}${colors.bold}  └────────────────────────────────────────────────┘${colors.reset}`);
+  const subtitle = 'Professional Authentication Boilerplate';
+  // Visible widths: 3 spaces + 2-column emoji + 1 space + title, and 6 spaces + subtitle. The box grows with long names.
+  const titleWidth = 3 + 2 + 1 + title.length;
+  const subtitleWidth = 6 + subtitle.length;
+  const inner = Math.max(48, titleWidth + 2, subtitleWidth + 2);
+  const edge = `${colors.cyan}${colors.bold}│${colors.reset}`;
+  const blank = `  ${edge}${' '.repeat(inner)}${edge}`;
+  println();
+  println(`${colors.cyan}${colors.bold}  ┌${'─'.repeat(inner)}┐${colors.reset}`);
+  println(blank);
+  println(`  ${edge}   ${icons.rocket} ${colors.bold}${colors.white}${title}${colors.reset}${' '.repeat(inner - titleWidth)}${edge}`);
+  println(`  ${edge}      ${colors.dim}${subtitle}${colors.reset}${' '.repeat(inner - subtitleWidth)}${edge}`);
+  println(blank);
+  println(`${colors.cyan}${colors.bold}  └${'─'.repeat(inner)}┘${colors.reset}`);
   println();
 }
 

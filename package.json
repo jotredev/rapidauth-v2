@@ -31,6 +31,7 @@
     "db:seed": "bun run scripts/seed.ts",
     "theme:select": "bun run scripts/select-theme.ts",
     "theme:sync-classic": "bun run scripts/sync-classic-theme.ts",
+    "project:init": "bun run scripts/project-init/index.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

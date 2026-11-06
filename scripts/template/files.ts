@@ -11,7 +11,7 @@ export interface SourceFile {
  */
 export const EXTERNAL_REFERENCE_PATHS: readonly string[] = ['themes/registry.json'];
 
-/** Paths whose content is never rewritten: the lockfile is regenerated and the metadata is written on purpose. */
+/** Paths whose content is never rewritten: the lockfile only gets its root workspace name changed by the init, and the metadata is written on purpose. */
 export const RENAME_SKIPPED_PATHS: ReadonlySet<string> = new Set([
   'bun.lock',
   '.setup/project.json',
@@ -19,7 +19,7 @@ export const RENAME_SKIPPED_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 /** Paths the mentions check does not read. `.setup/project.json` is handled separately (see mentions.ts). */
-export const MENTIONS_SKIPPED_PATHS: ReadonlySet<string> = new Set(['bun.lock', ...EXTERNAL_REFERENCE_PATHS]);
+export const MENTIONS_SKIPPED_PATHS: ReadonlySet<string> = new Set(EXTERNAL_REFERENCE_PATHS);
 
 const decoder = new TextDecoder('utf-8', { fatal: true });
 

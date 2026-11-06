@@ -57,8 +57,8 @@ const initializedSchema = z.strictObject({
   template: templateIdentitySchema.extend({
     /** Full SHA of the template commit the project was created from (or last pulled to). */
     baseCommit: z.string().regex(/^[0-9a-f]{40}$/, 'Use a full 40-character lowercase commit SHA.'),
-    /** Last template release received, without the leading v. */
-    version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Use the X.Y.Z form.'),
+    /** Last template release received, without the leading v; null when the project predates every release. */
+    version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Use the X.Y.Z form.').nullable(),
   }),
 });
 

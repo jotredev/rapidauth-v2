@@ -53,6 +53,11 @@ describe('parseProjectMetadata', () => {
     expect(() => parse({ ...templateMode, schemaVersion: 2 })).toThrow(MetadataError);
   });
 
+  test('accepts a project that predates every template release (version null)', () => {
+    const parsed = parse({ ...initialized, template: { ...initialized.template, version: null } });
+    expect(parsed.mode === 'initialized' && parsed.template.version).toBe(null);
+  });
+
   test('names the field that is wrong', () => {
     expect(() => parse({ ...initialized, template: { ...initialized.template, baseCommit: 'abc' } })).toThrow(
       /template\.baseCommit/,

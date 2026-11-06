@@ -6,12 +6,11 @@ import { describe, expect, test } from 'bun:test';
 import { decodeText, type SourceFile } from './files';
 import { findMentions, formatMentions } from './mentions';
 import { readProjectMetadata, templateIdentityOf, type TemplateIdentity } from './metadata';
+import { renameLockWorkspace } from './lockfile';
+import { isTemplateOnlyPath } from './paths';
 import { planRename } from './rename';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
-
-/** Files the project initializer deletes, so they do not take part in the rename. */
-const DELETED_BY_INIT = ['.forge614/', 'docs/superpowers/'];
 
 /** Git stores a symbolic link as its target text; everything else is read as bytes. */
 function readContent(file: string): Uint8Array | string {
@@ -24,7 +23,7 @@ function versionedFiles(): SourceFile[] {
     .split('\0')
     .filter(Boolean);
   return listed
-    .filter((file) => !DELETED_BY_INIT.some((prefix) => file.startsWith(prefix)))
+    .filter((file) => !isTemplateOnlyPath(file))
     .map((file) => ({ path: file, content: readContent(path.join(root, file)) }));
 }
 
@@ -38,6 +37,8 @@ function textOf(files: SourceFile[], file: string): string {
 function apply(files: SourceFile[], changes: ReturnType<typeof planRename>): SourceFile[] {
   const byPath = new Map(changes.map((change) => [change.path, change]));
   return files.map((file) => {
+    // The init also renames the root workspace of the lockfile, to the new package name.
+    if (file.path === 'bun.lock') return { path: file.path, content: renameLockWorkspace(decodeText(file.content) ?? '', 'acme-portal') };
     const change = byPath.get(file.path);
     return change ? { path: change.newPath, content: change.content ?? file.content } : file;
   });

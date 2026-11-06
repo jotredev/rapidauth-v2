@@ -49,9 +49,10 @@ describe('findMentions', () => {
     expect(find([{ path: 'a', content: 'ok\r\nSample Template\r\n' }])[0].line).toBe(2);
   });
 
-  test('does not read binary content or the lockfile', () => {
+  test('does not read binary content, but does read the lockfile', () => {
     const bytes = new Uint8Array([0, 1, 2, ...new TextEncoder().encode('Sample Template')]);
-    expect(find([{ path: 'a.bin', content: bytes }, { path: 'bun.lock', content: 'sample-template' }])).toEqual([]);
+    expect(find([{ path: 'a.bin', content: bytes }])).toEqual([]);
+    expect(find([{ path: 'bun.lock', content: '"name": "sample-template"' }])).toHaveLength(1);
   });
 
   test('external references kept on purpose are not reported', () => {
