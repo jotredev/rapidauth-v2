@@ -47,7 +47,7 @@ Upgrade one major package or a tightly coupled package set at a time. Follow its
 
 ### Stage 4: shadcn components
 
-Use the project's pinned local shadcn CLI 4.22.0 to update or add components, for example `bunx shadcn add button`. `components.json` uses `radix-vega`: the old `default` style is frozen, while `radix-vega` keeps the Radix primitive family and provides the current shadcn component set. Changing the style does not require changing the project's colors or fonts.
+Use the project's pinned local shadcn CLI 4.23.0 to update or add components, for example `bunx shadcn add button`. `components.json` uses `radix-vega`: the old `default` style is frozen, while `radix-vega` keeps the Radix primitive family and provides the current shadcn component set. Changing the style does not require changing the project's colors or fonts.
 
 **Stage 4 completed (October 18, 2026):** All 46 existing UI components were regenerated in `radix-vega`, and these 14 components were added: `attachment`, `bubble`, `button-group`, `direction`, `empty`, `field`, `item`, `kbd`, `marker`, `message`, `native-select`, `resizable`, `spinner`, and `trace`. The shared primitive dependency is pinned exactly as `radix-ui` 1.8.1; individual `@radix-ui/react-*` dependencies are removed when no repository source imports them. The existing `react-resizable-panels` dependency is reused.
 
