@@ -9,37 +9,66 @@ import {
 
 const api = {} as TurnstileApi;
 
-function fakeHost(initialApi?: TurnstileApi, reset = true) {
-  if (reset) resetTurnstileLoader();
+type FakeScript = {
+  isConnected: boolean;
+  listeners: Partial<Record<'load' | 'error', Array<() => void>>>;
+  addEventListener(type: 'load' | 'error', fn: () => void): void;
+  remove(): void;
+};
+
+/**
+ * Fake browser: the page keeps every appended script, findScript returns one while it is still
+ * connected, and remove() disconnects it. A script that already fired never fires again.
+ */
+function fakeHost(initialApi?: TurnstileApi) {
+  resetTurnstileLoader();
   let current = initialApi;
-  const listeners: Record<string, () => void> = {};
-  const state = { created: 0, appended: 0, existing: false };
-  const script = {
-    isConnected: false,
-    addEventListener(type: 'load' | 'error', fn: () => void) {
-      listeners[type] = fn;
-    },
-  };
+  const page: FakeScript[] = [];
+  const state = { created: 0, appended: 0 };
   const host: TurnstileHost = {
     getApi: () => current,
-    findScript: () => (state.existing ? script : null),
+    findScript: () => page.find((s) => s.isConnected) ?? null,
     createScript: () => {
       state.created++;
+      const script: FakeScript = {
+        isConnected: false,
+        listeners: {},
+        addEventListener(type, fn) {
+          (script.listeners[type] ??= []).push(fn);
+        },
+        remove() {
+          script.isConnected = false;
+        },
+      };
       return script;
     },
-    appendScript: () => {
+    appendScript: (script) => {
       state.appended++;
-      script.isConnected = true;
+      (script as FakeScript).isConnected = true;
+      page.push(script as FakeScript);
     },
   };
   return {
     host,
     state,
+    page,
+    /** Fires the event on the newest script in the page, like the browser does once. */
     fire(type: 'load' | 'error', loaded?: TurnstileApi) {
       current = loaded ?? current;
-      listeners[type]();
+      const script = page[page.length - 1];
+      script.listeners[type]?.forEach((fn) => fn());
     },
   };
+}
+
+/** Rejects instead of hanging forever, so a stuck promise counts as a failure. */
+function within<T>(promise: Promise<T>, ms = 200): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timed out waiting for Turnstile')), ms)
+    ),
+  ]);
 }
 
 describe('loadTurnstile', () => {
@@ -62,25 +91,42 @@ describe('loadTurnstile', () => {
     expect(TURNSTILE_SRC).toContain('render=explicit');
   });
 
-  test('reuses a script tag that is already in the page without adding another', async () => {
-    const { host, state, fire } = fakeHost();
-    state.existing = true;
-    state.created = 0;
-    const promise = loadTurnstile(host);
+  test('reuses a script tag that is already in the page still loading', async () => {
+    const { host, state, page, fire } = fakeHost();
+    const first = loadTurnstile(host);
+    // Simulate another mount that lost the stored promise but finds the live tag.
+    resetTurnstileLoader();
+    const second = loadTurnstile(host);
+    expect(state.created).toBe(1);
+    expect(page.length).toBe(1);
     fire('load', api);
-    await promise;
-    expect(state.created).toBe(0);
+    expect(await second).toBe(api);
+    void first;
   });
 
-  test('rejects on error and allows a later retry', async () => {
-    const failing = fakeHost();
-    const promise = loadTurnstile(failing.host);
-    failing.fire('error');
+  test('rejects on error, removes the failed tag and retries with the same page', async () => {
+    const { host, state, page, fire } = fakeHost();
+    const promise = loadTurnstile(host);
+    fire('error');
     await expect(promise).rejects.toThrow();
+    expect(page.some((s) => s.isConnected)).toBe(false);
 
-    const retry = fakeHost(undefined, false);
-    const again = loadTurnstile(retry.host);
-    retry.fire('load', api);
-    expect(await again).toBe(api);
+    const again = loadTurnstile(host);
+    expect(state.created).toBe(2);
+    fire('load', api);
+    expect(await within(again)).toBe(api);
+  });
+
+  test('rejects on load without the API, removes the tag and retries with the same page', async () => {
+    const { host, state, page, fire } = fakeHost();
+    const promise = loadTurnstile(host);
+    fire('load');
+    await expect(promise).rejects.toThrow();
+    expect(page.some((s) => s.isConnected)).toBe(false);
+
+    const again = loadTurnstile(host);
+    expect(state.created).toBe(2);
+    fire('load', api);
+    expect(await within(again)).toBe(api);
   });
 });

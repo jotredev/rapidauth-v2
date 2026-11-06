@@ -18,6 +18,7 @@ export const TURNSTILE_SRC =
 
 type ScriptLike = {
   isConnected: boolean;
+  remove(): void;
   addEventListener(type: 'load' | 'error', listener: () => void): void;
 };
 
@@ -42,6 +43,9 @@ export function loadTurnstile(host: TurnstileHost): Promise<TurnstileApi> {
 
   const attempt = new Promise<TurnstileApi>((resolve, reject) => {
     const fail = () => {
+      // A tag that already failed never fires again: leave it in the page and the next attempt
+      // would find it and wait forever. Remove it so the retry creates a fresh one.
+      script.remove();
       if (pending === attempt) pending = null;
       reject(new Error('Could not load Turnstile'));
     };
