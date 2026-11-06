@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { siteConfig } from "@/config/site";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -49,7 +50,6 @@ export interface UserProfile {
 }
 
 export interface SidebarProps {
-  brandName?: string;
   version?: string;
   navigation?: NavSection[];
   /** Links pinned to the bottom of the sidebar, above the user menu (e.g. Support). */
@@ -66,7 +66,6 @@ interface SidebarContentProps extends SidebarProps {
 }
 
 function SidebarContent({
-  brandName = "rapidauth",
   version,
   navigation = [],
   footerItems = [],
@@ -132,7 +131,7 @@ function SidebarContent({
         {collapsed ? (
           <Link
             href="/"
-            aria-label={brandName}
+            aria-label={siteConfig.appName}
             className="flex items-center justify-center"
           >
             <ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />
@@ -141,7 +140,7 @@ function SidebarContent({
           <>
             <Link href="/" className="flex items-center gap-2.5 min-w-0">
               <ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />
-              <span className="text-[17px] font-normal truncate">{brandName}</span>
+              <span className="text-[17px] font-normal truncate lowercase">{siteConfig.appName}</span>
             </Link>
             {version && (
               <span className="ml-auto text-xs text-muted-foreground shrink-0">
