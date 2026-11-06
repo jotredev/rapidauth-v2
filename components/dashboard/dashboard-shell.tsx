@@ -59,7 +59,6 @@ const PROFILE_PAGE: NavItem = {
 interface DashboardShellProps {
   children: React.ReactNode;
   user?: UserProfile;
-  brandName?: string;
   version?: string;
   hasAdminAccess?: boolean;
 }
@@ -71,7 +70,6 @@ export function DashboardShell({
     email: "admin@example.com",
     role: "Admin",
   },
-  brandName = "rapidauth",
   version,
   hasAdminAccess = false,
 }: DashboardShellProps) {
@@ -90,7 +88,6 @@ export function DashboardShell({
   ];
 
   const sidebarProps = {
-    brandName,
     version,
     navigation,
     footerItems: FOOTER_ITEMS,
