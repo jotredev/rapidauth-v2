@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "mode": "template",
+  "template": {
+    "name": "RapidAuth",
+    "slug": "rapidauth",
+    "aliases": ["rapidauth-v2", "rapidauth-better-auth"],
+    "origin": "https://github.com/jotredev/rapidauth-v2.git"
+  }
+}

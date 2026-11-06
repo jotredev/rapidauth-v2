@@ -32,6 +32,27 @@ A production-ready Next.js 16+ authentication boilerplate with Better Auth, desi
 - Husky git hooks
 - shadcn/ui components
 
+## Create your project
+
+Use this repository as a template for your own project.
+
+1. On GitHub, press **Use this template** and create your repository (or clone this one).
+2. In the new folder, run `bun install`.
+3. Run `bun run project:init`.
+
+The init runs **once**. It asks for:
+
+- the project name and slug,
+- a one-line description,
+- the GitHub repository (`owner/repo`),
+- how to start: **Docker locally** (recommended, the project works right away), **my production values** (runs `bun run setup:prod`), or **later**.
+
+It renames the template everywhere, deletes the template-only parts (the Engram memory folder, `docs/superpowers/` and the init itself) and replaces this README with one for your project. It does **not** commit: review the changes with `git status` and commit them on your own branch.
+
+If `origin` still points at the template, change it before opening the project with an AI agent: `git remote set-url origin <your repository>`. If the init ends without a `.env` file, commits fail in the pre-commit build until you start with Docker, run `bun run setup:prod` or create `.env`.
+
+To receive later improvements, run `bun run template:pull`; see the template updates guide ([English](docs/en/10-template-updates.md) · [Español](docs/es/10-template-updates.md)). Details of the init: [English](docs/en/09-project-init.md) · [Español](docs/es/09-project-init.md) (template only).
+
 ## Quick Start
 
 [![CI](https://github.com/jotredev/rapidauth-v2/actions/workflows/ci.yml/badge.svg)](https://github.com/jotredev/rapidauth-v2/actions/workflows/ci.yml)
@@ -233,6 +254,10 @@ bun run db:seed        # Seed database
 
 # Setup
 bun run setup:prod     # Guided production environment setup
+
+# Template
+bun run project:init   # Template only: turn a copy of the template into your project (runs once)
+bun run template:pull  # Bring the latest template version into your project
 ```
 
 ## Database Schema

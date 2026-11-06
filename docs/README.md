@@ -18,6 +18,11 @@
 - [English: Scheduled cleanup and trusted client IPs](en/07-scheduled-cleanup.md)
 - [Español: Limpieza programada e IP real del cliente](es/07-scheduled-cleanup.md)
 
+## Template updates
+
+- [English: Template updates](en/10-template-updates.md)
+- [Español: Actualizaciones de la plantilla](es/10-template-updates.md)
+
 ## VPS deployment
 
 - [English: Deploy to a VPS](en/08-deploy-to-a-vps.md)

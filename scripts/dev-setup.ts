@@ -1,9 +1,9 @@
-import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import path from 'node:path';
 import { parse } from 'dotenv';
 import { formatEnvSummary, isDockerDatabaseUrl, resolveEnv } from '../lib/env';
+import { createLocalEnv } from './lib/local-env';
 import { BaselineRequiredError, baselineMessage, canConnectToDatabase, checkMigrateStatus, runMigrateDeploy } from './lib/migrations';
 
 const root = process.cwd();
@@ -13,20 +13,9 @@ const examplePath = path.resolve(root, '.env.example');
 // Same credentials, database and default host port as docker/db.yaml.
 const LOCAL_DATABASE_URL = 'postgresql://rapidauth:rapidauth@localhost:5432/rapidauth?sslmode=disable';
 
-function setValue(content: string, key: string, value: string): string {
-  const line = new RegExp(`^${key}=.*$`, 'm');
-  const rendered = `${key}="${value}"`;
-  return line.test(content) ? content.replace(line, () => rendered) : `${content.trimEnd()}\n${rendered}\n`;
-}
-
 /** Creates `.env` from `.env.example` with values that work on this computer. */
-function createLocalEnv(): void {
-  let content = readFileSync(examplePath, 'utf8').replace(/\r\n/g, '\n');
-  content = setValue(content, 'DATABASE_URL', LOCAL_DATABASE_URL);
-  content = setValue(content, 'BETTER_AUTH_SECRET', randomBytes(32).toString('hex'));
-  content = setValue(content, 'BETTER_AUTH_URL', 'http://localhost:3000');
-  content = setValue(content, 'SUPPORT_EMAIL', 'support@example.invalid');
-  writeFileSync(envPath, content, { mode: 0o600 });
+function createDevEnv(): void {
+  createLocalEnv(examplePath, envPath, { databaseUrl: LOCAL_DATABASE_URL });
   process.stdout.write('Created .env with local development values (local PostgreSQL in Docker).\n');
 }
 
@@ -77,7 +66,7 @@ async function checkExternalMigrations(databaseUrl: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  if (!existsSync(envPath)) createLocalEnv();
+  if (!existsSync(envPath)) createDevEnv();
 
   // Effective environment: variables already exported in the terminal win over .env, as in Next.js and Prisma.
   const env = { ...parse(readFileSync(envPath)), ...process.env };
