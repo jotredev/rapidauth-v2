@@ -117,6 +117,21 @@ if (templateIdentity) describe('rename over the versioned files of this reposito
     expect(text('config/site.ts')).toContain("appName: 'Acme Portal'");
   });
 
+  test('the logo shows the app name from the site config, not the slug', () => {
+    const renamed = apply(files, planRename(template, answers, files));
+    const text = (file: string) => textOf(renamed, file);
+    for (const file of [
+      'components/auth/auth-card.tsx',
+      'components/dashboard/sidebar.tsx',
+      'components/dashboard/dashboard-shell.tsx',
+      'app/dashboard/layout.tsx',
+    ]) {
+      expect(text(file)).not.toContain('acme-portal');
+    }
+    expect(text('components/auth/auth-card.tsx')).toContain('{siteConfig.appName}');
+    expect(text('components/dashboard/sidebar.tsx')).toContain('{siteConfig.appName}');
+  });
+
   test('no versioned file looks like a pending pull conflict (the real detector finds nothing)', () => {
     expect(() => assertNoLeftoverConflicts(root, createGitRunner(root))).not.toThrow();
   });

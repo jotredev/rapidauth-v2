@@ -1,28 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import Script from 'next/script';
 
-type TurnstileApi = {
-  render(
-    container: HTMLElement,
-    options: {
-      sitekey: string;
-      action: string;
-      callback: (token: string) => void;
-      'expired-callback': () => void;
-      'error-callback': () => void;
-    }
-  ): string;
-  reset(widgetId: string): void;
-  remove(widgetId: string): void;
-};
+import { loadTurnstile, type TurnstileApi, type TurnstileHost } from '@/lib/turnstile-loader';
 
 declare global {
   interface Window {
     turnstile?: TurnstileApi;
   }
 }
+
+const browserHost: TurnstileHost = {
+  getApi: () => window.turnstile,
+  findScript: (src) =>
+    document.querySelector<HTMLScriptElement>(`script[src="${src}"]`),
+  createScript: (src) =>
+    Object.assign(document.createElement('script'), { src, async: true }),
+  appendScript: (script) => document.head.appendChild(script as HTMLScriptElement),
+};
 
 interface TurnstileWidgetProps {
   siteKey?: string;
@@ -61,42 +56,37 @@ export function TurnstileWidget({
     }
   }, [reset, resetKey]);
 
-  const renderWidget = React.useCallback(() => {
-    const turnstile = window.turnstile;
-    const container = containerRef.current;
-    if (!turnstile || !container || widgetIdRef.current || !siteKey) return;
+  React.useEffect(() => {
+    if (!siteKey) return;
+    let cancelled = false;
+    let widgetId: string | null = null;
 
-    widgetIdRef.current = turnstile.render(container, {
-      sitekey: siteKey,
-      action,
-      callback: (token) => onTokenRef.current(token),
-      'expired-callback': () => onTokenRef.current(null),
-      'error-callback': () => onTokenRef.current(null),
-    });
-  }, [action, siteKey]);
+    // Runs on every mount: the script may already be loaded from a previous page
+    // (client navigation), so we cannot wait for a load event that will not repeat.
+    loadTurnstile(browserHost)
+      .then((turnstile) => {
+        const container = containerRef.current;
+        if (cancelled || !container) return;
+        widgetId = turnstile.render(container, {
+          sitekey: siteKey,
+          action,
+          callback: (token) => onTokenRef.current(token),
+          'expired-callback': () => onTokenRef.current(null),
+          'error-callback': () => onTokenRef.current(null),
+        });
+        widgetIdRef.current = widgetId;
+      })
+      .catch(() => onTokenRef.current(null));
 
-  React.useEffect(
-    () => () => {
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
+    return () => {
+      cancelled = true;
+      if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
+      widgetIdRef.current = null;
       onTokenRef.current(null);
-    },
-    []
-  );
+    };
+  }, [action, siteKey]);
 
   if (!siteKey) return null;
 
-  return (
-    <>
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        strategy="afterInteractive"
-        onReady={renderWidget}
-      />
-      <div ref={containerRef} />
-    </>
-  );
+  return <div ref={containerRef} />;
 }
-

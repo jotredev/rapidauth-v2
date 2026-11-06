@@ -21,7 +21,6 @@ import { DateRangePicker } from './date-range-picker';
 
 interface HeaderProps {
   sidebarProps?: {
-    brandName?: string;
     version?: string;
     navigation?: NavSection[];
     footerItems?: NavItem[];
