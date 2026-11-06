@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { siteConfig } from "@/config/site";
 import { Card } from "@/components/ui/card";
 
 export function AuthBrand({ className }: { className?: string }) {
@@ -13,7 +14,7 @@ export function AuthBrand({ className }: { className?: string }) {
       className={cn("flex items-center gap-2 text-[17px] font-normal", className)}
     >
       <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />
-      <span>rapidauth</span>
+      <span className="lowercase">{siteConfig.appName}</span>
     </Link>
   );
 }

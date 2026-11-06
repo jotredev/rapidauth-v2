@@ -47,7 +47,6 @@ export default async function DashboardLayout({
   return (
     <DashboardShell
       user={user}
-      brandName="rapidauth"
       version={packageJson.version}
       hasAdminAccess={hasAdminAccess}
     >
