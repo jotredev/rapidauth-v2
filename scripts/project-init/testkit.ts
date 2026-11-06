@@ -4,8 +4,8 @@ import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createGitRunner } from './real-context';
-import { nodeFs } from './transaction';
+import { createGitRunner } from '../template/git';
+import { nodeFs } from '../template/transaction';
 import type { CommandRunner, InitContext, InitFlags, RunOptions, SelectPrompt, Services, Terminal, TextPrompt } from './types';
 
 /** Git without any global configuration, so the tests do not depend on the machine. */

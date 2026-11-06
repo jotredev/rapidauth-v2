@@ -5,7 +5,7 @@ import { readProjectMetadata } from '../template/metadata';
 import { runInit, suggestSlug } from './init';
 import { DEFAULT_FLAGS, FakeTerminal, git, projectFrom, read, setup, templateFixture, treeState, type SetupOptions } from './testkit';
 import type { FsOps } from './types';
-import { nodeFs } from './transaction';
+import { nodeFs } from '../template/transaction';
 
 const template = templateFixture();
 

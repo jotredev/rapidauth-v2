@@ -2,7 +2,8 @@ import { parseArgs } from 'node:util';
 import * as clack from '@clack/prompts';
 import { runInit } from './init';
 import { createRealContext } from './real-context';
-import { InitCancelled, InitError, START_MODES, type InitFlags, type StartMode } from './types';
+import { TemplateError } from '../template/types';
+import { InitCancelled, START_MODES, type InitFlags, type StartMode } from './types';
 
 const USAGE = [
   'Usage: bun run project:init [--name <name>] [--slug <slug>] [--description <text>] [--repo <owner/repo>]',
@@ -54,7 +55,7 @@ async function main(): Promise<number> {
   } catch (error) {
     if (error instanceof InitCancelled) {
       process.stderr.write('Cancelled. Nothing was changed.\n');
-    } else if (error instanceof InitError) {
+    } else if (error instanceof TemplateError) {
       context.terminal.error(error.message);
     } else {
       process.stderr.write(`Unexpected error: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`);

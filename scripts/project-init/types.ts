@@ -1,3 +1,7 @@
+import { TemplateError, type FsOps, type GitResult, type GitRunner, type Reporter } from '../template/types';
+
+export type { FsOps, GitResult, GitRunner };
+
 export type StartMode = 'docker' | 'prod' | 'later';
 
 export const START_MODES: readonly StartMode[] = ['docker', 'prod', 'later'];
@@ -26,25 +30,12 @@ export interface SelectPrompt<T extends string> {
 }
 
 /** Everything the init says or asks. The real one wraps @clack/prompts; tests script it. */
-export interface Terminal {
+export interface Terminal extends Reporter {
   /** True when a person can answer questions. */
   interactive: boolean;
   text(prompt: TextPrompt): Promise<string>;
   select<T extends string>(prompt: SelectPrompt<T>): Promise<T>;
-  info(message: string): void;
-  warn(message: string): void;
-  error(message: string): void;
-  success(message: string): void;
 }
-
-export interface GitResult {
-  ok: boolean;
-  stdout: string;
-  stderr: string;
-}
-
-/** Runs `git <args>` inside the project root. */
-export type GitRunner = (args: string[]) => GitResult;
 
 export interface RunOptions {
   cwd: string;
@@ -71,15 +62,6 @@ export interface Services {
   migrate(databaseUrl: string): void;
 }
 
-/** The writes of the init. Rollback never goes through this object, so an injected failure cannot break it. */
-export interface FsOps {
-  writeFile(absolute: string, data: string | Uint8Array, mode?: number): void;
-  symlink(target: string, absolute: string): void;
-  removeFile(absolute: string): void;
-  makeDir(absolute: string): void;
-  removeDir(absolute: string): void;
-}
-
 export interface InitContext {
   /** Project root: the folder with `.setup/project.json`. */
   root: string;
@@ -92,7 +74,7 @@ export interface InitContext {
 }
 
 /** A refusal or failure that leaves the project unchanged. The message is shown as is. */
-export class InitError extends Error {
+export class InitError extends TemplateError {
   constructor(message: string) {
     super(message);
     this.name = 'InitError';

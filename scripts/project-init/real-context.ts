@@ -3,15 +3,9 @@ import { createServer } from 'node:net';
 import * as clack from '@clack/prompts';
 import { checkDockerPrerequisites } from '../lib/docker';
 import { canConnectToDatabase, runMigrateDeploy } from '../lib/migrations';
-import { nodeFs } from './transaction';
-import { InitCancelled, type CommandRunner, type GitRunner, type InitContext, type InitFlags, type Services, type Terminal } from './types';
-
-export function createGitRunner(root: string, env: NodeJS.ProcessEnv = process.env): GitRunner {
-  return (args) => {
-    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', env, maxBuffer: 256 * 1024 * 1024 });
-    return { ok: result.status === 0, stdout: result.stdout ?? '', stderr: result.stderr ?? result.error?.message ?? '' };
-  };
-}
+import { createGitRunner } from '../template/git';
+import { nodeFs } from '../template/transaction';
+import { InitCancelled, type CommandRunner, type InitContext, type InitFlags, type Services, type Terminal } from './types';
 
 export const runCommand: CommandRunner = (command, args, options) => {
   const result = spawnSync(command, args, { cwd: options.cwd, stdio: options.inherit ? 'inherit' : 'pipe', encoding: 'utf8' });

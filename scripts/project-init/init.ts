@@ -4,10 +4,11 @@ import type { SourceFile } from '../template/files';
 import { buildMentionPattern, parseGitHubRepo } from '../template/forms';
 import { MetadataError, githubRepoSchema, projectNameSchema, projectSlugSchema, readProjectMetadata, templateIdentityOf, type ProjectAnswers, type TemplateIdentity } from '../template/metadata';
 import { findMentions, formatMentions } from '../template/mentions';
-import { assertCleanRepository, findBaseVersion, originIs, originUrl } from './git';
+import { originIs, originUrl } from '../template/git';
+import { Transaction } from '../template/transaction';
+import { assertCleanRepository, findBaseVersion } from './git';
 import { buildPlan } from './plan';
 import { startProject, type StartOutcome } from './start';
-import { Transaction } from './transaction';
 import { InitError, type InitContext, type StartMode } from './types';
 
 export interface InitResult {

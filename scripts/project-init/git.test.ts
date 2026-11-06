@@ -1,27 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
-import { findBaseVersion, normalizeGitUrl, sameGitUrl, TEMP_REF_PREFIX } from './git';
+import { findBaseVersion, TEMP_REF_PREFIX } from './git';
 import { InitError } from './types';
-import { createGitRunner } from './real-context';
+import { createGitRunner } from '../template/git';
 import { GIT_ENV, TEMPLATE_ORIGIN, git, projectFrom, templateFixture } from './testkit';
-
-describe('git URL comparison', () => {
-  test.each([
-    ['https://github.com/Owner/Repo.git', 'github.com/owner/repo'],
-    ['https://github.com/owner/repo/', 'github.com/owner/repo'],
-    ['git@github.com:owner/repo.git', 'github.com/owner/repo'],
-    ['ssh://git@github.com/owner/repo', 'github.com/owner/repo'],
-    ['https://user:token@github.com/owner/repo.git', 'github.com/owner/repo'],
-    ['file:///tmp/template.git', '/tmp/template'],
-  ])('%s', (url, expected) => {
-    expect(normalizeGitUrl(url)).toBe(expected);
-  });
-
-  test('different spellings of one repository are the same', () => {
-    expect(sameGitUrl('git@github.com:Owner/Repo.git', 'https://github.com/owner/repo/')).toBe(true);
-    expect(sameGitUrl('https://github.com/owner/repo', 'https://github.com/owner/other')).toBe(false);
-  });
-});
 
 describe('base version by identical tree', () => {
   const template = templateFixture();

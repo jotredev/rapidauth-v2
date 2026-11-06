@@ -1,44 +1,9 @@
-import type { GitRunner } from './types';
-import { InitError } from './types';
+import { deleteRefs } from '../template/git';
+import { compareVersions, isVersion } from '../template/versions';
+import { InitError, type GitRunner } from './types';
 
 /** Temporary namespace for the template's branches and tags. Never the template name; always deleted. */
 export const TEMP_REF_PREFIX = 'refs/template-init';
-
-/** `host/owner/repo` form of a Git URL, lowercase, without scheme, credentials, `.git` or trailing slash. */
-export function normalizeGitUrl(url: string): string {
-  let value = url.trim().toLowerCase();
-  const scp = /^[^/@:]+@([^:/]+):(.+)$/.exec(value);
-  if (scp) value = `${scp[1]}/${scp[2]}`;
-  value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^[^/@]+@/, '');
-  value = value.replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '');
-  return value;
-}
-
-export function sameGitUrl(a: string, b: string): boolean {
-  return normalizeGitUrl(a) === normalizeGitUrl(b);
-}
-
-/**
- * The `origin` remote URL as written in the Git config (raw) and as Git expands it with `insteadOf` rules.
- * Both are returned, without duplicates; the list is empty when there is no origin.
- */
-export function originUrls(git: GitRunner): string[] {
-  const urls = [git(['config', '--get', 'remote.origin.url']), git(['remote', 'get-url', 'origin'])]
-    .filter((result) => result.ok)
-    .map((result) => result.stdout.trim())
-    .filter(Boolean);
-  return [...new Set(urls)];
-}
-
-/** True when either spelling of the origin is the given URL. */
-export function originIs(git: GitRunner, url: string): boolean {
-  return originUrls(git).some((origin) => sameGitUrl(origin, url));
-}
-
-/** The origin to show or suggest from: the raw one, which is what the person configured. */
-export function originUrl(git: GitRunner): string | null {
-  return originUrls(git)[0] ?? null;
-}
 
 function requireGit(git: GitRunner, args: string[], failure: string): string {
   const result = git(args);
@@ -67,20 +32,6 @@ export interface BaseVersion {
   baseCommit: string;
   /** Highest X.Y.Z tag at the base commit or before it, or null when there is none. */
   version: string | null;
-}
-
-const VERSION_TAG = /^(\d+)\.(\d+)\.(\d+)$/;
-
-function compareVersions(a: string, b: string): number {
-  const left = a.split('.').map(Number);
-  const right = b.split('.').map(Number);
-  for (let index = 0; index < 3; index++) if (left[index] !== right[index]) return left[index] - right[index];
-  return 0;
-}
-
-function deleteTempRefs(git: GitRunner): void {
-  const refs = git(['for-each-ref', '--format=%(refname)', TEMP_REF_PREFIX]).stdout.split('\n').filter(Boolean);
-  for (const ref of refs) git(['update-ref', '-d', ref]);
 }
 
 /**
@@ -137,7 +88,7 @@ export function findBaseVersion(git: GitRunner, templateOrigin: string): BaseVer
         const [ref, object, peeled] = line.split(' ');
         return { name: ref.slice(`${TEMP_REF_PREFIX}/tags/`.length), commit: peeled || object };
       })
-      .filter((tag) => VERSION_TAG.test(tag.name));
+      .filter((tag) => isVersion(tag.name));
 
     const reachable = tags
       .filter((tag) => tag.commit === baseCommit || git(['merge-base', '--is-ancestor', tag.commit, baseCommit]).ok)
@@ -145,6 +96,6 @@ export function findBaseVersion(git: GitRunner, templateOrigin: string): BaseVer
       .sort(compareVersions);
     return { baseCommit, version: reachable.at(-1) ?? null };
   } finally {
-    deleteTempRefs(git);
+    deleteRefs(git, TEMP_REF_PREFIX);
   }
 }
