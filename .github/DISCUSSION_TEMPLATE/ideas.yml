@@ -1,0 +1,36 @@
+title: "[Idea] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Una idea todavía no es trabajo. Si se aprueba, se crea su issue de plan y esta Discussion se cierra
+        como resuelta, enlazándolo. Si no se aprueba, se cierra como rechazada, con el motivo escrito.
+        No ancles el trabajo a un número de versión que aún no existe: escribe «la próxima versión»; una release ya publicada sí se puede nombrar.
+  - type: textarea
+    id: idea
+    attributes:
+      label: La idea
+      description: Qué propones, en pocas frases.
+    validations:
+      required: true
+  - type: textarea
+    id: problema
+    attributes:
+      label: El problema que resuelve
+      description: Qué duele hoy y a quién, con un ejemplo concreto si lo tienes.
+    validations:
+      required: true
+  - type: textarea
+    id: existente
+    attributes:
+      label: Lo que ya existe
+      description: Qué reglas de `AGENTS.md`, scripts, documentos de `docs/` o código del repositorio tocan este asunto, y por qué no bastan.
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas
+      description: Otras formas de resolverlo, incluida no hacer nada, y por qué eliges esta.
+    validations:
+      required: true

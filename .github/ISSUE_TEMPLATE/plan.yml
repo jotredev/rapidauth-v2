@@ -1,0 +1,78 @@
+name: Plan
+description: El plan de una tarea. Se escribe antes de tocar código y se mantiene vivo durante el trabajo.
+title: "[Plan] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Un plan es un issue. Si solo tienes una idea sin aprobar, ábrela antes como Discussion (categoría Ideas).
+        Un fallo o un arreglo pequeño va con la plantilla «Fallo», no con esta.
+        No ancles el trabajo a un número de versión que aún no existe: escribe «la próxima versión»; una release ya publicada sí se puede nombrar.
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo
+      description: Exactamente uno.
+      options:
+        - feature — añade capacidad nueva
+        - bug — corrige un comportamiento incorrecto que necesita plan (un fallo pequeño va con la plantilla Fallo)
+        - refactor — reestructura sin cambiar el comportamiento observable
+        - integration — conecta el proyecto con un sistema externo
+        - migration — mueve datos, esquema o estructura de un estado a otro
+        - chore — mantenimiento rutinario que no encaja en los anteriores
+    validations:
+      required: true
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Qué se quiere conseguir, en pocas frases, y qué cambia para quien use el proyecto.
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+      description: Por qué ahora, qué hay hoy, qué documentación (`docs/`) y qué reglas de `AGENTS.md` aplican. Si es una reapertura, qué se encontró mal.
+    validations:
+      required: true
+  - type: textarea
+    id: decisiones
+    attributes:
+      label: Decisiones
+      description: Cada decisión con su porqué.
+    validations:
+      required: true
+  - type: textarea
+    id: fuera-de-alcance
+    attributes:
+      label: Fuera de alcance
+      description: Lo que no se hace en este plan, con su motivo. Si no hay nada, escribe «Nada.».
+    validations:
+      required: true
+  - type: textarea
+    id: bloques
+    attributes:
+      label: Bloques
+      description: Un bloque es un commit. El orquestador marca cada casilla al aprobarlo.
+      value: |
+        - [ ] Bloque A —
+        - [ ] Bloque B —
+    validations:
+      required: true
+  - type: textarea
+    id: estado-actual
+    attributes:
+      label: Estado actual
+      description: Dónde está el trabajo y cuál es el siguiente paso, para quien retome sin haber leído la conversación.
+      value: Sin arrancar.
+    validations:
+      required: true
+  - type: textarea
+    id: resultado
+    attributes:
+      label: Resultado
+      description: Se rellena al terminar, con los comandos ejecutados (`bun run lint`, `bun run typecheck`, `bun run test`, `bun run theme:sync-classic --check`, `bun run build`) y su resultado real. Mientras tanto, déjalo como está.
+      value: Pendiente de cierre.
+    validations:
+      required: true

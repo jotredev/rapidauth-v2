@@ -87,6 +87,17 @@ if (templateIdentity) describe('rename over the versioned files of this reposito
     expect(textOf(renamed, 'docker/app.yaml')).toContain('image: ghcr.io/OWNER/acme-portal:');
   });
 
+  test('the issue template config links to the discussions of the project repository', () => {
+    const config = '.github/ISSUE_TEMPLATE/config.yml';
+    expect(textOf(files, config)).toContain('https://github.com/jotredev/rapidauth-v2/discussions');
+    const renamed = apply(files, planRename(template, answers, files));
+    expect(textOf(renamed, config)).toContain('https://github.com/acme/acme-portal/discussions');
+    expect(textOf(renamed, config)).not.toContain('jotredev/rapidauth-v2');
+    const noRepo = apply(files, planRename(template, { ...answers, repo: null }, files));
+    expect(textOf(noRepo, config)).toContain('https://github.com/OWNER/acme-portal/discussions');
+    expect(textOf(noRepo, config)).not.toContain('jotredev/rapidauth-v2');
+  });
+
   test('database identifiers stay consistent between Docker, dev-setup and the URL check', () => {
     const renamed = apply(files, planRename(template, answers, files));
     const text = (file: string) => textOf(renamed, file);

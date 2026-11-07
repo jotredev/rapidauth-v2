@@ -1,0 +1,38 @@
+name: Fallo
+description: Algo no funciona como debería, o hay un arreglo pequeño y claro. Va directo a issue, sin pasar por Discussions.
+title: "[Fallo] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: Qué pasa
+      description: Lo que ocurre hoy, con el mensaje de error exacto si lo hay. No pegues secretos ni valores de `.env`.
+    validations:
+      required: true
+  - type: textarea
+    id: que-deberia-pasar
+    attributes:
+      label: Qué debería pasar
+      description: El comportamiento correcto y, si existe, la regla o la documentación que lo dice.
+    validations:
+      required: true
+  - type: textarea
+    id: como-reproducirlo
+    attributes:
+      label: Cómo reproducirlo
+      description: Los pasos exactos, en orden, con los comandos que se ejecutan.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: donde-esta
+    attributes:
+      label: Dónde está
+      description: La página, la acción, el componente o el fichero afectado, y la versión o el commit si lo conoces.
+      placeholder: app/dashboard, actions/..., components/...
+    validations:
+      required: true
