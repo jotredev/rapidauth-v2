@@ -158,6 +158,17 @@ bun run template:pull          # Bring the latest published template version int
 - Pull requests are merged with squash. The pull request title becomes the commit message on `main`, so write it like a commit message.
 - Never bypass hooks with `--no-verify`. The pre-commit hook checks dependency versions, lint, types, and the build.
 
+## Issues and Discussions
+
+Work is tracked in GitHub. The templates live in `.github/ISSUE_TEMPLATE/` (`plan.yml`, `bug.yml`, `config.yml`) and `.github/DISCUSSION_TEMPLATE/` (`ideas.yml`); their sections are in Spanish.
+
+- An idea goes to a GitHub Discussion (category Ideas). If it is approved, its plan issue is created and the Discussion is closed linking to it.
+- A plan goes to an issue with the `plan.yml` template; a bug or small fix goes straight to an issue with `bug.yml`.
+- The issue is written before the code. Opening an issue (or a Discussion) is public, so the agent confirms with the person first.
+- The person creates the branch from the issue (Development → Create a branch), and it follows the `<type>/<short-topic>` naming above. The agent never creates it and waits until it exists.
+- One block is one commit. The orchestrator ticks the block's checkbox in "Bloques" when it approves it and keeps "Estado actual" (the issue's "Current state" section) up to date.
+- The pull request includes `Closes #N` or `Fixes #N` so the issue closes when it is merged.
+
 ## Remember
 
 1. **Load skills** - Detect context, load the matching skill automatically
@@ -173,6 +184,7 @@ bun run template:pull          # Bring the latest published template version int
 10. **Respect toolchain update limits** - Keep TypeScript below 6.1 because typescript-eslint 8.x does not support 6.1+, ESLint on 9.x because eslint-plugin-react (included by eslint-config-next) supports only ^9, and Node on the current LTS because upgrades must change both Dockerfiles and `@types/node` together.
 11. **Pin dependencies and update them deliberately** - Add dependencies with a complete exact version (`bun add <package>@<x.y.z>`) or omit the version (`bun add <package>`); incomplete versions such as `@7` create a range. `bunfig.toml` enforces exact versions, and `bun run deps:check` verifies them. Upgrade dependencies in tested stages following `docs/en/04-dependency-updates.md`.
 12. **Branches and pull requests** - Never push to main; open a PR and merge it with squash after CI passes
+13. **Issue first** - Follow "Issues and Discussions": the issue comes before the code, and the person creates the branch from it
 
 <!-- BEGIN:nextjs-agent-rules -->
 
